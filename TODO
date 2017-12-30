@@ -1,0 +1,5 @@
+1. Reorganise build scripts for compatibility to the ESP32 build environment.
+2. Eliminate any code not needed. Example: FPGA hex files and such.
+3. Transform the code from a hosted linux environment to a freestanding environment. Do this without changing the
+   function names, parameters passed and return values to ensure compatibility.
+4. Form a strategy for transforming the test folders to a single unit test, with each folder as a test case.
