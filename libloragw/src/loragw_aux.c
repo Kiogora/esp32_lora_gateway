@@ -45,13 +45,15 @@ Maintainer: Sylvain Miermont
 #ifdef __MACH__
 #include <unistd.h>
 
-void wait_ms(unsigned long a) {
-	usleep(1000*a);
-	}
+void wait_ms(unsigned long a)
+{
+    usleep(1000*a);
+}
 
 #else
 
-void wait_ms(unsigned long a) {
+void wait_ms(unsigned long a)
+{
     struct timespec dly;
     struct timespec rem;
 
@@ -60,7 +62,8 @@ void wait_ms(unsigned long a) {
 
     DEBUG_PRINTF("NOTE dly: %ld sec %ld ns\n", dly.tv_sec, dly.tv_nsec);
 
-    if((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000))) {
+    if((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000)))
+    {
         clock_nanosleep(CLOCK_MONOTONIC, 0, &dly, &rem);
         DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
     }
