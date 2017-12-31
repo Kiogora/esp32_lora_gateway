@@ -28,7 +28,7 @@ Maintainer: Sylvain Miermont
 #include <fcntl.h>        /* open */
 #include <string.h>        /* memset */
 
-#include <sys/ioctl.h>
+#include <sys/ioctl.    h>
 #include <linux/spi/spidev.h>
 
 #include "loragw_spi.h"
@@ -61,137 +61,92 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-/* SPI initialization and configuration */
-int lgw_spi_open(void **spi_target_ptr, long speed)
+void concentrator_pre_transfer_callback(spi_transaction_t *t) 
 {
-    int *spi_device = NULL;
-    int dev;
-    int a=0, b=0;
-    int i;
+    /*Record the transaction ID irregardless of transaction type(Read/Write, burst/simple)*/
+    static int tx_cnt = 0;
+    /*Cast and update the transaction user field for debugging if need be*/
+    (int)t->user=tx_cnt;
+}
 
-    /* check input variables */
-    CHECK_NULL(spi_target_ptr); /* cannot be null, must point on a void pointer (*spi_target_ptr can be null) */
+/* SPI initialization and configuration */
+void lgw_spi_open(spi_device_handle_t *spi_target_ptr, long speed)
+{
+    //Safety check for null pointer
+    assert(spi_target_ptr != NULL);
 
-    /* allocate memory for the device descriptor */
-    spi_device = malloc(sizeof(int));
-    if (spi_device == NULL)
+    esp_err_t ret;
+    spi_device_handle_t concentrator;
+    spi_bus_config_t buscfg=
     {
-        DEBUG_MSG("ERROR: MALLOC FAIL\n");
-        return LGW_SPI_ERROR;
-    }
-
-    /* open SPI device */
-    dev = open(SPI_DEV_PATH, O_RDWR);
-    if (dev < 0)
+        .miso_io_num=PIN_NUM_MISO,
+        .mosi_io_num=PIN_NUM_MOSI,
+        .sclk_io_num=PIN_NUM_CLK,
+        .quadwp_io_num=-1,
+        .quadhd_io_num=-1
+    };
+    
+    /*
+    We hardcode one device onto the SPI bus by design, this will have to be refactored if more are added.
+    */
+    spi_device_interface_config_t devcfg=
     {
-        DEBUG_PRINTF("ERROR: failed to open SPI device %s\n", SPI_DEV_PATH);
-        return LGW_SPI_ERROR;
-    }
+        .clock_speed_hz=speed,                        //Clock out at speed Hz
+        .mode=0,                                      //SPI mode 0(CPOL=0,CPHA=0)
+        .spics_io_num=PIN_NUM_CS,                     //CS pin
+        .queue_size=7,                                //We want to be able to queue 7 transactions at a time
+        .pre_cb=concentrator_pre_transfer_callback,   //Specify pre-transfer callback to handle CS line
+    };
+    //Initialize the SPI bus
+    //We use assert due to the async nature of the esp32.
+    ret=spi_bus_initialize(HSPI_HOST, &buscfg, 1);
+    assert(ret==ESP_OK);
+    //Attach the LCD to the SPI bus
+    ret=spi_bus_add_device(HSPI_HOST, &devcfg, &concentrator);
+    assert(ret==ESP_OK);
 
-    /* setting SPI mode to 'mode 0' */
-    i = SPI_MODE_0;
-    a = ioctl(dev, SPI_IOC_WR_MODE, &i);
-    b = ioctl(dev, SPI_IOC_RD_MODE, &i);
-    if ((a < 0) || (b < 0))
-    {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET IN MODE 0\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI max clk (in Hz) */
-    //i = SPI_SPEED;
-    i = speed;
-    a = ioctl(dev, SPI_IOC_WR_MAX_SPEED_HZ, &i);
-    b = ioctl(dev, SPI_IOC_RD_MAX_SPEED_HZ, &i);
-    if ((a < 0) || (b < 0))
-    {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET MAX SPEED\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI to MSB first */
-    i = 0;
-    a = ioctl(dev, SPI_IOC_WR_LSB_FIRST, &i);
-    b = ioctl(dev, SPI_IOC_RD_LSB_FIRST, &i);
-    if ((a < 0) || (b < 0))
-    {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET MSB FIRST\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI to 8 bits per word */
-    i = 0;
-    a = ioctl(dev, SPI_IOC_WR_BITS_PER_WORD, &i);
-    b = ioctl(dev, SPI_IOC_RD_BITS_PER_WORD, &i);
-    if ((a < 0) || (b < 0))
-    {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET 8 BITS-PER-WORD\n");
-        close(dev);
-        return LGW_SPI_ERROR;
-    }
-
-    *spi_device = dev;
-    *spi_target_ptr = (void *)spi_device;
-    DEBUG_MSG("Note: SPI port opened and configured ok\n");
-    return LGW_SPI_SUCCESS;
+    spi_target_ptr = &concentrator;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* SPI release */
-int lgw_spi_close(void *spi_target)
+void lgw_spi_close(spi_device_handle_t *spi_target_ptr)
 {
-    int spi_device;
-    int a;
-
-    /* check input variables */
-    CHECK_NULL(spi_target);
-
-    /* close file & deallocate file descriptor */
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-    a = close(spi_device);
-    free(spi_target);
-
-    /* determine return code */
-    if (a < 0)
-    {
-        DEBUG_MSG("ERROR: SPI PORT FAILED TO CLOSE\n");
-        return LGW_SPI_ERROR;
-    }
-    else
-    {
-        DEBUG_MSG("Note: SPI port closed\n");
-        return LGW_SPI_SUCCESS;
-    }
+    esp_err_t ret;
+    ret=spi_bus_remove_device(spi_target_ptr);
+    assert(ret==ESP_OK);
+    ret=spi_bus_free(HSPI_HOST);
+    assert(ret==ESP_OK);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple write */
-int lgw_spi_w(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t data)
+void lgw_spi_w(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t data)
 {
-    int spi_device;
+    /*Set up local handler for the concentrator object passed(*spi_target_ptr)*/
+    spi_device_handle_t spi_device;
+    
+    /*Max data to be sent for simple write is 3 bytes*/    
     uint8_t out_buf[3];
     uint8_t command_size;
-    struct spi_ioc_transfer k;
-    int a;
+
+    spi_transaction_t k;
 
     /* check input variables */
-    CHECK_NULL(spi_target);
+    assert(spi_target_ptr != NULL);
+
     if ((address & 0x80) != 0)
     {
-        DEBUG_MSG("WARNING: SPI address > 127\n");
+        ESP_LOGD("WARNING: SPI address > 127");
     }
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    /*You must check that spi_target is not null beforehand */
+    spi_device = *spi_target_ptr;
 
-    /* prepare frame to be sent */
+    /*prepare frame to be sent */
+    /*If FPGA detected, add SPI_MUX_TARGET HEADER(FPGA, EEPROM,SX127x) to simple write cmd*/
     if (spi_mux_mode == LGW_SPI_MUX_MODE1)
     {
         out_buf[0] = spi_mux_target;
@@ -199,6 +154,7 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
         out_buf[2] = data;
         command_size = 3;
     }
+    /* If no FPGA, don't add explicit HEADER to simple write cmd*/
     else
     {
         out_buf[0] = WRITE_ACCESS | (address & 0x7F);
@@ -206,49 +162,36 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
         command_size = 2;
     }
 
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.len = command_size;
-    k.speed_hz = SPI_SPEED;
-    k.cs_change = 0;
-    k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    /* zero out the transaction struct first*/
+    memset(&k, 0, sizeof(k));
+    k.length=command_size*8;      //command_size is in bytes, transaction length is in bits.
+    k.tx_buffer=(void*)&out_buf;  //Pointer to actual data, safely cast to void pointer; Avoids compile-time warnings.
 
-    /* determine return code */
-    if (a != (int)k.len)
-    {
-        DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
-        return LGW_SPI_ERROR;
-    }
-    else
-    {
-        DEBUG_MSG("Note: SPI write success\n");
-        return LGW_SPI_SUCCESS;
-    }
+    ret=spi_device_transmit(spi_device, &k); //Perform the transmit transaction!
+    assert(ret==ESP_OK);                     //Should have had no issues.
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple read */
-int lgw_spi_r(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data)
+void lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data)
 {
-    int spi_device;
+    spi_device_handle_t spi_device;
     uint8_t out_buf[3];
     uint8_t command_size;
     uint8_t in_buf[ARRAY_SIZE(out_buf)];
-    struct spi_ioc_transfer k;
-    int a;
+    
+    spi_transaction_t k; /*Transaction for read cmd, holds and transmits TX and RX data in single tx(Full-duplex)*/
 
     /* check input variables */
-    CHECK_NULL(spi_target);
+    assert(spi_target_ptr != NULL);
     if ((address & 0x80) != 0)
     {
-        DEBUG_MSG("WARNING: SPI address > 127\n");
+        ESP_LOGD("WARNING: SPI address > 127\n");
     }
-    CHECK_NULL(data);
+    assert(data != NULL);
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_device = *spi_target_ptr; /* must check that spi_target_ptr is not null beforehand */
 
     /* prepare frame to be sent */
     if (spi_mux_mode == LGW_SPI_MUX_MODE1)
@@ -266,33 +209,23 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
     }
 
     /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.rx_buf = (unsigned long) in_buf;
-    k.len = command_size;
-    k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
+    /* zero out the transaction struct first*/
+    memset(&k, 0, sizeof(k));
 
-    /* determine return code */
-    if (a != (int)k.len)
-    {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
-        return LGW_SPI_ERROR;
-    }
-    else
-    {
-        DEBUG_MSG("Note: SPI read success\n");
-        *data = in_buf[command_size - 1];
-        return LGW_SPI_SUCCESS;
-    }
+    k.length=command_size*8;     //command_size is in bytes, transaction length is in bits.
+    k.tx_buffer=(void*)&out_buf; //Pointer to actual data, safely cast to void pointer; Avoids compile-time warnings.
+    k.rx_buffer=(void*)&in_buf;  //Pointer to actual data, safely cast to void pointer; Avoids compile-time warnings
+    ret=spi_device_transmit(spi_device, &k); //Perform the transmit transaction!
+    assert(ret==ESP_OK);
+    *data = in_buf[command_size - 1];
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) write */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size)
+void lgw_spi_wb(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size)
 {
-    int spi_device;
+    spi_device_handle_t spi_device;
     uint8_t command[2];
     uint8_t command_size;
     struct spi_ioc_transfer k[2];
@@ -301,19 +234,19 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
     int i;
 
     /* check input parameters */
-    CHECK_NULL(spi_target);
+    assert(spi_target_ptr != NULL);
     if ((address & 0x80) != 0)
     {
-        DEBUG_MSG("WARNING: SPI address > 127\n");
+        ESP_LOGD("WARNING: SPI address > 127\n");
     }
-    CHECK_NULL(data);
+    assert(data != NULL);
     if (size == 0)
     {
-        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
+        ESP_LOGD("ERROR: BURST OF NULL LENGTH\n");
         return LGW_SPI_ERROR;
     }
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    spi_device = *spi_target_ptr; /* must check that spi_target is not null beforehand */
 
     /* prepare command byte */
     if (spi_mux_mode == LGW_SPI_MUX_MODE1)
@@ -330,11 +263,10 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
     size_to_do = size;
 
     /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k[0].tx_buf = (unsigned long) &command[0];
-    k[0].len = command_size;
-    k[0].cs_change = 0;
-    k[1].cs_change = 0;
+    /* zero out the transaction struct first*/
+    memset(&k, 0, sizeof(k));
+    k[0].tx_buf = (void*) &command[0]; //***********resume
+    k[0].length = command_size*8;
     for (i=0; size_to_do > 0; ++i)
     {
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
