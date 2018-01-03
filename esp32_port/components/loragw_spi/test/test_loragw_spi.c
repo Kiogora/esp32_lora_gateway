@@ -35,7 +35,7 @@ Maintainer: Sylvain Miermont
 
 #include "loragw_spi.h"
 
-#define SPI_SPEED 6000000
+#define SPI_SPEED 8000000
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */

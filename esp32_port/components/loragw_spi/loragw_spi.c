@@ -156,7 +156,7 @@ void lgw_spi_w(spi_device_handle_t *concentrator, uint8_t spi_mux_mode, uint8_t 
     memset(&k, 0, sizeof(k));
     k.length=command_size*8;     //command_size is in bytes, transaction length is in bits.
     k.flags=SPI_TRANS_USE_TXDATA; //Store data in TX struct as data needs 32bit alignment for DMA performance.
-    data_swapcpy(k.tx_data, out_buf, command_size);//Swap copy to avoid little endianness with memcpy
+    memcpy(k.tx_data, out_buf, command_size);//Swap copy to avoid little endianness with memcpy
 
     #if CONFIG_LOG_DEFAULT_LEVEL >= 3
     pre_transfer_counter();
@@ -253,27 +253,27 @@ void lgw_spi_wb(spi_device_handle_t* concentrator, uint8_t spi_mux_mode, uint8_t
     size_to_do = size;
 
     //Create new buffer to hold the command, address and data to do
-    uint8_t* wb_buffer = (uint8_t*)malloc(command_size+size);
-    memcpy((void*)wb_buffer, command, command_size);
-    memcpy(&wb_buffer[command_size-1], data, size);
     size_to_do = size+command_size;
     
     // I/O transaction
     // zero out the transaction struct first
     for (int i = 0; size_to_do>0; i++)
     {
-        //Check if size to write is greater than sx1301 buffer, if so truncate to buffer size
+        //Check if size to write is greater than sx1301 buffer, if so truncate to buffer size and send in chunks.
         chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
+        uint8_t* wb_buffer = (uint8_t*)malloc(command_size+chunk_size);
         offset = i * LGW_BURST_CHUNK;
+        memcpy(wb_buffer, command, command_size);
+        memcpy(&wb_buffer[command_size], &data[offset], chunk_size);
         memset(&k, 0, sizeof(k));
-        k.tx_buffer = (void*)&wb_buffer[offset];
-        k.length = (chunk_size*8);
+        k.tx_buffer = (void*)wb_buffer;
+        k.length = ((command_size+chunk_size)*8);
         esp_err_t ret=spi_device_transmit(*concentrator, &k); //Perform the transmit transaction!
         assert(ret==ESP_OK);                                  //Should have had no issues.
         ESP_EARLY_LOGD(TAG,"BURST WRITE:Out of total data length %d, this trans length %d bytes, # total transferred %d", size+command_size, chunk_size, ((size+command_size+chunk_size)-size_to_do));
+        free(wb_buffer);
         size_to_do -= chunk_size; //Subtract the quantity of data already transferred.
     }
-    free(wb_buffer);
 }
 
 
