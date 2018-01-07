@@ -42,63 +42,63 @@ Maintainer: Sylvain Miermont
 #define LGW_SPI_MUX_TARGET_EEPROM   0x2
 #define LGW_SPI_MUX_TARGET_SX127X   0x3
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
+/* ---------------------------------- */
+/* --- PUBLIC FUNCTIONS PROTOTYPES ---*/
 
 /**
 @brief LoRa concentrator SPI setup (configure I/O and peripherals)
-@param spi_target_ptr pointer on a generic pointer to SPI target (implementation dependant)
+@param spi_target_ptr_ptr pointer on a generic pointer to SPI target (implementation dependant)
 @param speed SPI communication speed in HZ
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-void lgw_spi_open(spi_device_handle_t* concentrator, long speed);
+int lgw_spi_open(spi_device_handle_t* spi_target_ptr, long speed);
 
 /**
 @brief LoRa concentrator SPI close
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_target_ptr generic pointer to SPI target (implementation dependant)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
 
-void lgw_spi_close(spi_device_handle_t* concentrator);
+int lgw_spi_close(spi_device_handle_t *spi_target_ptr);
 
 /**
 @brief LoRa concentrator SPI single-byte write
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_target_ptr generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-void lgw_spi_w(spi_device_handle_t* concentrator, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t data);
+int lgw_spi_w(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t data);
 
 /**
 @brief LoRa concentrator SPI single-byte read
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_target_ptr generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-//void lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data)
+int lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) write
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_target_ptr generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data pointer to byte array that will be sent to the LoRa concentrator
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-void lgw_spi_wb(spi_device_handle_t* concentrator, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size);
+int lgw_spi_wb(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) read
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_target_ptr generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data pointer to byte array that will be written from the LoRa concentrator
 @param size size of the transfer, in byte(s)
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
 */
-//int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size);
+int lgw_spi_rb(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 #endif
 
