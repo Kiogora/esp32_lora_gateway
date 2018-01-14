@@ -21,20 +21,8 @@ Maintainer: Michael Coracin
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
-#include <stdbool.h>    /* bool type */
-#include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <ctype.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <time.h>
-#include "unity.h"
-#include "nvs.h"
-#include "nvs_flash.h"
-#include "esp_partition.h"
-#include "esp_log.h"
-#include <string.h>
+#include <stdint.h>     /* C99 types */
+#include <stdbool.h> /* bool type */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */

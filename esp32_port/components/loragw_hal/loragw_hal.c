@@ -27,7 +27,6 @@ Maintainer: Sylvain Miermont
 #include <errno.h>
 #include <stdlib.h>
 #include <time.h>
-#include "unity.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_partition.h"
