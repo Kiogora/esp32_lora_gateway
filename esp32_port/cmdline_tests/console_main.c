@@ -106,9 +106,8 @@ void app_main()
 
     /* Register commands */
     esp_console_register_help_command();
-    register_system();
-    register_wifi();
     register_loragw_hal();
+    register_loragw_cal();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

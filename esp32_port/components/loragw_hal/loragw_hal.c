@@ -1120,7 +1120,7 @@ int lgw_start(long speed)
         return LGW_HAL_ERROR;
     }
 
-    ESP_LOGE(TAG, "Info: Initialising AGC firmware...");
+    ESP_LOGI(TAG, "Info: Initialising AGC firmware...");
     wait_ms(1);
 
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);

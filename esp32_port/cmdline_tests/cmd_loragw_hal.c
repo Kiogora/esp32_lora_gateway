@@ -28,7 +28,7 @@
 #define DEFAULT_RSSI_OFFSET 0.0
 #define DEFAULT_NOTCH_FREQ 129000U
 
-/** Arguments used by 'join' function */
+/** Arguments**/
 static struct
 {
     struct arg_dbl *a;
@@ -83,38 +83,23 @@ static int loragw_hal_test(int argc, char** argv)
         }
         
     }
-    if(loragw_hal_args.a->count > 0)
+    fa = (uint32_t)(((loragw_hal_args.a->dval[0])*1e6) + 0.5);
+    fb = (uint32_t)(((loragw_hal_args.b->dval[0])*1e6) + 0.5);
+    ft = (uint32_t)(((loragw_hal_args.t->dval[0])*1e6) + 0.5);
+    switch(loragw_hal_args.r->ival[0])
     {
-        fa = (uint32_t)(((loragw_hal_args.a->dval[0])*1e6) + 0.5);
+        case 1255:
+            radio_type = LGW_RADIO_TYPE_SX1255;
+            break;
+        case 1257:
+            radio_type = LGW_RADIO_TYPE_SX1257;
+            break;
+        default:
+            return -1;
     }
-    if(loragw_hal_args.b->count > 0)
-    {
-        fb = (uint32_t)(((loragw_hal_args.b->dval[0])*1e6) + 0.5);
-    }
-    if(loragw_hal_args.t->count > 0)
-    {
-        ft = (uint32_t)(((loragw_hal_args.t->dval[0])*1e6) + 0.5);
-    }
-    if(loragw_hal_args.r->count > 0)
-    {
-        switch(loragw_hal_args.r->ival[0])
-        {
-            case 1255:
-                radio_type = LGW_RADIO_TYPE_SX1255;
-                break;
-            case 1257:
-                radio_type = LGW_RADIO_TYPE_SX1257;
-                break;
-            default:
-                return -1;
-        }
-    }
-    if(loragw_hal_args.k->count > 0)
-    {
-        clocksource = (uint8_t)loragw_hal_args.k->ival[0];
-    }
+    clocksource = (uint8_t)loragw_hal_args.k->ival[0];
 
-/* check input parameters */
+    /* check input parameters */
     if ((fa == 0) || (fb == 0) || (ft == 0))
     {
         return -1;

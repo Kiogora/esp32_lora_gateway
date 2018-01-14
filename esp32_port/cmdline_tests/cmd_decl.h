@@ -8,7 +8,7 @@
 */
 #pragma once
 
-//Register LoRagw_hal functions
+//Register LoRagw_cal functions
 void register_loragw_cal();
 
 //Register LoRagw_hal functions

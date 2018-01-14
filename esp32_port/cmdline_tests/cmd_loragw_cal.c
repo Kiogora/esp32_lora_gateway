@@ -16,31 +16,26 @@ Maintainer: Sylvain Miermont
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
-
-/* fix an issue between POSIX and C99 */
-#if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
-#include <stdint.h>     /* C99 types */
-#include <stdbool.h>    /* bool type */
-#include <stdio.h>      /* printf */
-#include <string.h>     /* memset */
-#include <signal.h>     /* sigaction */
 #include <math.h>       /* cos */
-#include <unistd.h>     /* getopt access */
+#include <stdint.h>        /* C99 types */
+#include <stdbool.h>       /* bool type */
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include "esp_log.h"
+#include "esp_console.h"
+#include "esp_system.h"
+#include "argtable3/argtable3.h"
+#include "cmd_decl.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
 #include "loragw_radio.h"
-#include "config.h"
 
-#ifndef SPI_SPEED
 #define SPI_SPEED 8000000
-#endif
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -63,7 +58,7 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-#include "../src/cal_fw.var" /* external definition of the variable */
+#include "../components/loragw_hal/include/cal_fw.var" /* external definition of the variable */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES --------------------------------------------------------- */
@@ -97,26 +92,18 @@ uint8_t get_img_rej(int16_t *sig_i, int16_t *sig_q, int nb_samp, double f_sig_no
 
 void usage (void);
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+static struct
+{
+    struct arg_dbl *a;
+    struct arg_dbl *b;
+    struct arg_int *r;
+    struct arg_int *n;
+    struct arg_int *k;
+    struct arg_int *t;
+    struct arg_end *end;
+} loragw_cal_args;
 
-/* describe command line options */
-void usage(void) {
-    printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -a <float> Radio A frequency in MHz\n");
-    printf( " -b <float> Radio B frequency in MHz\n");
-    printf( " -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
-    printf( " -n <uint> Number of calibration iterations\n");
-    printf( " -k <int> Concentrator clock source (0:radio_A, 1:radio_B(default))\n");
-    printf( " -t <int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)\n");
-}
-
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
-
-int main(int argc, char **argv)
+int loragw_cal_test(int argc, char **argv)
 {
     int i, j, x;
     int32_t read_val;
@@ -139,81 +126,85 @@ int main(int argc, char **argv)
     //FILE *file;
 
     /* command line options */
-    int xi = 0;
-    double xd = 0.0;
     uint32_t fa = 0, fb = 0;
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
     uint8_t clocksource = 1; /* Radio B is source by default */
     uint8_t tx_enable = 0;
     int nb_cal = 5;
 
-    /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:r:n:k:t:")) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return -1;
-                break;
-            case 'a': /* <float> Radio A frequency in MHz */
-                sscanf(optarg, "%lf", &xd);
-                fa = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                break;
-            case 'b': /* <float> Radio B frequency in MHz */
-                sscanf(optarg, "%lf", &xd);
-                fb = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                break;
-            case 'r': /* <int> Radio type (1255, 1257) */
-                sscanf(optarg, "%i", &xi);
-                switch (xi) {
-                    case 1255:
-                        radio_type = LGW_RADIO_TYPE_SX1255;
-                        break;
-                    case 1257:
-                        radio_type = LGW_RADIO_TYPE_SX1257;
-                        break;
-                    default:
-                        printf("ERROR: invalid radio type\n");
-                        usage();
-                        return -1;
-                }
-                break;
-            case 'n': /* <uint> Number of calibration iterations */
-                i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || (xi > NB_CAL_MAX)) {
-                    printf("ERROR: invalid number of calibration iterations (MAX %d)\n",NB_CAL_MAX);
-                    usage();
-                    return -1;
-                } else {
-                    nb_cal = xi;
-                }
-                break;
-            case 'k': /* <int> Concentrator clock source (Radio A or Radio B) */
-                sscanf(optarg, "%i", &xi);
-                clocksource = (uint8_t)xi;
-                break;
-            case 't': /* <int> Radio to run TX calibration on */
-                sscanf(optarg, "%i", &xi);
-                tx_enable = (uint8_t)xi;
-                break;
-            default:
-                printf("ERROR: argument parsing\n");
-                usage();
-                return -1;
+    int nerrors = arg_parse(argc, argv, (void**) &loragw_cal_args);
+    if (nerrors != 0)
+    {
+        if(nerrors == 2)
+        {
+            if(loragw_cal_args.k->count == 0 && loragw_cal_args.t->count == 0)
+            {
+                printf("Using default value for option k and t\n");
+            }
+            else
+            {
+                arg_print_errors(stderr, loragw_cal_args.end, argv[0]);
+                return 1;
+            }
         }
+        else if(nerrors == 1)
+        {
+            if(loragw_cal_args.k->count == 0)
+            {
+                printf("Using default value for option k\n");
+            }
+            else if( loragw_cal_args.t->count == 0)
+            {
+                printf("Using default value for option t\n");
+            }
+            else
+            {
+                arg_print_errors(stderr, loragw_cal_args.end, argv[0]);
+                return 1; 
+            }
+        }
+        else
+        {
+            arg_print_errors(stderr, loragw_cal_args.end, argv[0]);
+            return 1;
+        }   
     }
 
+    fa = (uint32_t)(((loragw_cal_args.a->dval[0])*1e6) + 0.5);
+    fb = (uint32_t)(((loragw_cal_args.b->dval[0])*1e6) + 0.5);
+    tx_enable = (uint8_t)(loragw_cal_args.t->ival[0]);
+    switch(loragw_cal_args.r->ival[0])
+    {
+        case 1255:
+            radio_type = LGW_RADIO_TYPE_SX1255;
+            break;
+        case 1257:
+            radio_type = LGW_RADIO_TYPE_SX1257;
+            break;
+        default:
+            return -1;
+    }
+    clocksource = (uint8_t)loragw_cal_args.k->ival[0];
+    if(((unsigned int)(loragw_cal_args.n->ival[0]) != 1) || ((unsigned int)(loragw_cal_args.n->ival[0]) > NB_CAL_MAX))
+    {
+        printf("ERROR: invalid number of calibration iterations (MAX %d)\n",NB_CAL_MAX);
+        return 1;
+    }
+    else
+    {
+        nb_cal = (unsigned int)(loragw_cal_args.n->ival[0]);
+    }  
     /* check input parameters */
-    if ((fa == 0) || (fb == 0)) {
+    if ((fa == 0) || (fb == 0))
+    {
         printf("ERROR: missing frequency input parameter:\n");
         printf("  Radio A RX: %u\n", fa);
         printf("  Radio B RX: %u\n", fb);
-        usage();
         return -1;
     }
 
-    if (radio_type == LGW_RADIO_TYPE_NONE) {
-        printf("ERROR: missing radio type parameter:\n");
-        usage();
+    if (radio_type == LGW_RADIO_TYPE_NONE)
+    {
         return -1;
     }
 
@@ -247,7 +238,8 @@ int main(int argc, char **argv)
     //cal_cmd |= 0x08; /* Bit 3: Calibrate Tx DC offset on radio B */
     cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
 
-    switch (radio_type) {
+    switch (radio_type)
+    {
         case LGW_RADIO_TYPE_SX1255:
             cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
             break;
@@ -414,7 +406,8 @@ int main(int argc, char **argv)
     cal_res_max.phi_b = -128;
     cal_res_max.img_rej_a = 0;
     cal_res_max.img_rej_b = 0;
-    for (j=0; j<8; j++) {
+    for (j=0; j<8; j++) 
+    {
         cal_res_max.offset_i_a[j] = -128;
         cal_res_max.offset_q_a[j] = -128;
         cal_res_max.offset_i_b[j] = -128;
@@ -429,7 +422,8 @@ int main(int argc, char **argv)
     cal_res_min.phi_b = 127;
     cal_res_min.img_rej_a = 255;
     cal_res_min.img_rej_b = 255;
-    for (j=0; j<8; j++) {
+    for (j=0; j<8; j++)
+    {
         cal_res_min.offset_i_a[j] = 127;
         cal_res_min.offset_q_a[j] = 127;
         cal_res_min.offset_i_b[j] = 127;
@@ -755,6 +749,30 @@ uint8_t get_img_rej(int16_t *sig_i, int16_t *sig_q, int nb_samp, double f_sig_no
     img_rej = 20*log10(corr_sig_abs/corr_img_abs);
 
     return (uint8_t)img_rej;
+}
+
+void register_loragw_cal()
+{
+    loragw_cal_args.a = arg_dbl1("a", NULL, "<A>", "<float> Radio A frequency in MHz");
+    loragw_cal_args.b = arg_dbl1("b", NULL, "<B>", "<float> Radio B frequency in MHz");
+    loragw_cal_args.r = arg_int1("r", NULL, "<R>", "<int> Radio type (SX1255:1255, SX1257:1257)");
+    loragw_cal_args.n = arg_int1("n", NULL, "<N>", "<uint> Number of calibration iterations");
+    loragw_cal_args.k = arg_int1("k", NULL, "<K>", "<int> Concentrator clock source (0:radio_A, 1:radio_B(default))");
+    loragw_cal_args.k ->ival[0]=1; /*Set default value*/
+    loragw_cal_args.t = arg_int1("t", NULL, "<T>", "<int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)");
+    loragw_cal_args.t ->ival[0]=0; /*Set default value*/
+    loragw_cal_args.end = arg_end(7);
+
+    const esp_console_cmd_t loragw_cal_cmd=
+    {
+        .command = "loragw_cal",
+        .help = "Run loragw_cal test",
+        .hint = NULL,
+        .func = &loragw_cal_test,
+        .argtable = &loragw_cal_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&loragw_cal_cmd) );
 }
 
 
