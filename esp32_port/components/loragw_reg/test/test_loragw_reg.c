@@ -11,6 +11,7 @@ Description:
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
+Modified for ESP32 by: Alois Mbutura.
 */
 
 
@@ -18,21 +19,32 @@ Maintainer: Sylvain Miermont
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdio.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
+#include "unity.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "esp_partition.h"
+#include "esp_log.h"
+#include <string.h>
+
+#include "driver/spi_master.h"
 
 #include "loragw_reg.h"
-#include "config.h"
 
-#ifndef SPI_SPEED
-#define SPI_SPEED 8000000
-#endif
+
+#define SPI_SPEED 10000000
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
 #define BURST_TEST_LENGTH    8192
 
-int main()
+TEST_CASE("loragw_reg", "[loragw_reg]")
 {
     int32_t read_value, test_value;
     uint16_t lfsr;
@@ -51,7 +63,7 @@ int main()
     /* --- READ TEST --- */
 
     lgw_reg_w(LGW_SOFT_RESET, 1);
-    lgw_reg_check(stdout);
+    lgw_reg_check();
 
     /* --- READ/WRITE COHERENCY TEST --- */
 
@@ -113,7 +125,8 @@ int main()
 
     /* initialize data for SPI test */
     lfsr = 0xFFFF;
-    for(i=0; i<BURST_TEST_LENGTH; ++i) {
+    for(i=0; i<BURST_TEST_LENGTH; ++i)
+    {
         burst_buffout[i] = (uint8_t)(lfsr ^ (lfsr >> 4));
         /* printf("%05d # 0x%04x 0x%02x\n", i, lfsr, burst_buffout[i]); */
         lfsr = (lfsr & 1) ? ((lfsr >> 1) ^ 0x8679) : (lfsr >> 1);
@@ -133,7 +146,6 @@ int main()
     /* no SPI transaction */
 
     printf("End of test for loragw_reg.c\n");
-    return 0;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -17,11 +17,22 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>     /* C99 types */
+
 #include <stdbool.h>    /* bool type */
-#include <stdio.h>      /* printf fprintf */
-#include <string.h>     /* memcpy */
 #include <math.h>       /* pow, cell */
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
+#include "unity.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "esp_partition.h"
+#include "esp_log.h"
+#include <string.h>
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -30,26 +41,22 @@ Maintainer: Sylvain Miermont
 #include "loragw_radio.h"
 #include "loragw_fpga.h"
 #include "loragw_lbt.h"
+#include "common.h"
+
+
+static const char* TAG = "loragw_hal";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_HAL == 1
-    #define DEBUG_MSG(str)                fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define DEBUG_ARRAY(a,b,c)            for(a=0;a<b;++a) fprintf(stderr,"%x.",c[a]);fprintf(stderr,"end\n")
-    #define CHECK_NULL(a)                 if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_HAL_ERROR;}
-#else
-    #define DEBUG_MSG(str)
-    #define DEBUG_PRINTF(fmt, args...)
-    #define DEBUG_ARRAY(a,b,c)            for(a=0;a!=0;){}
-    #define CHECK_NULL(a)                 if(a==NULL){return LGW_HAL_ERROR;}
-#endif
+
+#define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return LGW_REG_ERROR;}
+#define DEBUG_ARRAY(a,b,c) for(a=0;a<b;++a) ESP_LOGD(TAG,"%x.",c[a]);ESP_LOGD(TAG,"end");
 
 #define IF_HZ_TO_REG(f)     (f << 5)/15625
 #define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
-#define TRACE()             fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
+#define TRACE()             ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
@@ -92,16 +99,8 @@ const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 
 /* Strings for version (and options) identification */
 
-#if (CFG_SPI_NATIVE == 1)
-	#define		CFG_SPI_STR		"native"
-#elif (CFG_SPI_FTDI == 1)
-	#define		CFG_SPI_STR		"ftdi"
-#else
-	#define		CFG_SPI_STR		"spi?"
-#endif
-
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR ";";
+const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -200,7 +199,7 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size)
     {
         if (size != MCU_ARB_FW_BYTE)
 	{
-            DEBUG_MSG("ERROR: NOT A VALID SIZE FOR MCU ARG FIRMWARE\n");
+            ESP_LOGE(TAG, "ERROR: NOT A VALID SIZE FOR MCU ARG FIRMWARE");
             return -1;
         }
         reg_rst = LGW_MCU_RST_0;
@@ -210,7 +209,7 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size)
     {
         if (size != MCU_AGC_FW_BYTE)
 	{
-            DEBUG_MSG("ERROR: NOT A VALID SIZE FOR MCU AGC FIRMWARE\n");
+            ESP_LOGE(TAG, "ERROR: NOT A VALID SIZE FOR MCU AGC FIRMWARE");
             return -1;
         }
         reg_rst = LGW_MCU_RST_1;
@@ -218,7 +217,7 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size)
     }
     else
     {
-        DEBUG_MSG("ERROR: NOT A VALID TARGET FOR LOADING FIRMWARE\n");
+        ESP_LOGE(TAG, "ERROR: NOT A VALID TARGET FOR LOADING FIRMWARE");
         return -1;
     }
 
@@ -237,7 +236,7 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size)
     lgw_reg_rb( LGW_MCU_PROM_DATA, fw_check, size );
     if (memcmp(firmware, fw_check, size) != 0)
     {
-        printf ("ERROR: Failed to load fw %d\n", (int)target);
+        ESP_LOGE(TAG, "ERROR: Failed to load fw %d\n", (int)target);
         return -1;
     }
 
@@ -441,7 +440,7 @@ uint16_t lgw_get_tx_start_delay(bool tx_notch_enable, uint8_t bw)
 
     tx_start_delay = (float)TX_START_DELAY_DEFAULT - bw_delay_us - notch_delay_us;
 
-    printf("INFO: tx_start_delay=%u (%f) - (%u, bw_delay=%f, notch_delay=%f)\n", (uint16_t)tx_start_delay, tx_start_delay, TX_START_DELAY_DEFAULT, bw_delay_us, notch_delay_us);
+    ESP_LOGI(TAG, "INFO: tx_start_delay=%u (%f) - (%u, bw_delay=%f, notch_delay=%f)", (uint16_t)tx_start_delay, tx_start_delay, TX_START_DELAY_DEFAULT, bw_delay_us, notch_delay_us);
 
     return (uint16_t)tx_start_delay; /* keep truncating instead of rounding: better behaviour measured */
 }
@@ -455,7 +454,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf)
     /* check if the concentrator is running */
     if (lgw_is_started == true)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION");
         return LGW_HAL_ERROR;
     }
 
@@ -463,7 +462,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf)
     lorawan_public = conf.lorawan_public;
     rf_clkout = conf.clksrc;
 
-    DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d\n", lorawan_public, rf_clkout);
+    ESP_LOGI(TAG, "Note: board configuration; lorawan_public:%d, clksrc:%d", lorawan_public, rf_clkout);
 
     return LGW_HAL_SUCCESS;
 }
@@ -477,14 +476,14 @@ int lgw_lbt_setconf(struct lgw_conf_lbt_s conf)
     /* check if the concentrator is running */
     if (lgw_is_started == true)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION");
         return LGW_HAL_ERROR;
     }
 
     x = lbt_setconf(&conf);
     if (x != LGW_LBT_SUCCESS)
     {
-        DEBUG_MSG("ERROR: Failed to configure concentrator for LBT\n");
+        ESP_LOGE(TAG, "ERROR: Failed to configure concentrator for LBT");
         return LGW_HAL_ERROR;
     }
 
@@ -499,28 +498,28 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf)
     /* check if the concentrator is running */
     if (lgw_is_started == true)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION");
         return LGW_HAL_ERROR;
     }
 
     /* check input range (segfault prevention) */
     if (rf_chain >= LGW_RF_CHAIN_NB)
     {
-        DEBUG_MSG("ERROR: NOT A VALID RF_CHAIN NUMBER\n");
+        ESP_LOGE(TAG, "ERROR: NOT A VALID RF_CHAIN NUMBER");
         return LGW_HAL_ERROR;
     }
 
     /* check if radio type is supported */
     if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257))
     {
-        DEBUG_MSG("ERROR: NOT A VALID RADIO TYPE\n");
+        ESP_LOGE(TAG, "ERROR: NOT A VALID RADIO TYPE");
         return LGW_HAL_ERROR;
     }
 
     /* check if TX notch filter frequency is supported */
     if ((conf.tx_enable == true) && ((conf.tx_notch_freq < LGW_MIN_NOTCH_FREQ) || (conf.tx_notch_freq > LGW_MAX_NOTCH_FREQ)))
     {
-        DEBUG_PRINTF("WARNING: NOT A VALID TX NOTCH FILTER FREQUENCY [%u..%u]Hz\n", LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ);
+        ESP_LOGW(TAG, "WARNING: NOT A VALID TX NOTCH FILTER FREQUENCY [%u..%u]Hz", LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ);
         conf.tx_notch_freq = 0;
     }
 
@@ -532,7 +531,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf)
     rf_tx_enable[rf_chain] = conf.tx_enable;
     rf_tx_notch_freq[rf_chain] = conf.tx_notch_freq;
 
-    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d tx_notch_freq:%u\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
+    ESP_LOGI(TAG, "Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d tx_notch_freq:%u", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
 
     return LGW_HAL_SUCCESS;
 }
@@ -546,14 +545,14 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     /* check if the concentrator is running */
     if (lgw_is_started == true)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION");
         return LGW_HAL_ERROR;
     }
 
     /* check input range (segfault prevention) */
     if (if_chain >= LGW_IF_CHAIN_NB)
     {
-        DEBUG_PRINTF("ERROR: %d NOT A VALID IF_CHAIN NUMBER\n", if_chain);
+        ESP_LOGE(TAG, "ERROR: %d NOT A VALID IF_CHAIN NUMBER", if_chain);
         return LGW_HAL_ERROR;
     }
 
@@ -562,18 +561,18 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     {
         if_enable[if_chain] = false;
         if_freq[if_chain] = 0;
-        DEBUG_PRINTF("Note: if_chain %d disabled\n", if_chain);
+        ESP_LOGI(TAG, "Note: if_chain %d disabled", if_chain);
         return LGW_HAL_SUCCESS;
     }
 
     /* check 'general' parameters */
     if (ifmod_config[if_chain] == IF_UNDEFINED)
     {
-        DEBUG_PRINTF("ERROR: IF CHAIN %d NOT CONFIGURABLE\n", if_chain);
+        ESP_LOGE(TAG, "ERROR: IF CHAIN %d NOT CONFIGURABLE", if_chain);
     }
     if (conf.rf_chain >= LGW_RF_CHAIN_NB)
     {
-        DEBUG_MSG("ERROR: INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN\n");
+        ESP_LOGE(TAG, "ERROR: INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN");
         return LGW_HAL_ERROR;
     }
     /* check if IF frequency is optimal based on channel and radio bandwidths */
@@ -593,12 +592,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     bw_hz = lgw_bw_getval(conf.bandwidth); /* channel bandwidth */
     if ((conf.freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth/2))
     {
-        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO HIGH\n", conf.freq_hz);
+        ESP_LOGE(TAG, "ERROR: IF FREQUENCY %d TOO HIGH", conf.freq_hz);
         return LGW_HAL_ERROR;
     }
     else if ((conf.freq_hz - ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) < -((int32_t)rf_rx_bandwidth/2))
     {
-        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO LOW\n", conf.freq_hz);
+        ESP_LOGE(TAG, "ERROR: IF FREQUENCY %d TOO LOW", conf.freq_hz);
         return LGW_HAL_ERROR;
     }
 
@@ -619,12 +618,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             /* check BW & DR */
             if (!IS_LORA_BW(conf.bandwidth))
 	    {
-                DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN\n");
+                ESP_LOGE(TAG, "ERROR: BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN");
                 return LGW_HAL_ERROR;
             }
             if (!IS_LORA_STD_DR(conf.datarate))
 	    {
-                DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA_STD IF CHAIN\n");
+                ESP_LOGE(TAG, "ERROR: DATARATE NOT SUPPORTED BY LORA_STD IF CHAIN");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
@@ -642,7 +641,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 lora_rx_ppm_offset = false;
             }
 
-            DEBUG_PRINTF("Note: LoRa 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
+            ESP_LOGD(TAG, "Note: LoRa 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
             break;
 
         case IF_LORA_MULTI:
@@ -658,12 +657,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             /* check BW & DR */
             if (conf.bandwidth != BW_125KHZ)
 	    {
-                DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
+                ESP_LOGE(TAG, "ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN");
                 return LGW_HAL_ERROR;
             }
             if (!IS_LORA_MULTI_DR(conf.datarate))
 	    {
-                DEBUG_MSG("ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
+                ESP_LOGE(TAG, "ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
@@ -672,7 +671,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             if_freq[if_chain] = conf.freq_hz;
             lora_multi_sfmask[if_chain] = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
 
-            DEBUG_PRINTF("Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
+            ESP_LOGD(TAG, "Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
             break;
 
         case IF_FSK_STD:
@@ -688,12 +687,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             /* check BW & DR */
             if(!IS_FSK_BW(conf.bandwidth))
 	    {
-                DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY FSK IF CHAIN\n");
+                ESP_LOGE(TAG, "ERROR: BANDWIDTH NOT SUPPORTED BY FSK IF CHAIN");
                 return LGW_HAL_ERROR;
             }
             if(!IS_FSK_DR(conf.datarate))
 	    {
-                DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
+                ESP_LOGE(TAG, "ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
@@ -707,11 +706,11 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 fsk_sync_word_size = conf.sync_word_size;
                 fsk_sync_word = conf.sync_word;
             }
-            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr), 2*fsk_sync_word_size, fsk_sync_word);
+            ESP_LOGD(TAG, "Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr), 2*fsk_sync_word_size, fsk_sync_word);
             break;
 
         default:
-            DEBUG_PRINTF("ERROR: IF CHAIN %d TYPE NOT SUPPORTED\n", if_chain);
+            ESP_LOGE(TAG, "ERROR: IF CHAIN %d TYPE NOT SUPPORTED", if_chain);
             return LGW_HAL_ERROR;
     }
 
@@ -727,7 +726,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf)
     /* Check LUT size */
     if ((conf->size < 1) || (conf->size > TX_GAIN_LUT_SIZE_MAX))
     {
-        DEBUG_PRINTF("ERROR: TX gain LUT must have at least one entry and  maximum %d entries\n", TX_GAIN_LUT_SIZE_MAX);
+        ESP_LOGE(TAG, "ERROR: TX gain LUT must have at least one entry and  maximum %d entries\n", TX_GAIN_LUT_SIZE_MAX);
         return LGW_HAL_ERROR;
     }
 
@@ -738,30 +737,30 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf)
         /* Check gain range */
         if (conf->lut[i].dig_gain > 3)
 	{
-            DEBUG_MSG("ERROR: TX gain LUT: SX1301 digital gain must be between 0 and 3\n");
+            ESP_LOGE(TAG, "ERROR: TX gain LUT: SX1301 digital gain must be between 0 and 3");
             return LGW_HAL_ERROR;
         }
 	    
         if (conf->lut[i].dac_gain != 3)
 	{
-            DEBUG_MSG("ERROR: TX gain LUT: SX1257 DAC gains != 3 are not supported\n");
+            ESP_LOGE(TAG, "ERROR: TX gain LUT: SX1257 DAC gains != 3 are not supported");
             return LGW_HAL_ERROR;
         }
 	    
         if (conf->lut[i].mix_gain > 15)
 	{
-            DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gain must not exceed 15\n");
+            ESP_LOGE(TAG, "ERROR: TX gain LUT: SX1257 mixer gain must not exceed 15");
             return LGW_HAL_ERROR;
         }
 	else if (conf->lut[i].mix_gain < 8)
 	{
-            DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gains < 8 are not supported\n");
+            ESP_LOGE(TAG, "ERROR: TX gain LUT: SX1257 mixer gains < 8 are not supported");
             return LGW_HAL_ERROR;
         }
 	    
         if (conf->lut[i].pa_gain > 3)
 	{
-            DEBUG_MSG("ERROR: TX gain LUT: External PA gain must not exceed 3\n");
+            ESP_LOGE(TAG, "ERROR: TX gain LUT: External PA gain must not exceed 3\n");
             return LGW_HAL_ERROR;
         }
 
@@ -795,13 +794,13 @@ int lgw_start(long speed)
 
     if (lgw_is_started == true)
     {
-        DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
+        ESP_LOGI(TAG, "Note: LoRa concentrator already started, restarting it now");
     }
 
     reg_stat = lgw_connect(false, rf_tx_notch_freq[rf_tx_enable[1]?1:0], speed);
     if (reg_stat == LGW_REG_ERROR)
     {
-        DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
+        ESP_LOGE(TAG, "ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
     }
 
@@ -824,13 +823,13 @@ int lgw_start(long speed)
     err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
     if (err != 0)
     {
-        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        ESP_LOGE(TAG, "ERROR: Failed to setup sx125x radio for RF chain 0");
         return LGW_HAL_ERROR;
     }
     err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
     if (err != 0)
     {
-        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        ESP_LOGE(TAG, "ERROR: Failed to setup sx125x radio for RF chain 0");
         return LGW_HAL_ERROR;
     }
 
@@ -845,7 +844,7 @@ int lgw_start(long speed)
         i = lbt_setup();
         if (i != LGW_LBT_SUCCESS)
 	{
-            DEBUG_MSG("ERROR: lbt_setup() did not return SUCCESS\n");
+            ESP_LOGE(TAG, "ERROR: lbt_setup() did not return SUCCESS");
             return LGW_HAL_ERROR;
         }
 
@@ -854,7 +853,7 @@ int lgw_start(long speed)
         i = lbt_start();
         if (i != LGW_LBT_SUCCESS)
 	{
-            DEBUG_MSG("ERROR: lbt_start() did not return SUCCESS\n");
+            ESP_LOGE(TAG, "ERROR: lbt_start() did not return SUCCESS");
             return LGW_HAL_ERROR;
         }
     }
@@ -888,7 +887,7 @@ int lgw_start(long speed)
             cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
             break;
         default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+            ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE", rf_radio_type[0]);
             break;
     }
 
@@ -907,7 +906,7 @@ int lgw_start(long speed)
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_CAL)
     {
-        printf("ERROR: Version of calibration firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_CAL);
+        ESP_LOGE(TAG, "ERROR: Version of calibration firmware not expected, actual:%d expected:%d", fw_version, FW_VERSION_CAL);
         return -1;
     }
 
@@ -915,7 +914,7 @@ int lgw_start(long speed)
     lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 0); /* Give control of concentrator registers to MCU */
 
     /* Wait for calibration to end */
-    DEBUG_PRINTF("Note: calibration started (time: %u ms)\n", cal_time);
+    ESP_LOGI(TAG, "Note: calibration started (time: %u ms)", cal_time);
     wait_ms(cal_time); /* Wait for end of calibration */
     lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 1); /* Take back control */
 
@@ -934,36 +933,36 @@ int lgw_start(long speed)
     */
     if ((cal_status & 0x81) != 0x81)
     {
-        DEBUG_PRINTF("ERROR: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
+        ESP_LOGE(TAG, "ERROR: CALIBRATION FAILURE (STATUS = %u)", cal_status);
         return LGW_HAL_ERROR;
     }
     else 
     {
-        DEBUG_PRINTF("Note: calibration finished (status = %u)\n", cal_status);
+        ESP_LOGI(TAG, "Note: calibration finished (status = %u)", cal_status);
     }
     if (rf_enable[0] && ((cal_status & 0x02) == 0))
     {
-        DEBUG_MSG("WARNING: calibration could not access radio A\n");
+        ESP_LOGW(TAG, "WARNING: calibration could not access radio A");
     }
     if (rf_enable[1] && ((cal_status & 0x04) == 0))
     {
-        DEBUG_MSG("WARNING: calibration could not access radio B\n");
+        ESP_LOGW(TAG, "WARNING: calibration could not access radio B");
     }
     if (rf_enable[0] && ((cal_status & 0x08) == 0))
     {
-        DEBUG_MSG("WARNING: problem in calibration of radio A for image rejection\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio A for image rejection");
     }
     if (rf_enable[1] && ((cal_status & 0x10) == 0))
     {
-        DEBUG_MSG("WARNING: problem in calibration of radio B for image rejection\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio B for image rejection");
     }
     if (rf_enable[0] && rf_tx_enable[0] && ((cal_status & 0x20) == 0))
     {
-        DEBUG_MSG("WARNING: problem in calibration of radio A for TX DC offset\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio A for TX DC offset");
     }
     if (rf_enable[1] && rf_tx_enable[1] && ((cal_status & 0x40) == 0))
     {
-        DEBUG_MSG("WARNING: problem in calibration of radio B for TX DC offset\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio B for TX DC offset");
     }
 
     /* Get TX DC offset values */
@@ -989,7 +988,7 @@ int lgw_start(long speed)
     /* Sanity check for RX frequency */
     if (rf_rx_freq[0] == 0)
     {
-        DEBUG_MSG("ERROR: wrong configuration, rf_rx_freq[0] is not set\n");
+        ESP_LOGE(TAG, "ERROR: wrong configuration, rf_rx_freq[0] is not set");
         return LGW_HAL_ERROR;
     }
 
@@ -1048,7 +1047,7 @@ int lgw_start(long speed)
             case BW_250KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW, 1); break;
             case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW, 2); break;
             default:
-                DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_bw);
+                ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", lora_rx_bw);
                 return LGW_HAL_ERROR;
         }
         switch(lora_rx_sf)
@@ -1060,7 +1059,7 @@ int lgw_start(long speed)
             case DR_LORA_SF11: lgw_reg_w(LGW_MBWSSF_RATE_SF, 11); break;
             case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF, 12); break;
             default:
-                DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf);
+                ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", lora_rx_sf);
                 return LGW_HAL_ERROR;
         }
         lgw_reg_w(LGW_MBWSSF_PPM_OFFSET, lora_rx_ppm_offset); /* default 0 */
@@ -1110,7 +1109,7 @@ int lgw_start(long speed)
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_AGC)
     {
-        DEBUG_PRINTF("ERROR: Version of AGC firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_AGC);
+        ESP_LOGE(TAG, "ERROR: Version of AGC firmware not expected, actual:%d expected:%d", fw_version, FW_VERSION_AGC);
         return LGW_HAL_ERROR;
     }
     lgw_reg_w(LGW_DBG_ARB_MCU_RAM_ADDR, FW_VERSION_ADDR);
@@ -1118,17 +1117,17 @@ int lgw_start(long speed)
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_ARB)
     {
-        DEBUG_PRINTF("ERROR: Version of arbiter firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_ARB);
+        ESP_LOGE(TAG, "ERROR: Version of arbiter firmware not expected, actual:%d expected:%d", fw_version, FW_VERSION_ARB);
         return LGW_HAL_ERROR;
     }
 
-    DEBUG_MSG("Info: Initialising AGC firmware...\n");
+    ESP_LOGE(TAG, "Info: Initialising AGC firmware...");
     wait_ms(1);
 
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x10)
     {
-        DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+        ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
         return LGW_HAL_ERROR;
     }
 
@@ -1143,7 +1142,7 @@ int lgw_start(long speed)
         lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
         if (read_val != (0x30 + i))
 	{
-            DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+            ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
             return LGW_HAL_ERROR;
         }
     }
@@ -1158,7 +1157,7 @@ int lgw_start(long speed)
         lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
         if (read_val != 0x30)
 	{
-            DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+            ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
             return LGW_HAL_ERROR;
         }
     }
@@ -1171,7 +1170,7 @@ int lgw_start(long speed)
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x33)
     {
-        DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+        ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
         return LGW_HAL_ERROR;
     }
 
@@ -1183,7 +1182,7 @@ int lgw_start(long speed)
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x30)
     {
-        DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+        ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
         return LGW_HAL_ERROR;
     }
 
@@ -1192,11 +1191,11 @@ int lgw_start(long speed)
     wait_ms(1);
     lgw_reg_w(LGW_RADIO_SELECT, radio_select); /* Load intended value of RADIO_SELECT */
     wait_ms(1);
-    DEBUG_MSG("Info: putting back original RADIO_SELECT value\n");
+    ESP_LOGI(TAG, "Info: putting back original RADIO_SELECT value");
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x40)
     {
-        DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+        ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
         return LGW_HAL_ERROR;
     }
 
@@ -1206,7 +1205,7 @@ int lgw_start(long speed)
     /* */
     if (lbt_is_enabled() == true)
     {
-        printf("INFO: Configuring LBT, this may take few seconds, please wait...\n");
+        ESP_LOGI(TAG, "INFO: Configuring LBT, this may take few seconds, please wait...");
         wait_ms(8400);
     }
 
@@ -1243,14 +1242,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
     /* check if the concentrator is running */
     if (lgw_is_started == false)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE RECEIVING\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE RECEIVING");
         return LGW_HAL_ERROR;
     }
 
     /* check input variables */
     if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE))
     {
-        DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
+        ESP_LOGE(TAG, "ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH", max_pkt);
         return LGW_HAL_ERROR;
     }
     CHECK_NULL(pkt_data);
@@ -1281,11 +1280,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
         /* sanity check */
         if (buff[0] > LGW_PKT_FIFO_SIZE)
 	{
-            DEBUG_PRINTF("WARNING: %u = INVALID NUMBER OF PACKETS TO FETCH, ABORTING\n", buff[0]);
+            ESP_LOGW(TAG, "WARNING: %u = INVALID NUMBER OF PACKETS TO FETCH, ABORTING", buff[0]);
             break;
         }
 
-        DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n", buff[0], buff[1], buff[2], buff[3], buff[4]);
+        ESP_LOGD(TAG, "FIFO content: %x %x %x %x %x", buff[0], buff[1], buff[2], buff[3], buff[4]);
 
         p->size = buff[4];
         sz = p->size;
@@ -1301,11 +1300,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
         p->if_chain = buff[sz+0];
         if (p->if_chain >= LGW_IF_CHAIN_NB)
 	{
-            DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
+            ESP_LOGD(TAG, "WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING", p->if_chain);
             break;
         }
         ifmod = ifmod_config[p->if_chain];
-        DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
+        ESP_LOGD(TAG, "[%d %d]", p->if_chain, ifmod);
 
         p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
         p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
@@ -1313,7 +1312,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
 
         if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD))
 	{
-            DEBUG_MSG("Note: LoRa packet\n");
+            ESP_LOGD(TAG, "Note: LoRa packet");
             switch(stat_fifo & 0x07)
 	    {
                 case 5:
@@ -1393,7 +1392,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
                         bw_pow = 4;
                         break;
                     default:
-                        DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", p->bandwidth);
+                        ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", p->bandwidth);
                         delay_x = 0;
                         bw_pow = 0;
                 }
@@ -1422,7 +1421,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
 	    else
 	    {
                 timestamp_correction = 0;
-                DEBUG_MSG("WARNING: invalid packet, no timestamp correction\n");
+                ESP_LOGW(TAG, "WARNING: invalid packet, no timestamp correction");
             }
 
             /* RSSI correction */
@@ -1433,7 +1432,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
 
         }
 	else if (ifmod == IF_FSK_STD) {
-            DEBUG_MSG("Note: FSK packet\n");
+            ESP_LOGD(TAG, "Note: FSK packet");
             switch(stat_fifo & 0x07)
 	    {
                 case 5:
@@ -1463,7 +1462,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data)
         }
 	else
 	{
-            DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
+            ESP_LOGE(TAG, "ERROR: UNEXPECTED PACKET ORIGIN");
             p->status = STAT_UNDEFINED;
             p->modulation = MOD_UNDEFINED;
             p->rssi = -128.0;
@@ -1508,75 +1507,75 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
     /* check if the concentrator is running */
     if (lgw_is_started == false)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE SENDING\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE SENDING");
         return LGW_HAL_ERROR;
     }
 
     /* check input range (segfault prevention) */
     if (pkt_data.rf_chain >= LGW_RF_CHAIN_NB)
     {
-        DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
+        ESP_LOGE(TAG, "ERROR: INVALID RF_CHAIN TO SEND PACKETS");
         return LGW_HAL_ERROR;
     }
 
     /* check input variables */
     if (rf_tx_enable[pkt_data.rf_chain] == false)
     {
-        DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD\n");
+        ESP_LOGE(TAG, "ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD");
         return LGW_HAL_ERROR;
     }
     if (rf_enable[pkt_data.rf_chain] == false)
     {
-        DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
+        ESP_LOGE(TAG, "ERROR: SELECTED RF_CHAIN IS DISABLED");
         return LGW_HAL_ERROR;
     }
     if (!IS_TX_MODE(pkt_data.tx_mode))
     {
-        DEBUG_MSG("ERROR: TX_MODE NOT SUPPORTED\n");
+        ESP_LOGE(TAG, "ERROR: TX_MODE NOT SUPPORTED");
         return LGW_HAL_ERROR;
     }
     if (pkt_data.modulation == MOD_LORA)
     {
         if (!IS_LORA_BW(pkt_data.bandwidth))
 	{
-            DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX\n");
+            ESP_LOGE(TAG, "ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX");
             return LGW_HAL_ERROR;
         }
         if (!IS_LORA_STD_DR(pkt_data.datarate))
 	{
-            DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA TX\n");
+            ESP_LOGE(TAG, "ERROR: DATARATE NOT SUPPORTED BY LORA TX");
             return LGW_HAL_ERROR;
         }
         if (!IS_LORA_CR(pkt_data.coderate))
 	{
-            DEBUG_MSG("ERROR: CODERATE NOT SUPPORTED BY LORA TX\n");
+            ESP_LOGE(TAG, "ERROR: CODERATE NOT SUPPORTED BY LORA TX");
             return LGW_HAL_ERROR;
         }
         if (pkt_data.size > 255)
 
 	{
-            DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
+            ESP_LOGE(TAG, "ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX");
             return LGW_HAL_ERROR;
         }
     }
     else if (pkt_data.modulation == MOD_FSK)
     {
         if((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
-            DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
+            ESP_LOGE(TAG, "ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE");
             return LGW_HAL_ERROR;
         }
         if(!IS_FSK_DR(pkt_data.datarate))
 	{
-            DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
+            ESP_LOGE(TAG, "ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN");
             return LGW_HAL_ERROR;
         }
         if (pkt_data.size > 255)
 	{
-            DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
+            ESP_LOGE(TAG, "ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX");
             return LGW_HAL_ERROR;
         }
     } else {
-        DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
+        ESP_LOGE(TAG, "ERROR: INVALID TX MODULATION");
         return LGW_HAL_ERROR;
     }
 
@@ -1630,7 +1629,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
             break;
         default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+            ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE", rf_radio_type[0]);
             break;
     }
 
@@ -1666,7 +1665,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             case DR_LORA_SF10: buff[9] = 10; break;
             case DR_LORA_SF11: buff[9] = 11; break;
             case DR_LORA_SF12: buff[9] = 12; break;
-            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.datarate);
+            default: ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", pkt_data.datarate);
         }
         switch (pkt_data.coderate)
 	{
@@ -1674,7 +1673,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             case CR_LORA_4_6: buff[9] |= 2 << 4; break;
             case CR_LORA_4_7: buff[9] |= 3 << 4; break;
             case CR_LORA_4_8: buff[9] |= 4 << 4; break;
-            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.coderate);
+            default: ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", pkt_data.coderate);
         }
         if (pkt_data.no_crc == false)
 	{
@@ -1682,7 +1681,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
         }
 	else
 	{
-            DEBUG_MSG("Info: packet will be sent without CRC\n");
+            ESP_LOGI(TAG, "Info: packet will be sent without CRC");
         }
 
         /* metadata 10, payload size */
@@ -1694,7 +1693,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             case BW_125KHZ: buff[11] = 0; break;
             case BW_250KHZ: buff[11] = 1; break;
             case BW_500KHZ: buff[11] = 2; break;
-            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.bandwidth);
+            default: ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", pkt_data.bandwidth);
         }
         if (pkt_data.no_header == true)
 	{
@@ -1716,7 +1715,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
         } else if (pkt_data.preamble < MIN_LORA_PREAMBLE)
 	{   /* enforce minimum preamble size */
             pkt_data.preamble = MIN_LORA_PREAMBLE;
-            DEBUG_MSG("Note: preamble length adjusted to respect minimum LoRa preamble size\n");
+            ESP_LOGI(TAG, "Note: preamble length adjusted to respect minimum LoRa preamble size");
         }
         buff[12] = 0xFF & (pkt_data.preamble >> 8);
         buff[13] = 0xFF & pkt_data.preamble;
@@ -1735,7 +1734,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
         /* Set MSB-1 bit to enable digital filter if required */
         if (tx_notch_enable == true)
 	{
-            DEBUG_MSG("INFO: Enabling TX notch filter\n");
+            ESP_LOGI(TAG, "INFO: Enabling TX notch filter");
             buff[0] |= 0x40;
         }
     } else if (pkt_data.modulation == MOD_FSK)
@@ -1763,7 +1762,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
 	else if (pkt_data.preamble < MIN_FSK_PREAMBLE) 
 	{ /* enforce minimum preamble size */
             pkt_data.preamble = MIN_FSK_PREAMBLE;
-            DEBUG_MSG("Note: preamble length adjusted to respect minimum FSK preamble size\n");
+            ESP_LOGI(TAG, "Note: preamble length adjusted to respect minimum FSK preamble size");
         }
         buff[12] = 0xFF & (pkt_data.preamble >> 8);
         buff[13] = 0xFF & pkt_data.preamble;
@@ -1784,7 +1783,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
     }
     else
     {
-        DEBUG_MSG("ERROR: INVALID TX MODULATION..\n");
+        ESP_LOGE(TAG, "ERROR: INVALID TX MODULATION..");
         return LGW_HAL_ERROR;
     }
 
@@ -1805,7 +1804,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
     x = lbt_is_channel_free(&pkt_data, tx_start_delay, &tx_allowed);
     if (x != LGW_LBT_SUCCESS)
     {
-        DEBUG_MSG("ERROR: Failed to check channel availability for TX\n");
+        ESP_LOGE(TAG, "ERROR: Failed to check channel availability for TX");
         return LGW_HAL_ERROR;
     }
     if (tx_allowed == true)
@@ -1825,13 +1824,13 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
                 break;
 
             default:
-                DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.tx_mode);
+                ESP_LOGD(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", pkt_data.tx_mode);
                 return LGW_HAL_ERROR;
         }
     }
     else
     {
-        DEBUG_MSG("ERROR: Cannot send packet, channel is busy (LBT)\n");
+        ESP_LOGE(TAG, "ERROR: Cannot send packet, channel is busy (LBT)");
         return LGW_LBT_ISSUE;
     }
 
@@ -1873,7 +1872,7 @@ int lgw_status(uint8_t select, uint8_t *code)
 
     } else
     {
-        DEBUG_MSG("ERROR: SELECTION INVALID, NO STATUS TO RETURN\n");
+        ESP_LOGE(TAG, "ERROR: SELECTION INVALID, NO STATUS TO RETURN");
         return LGW_HAL_ERROR;
     }
 
@@ -1928,7 +1927,7 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet)
 
     if (packet == NULL)
     {
-        DEBUG_MSG("ERROR: Failed to compute time on air, wrong parameter\n");
+        ESP_LOGE(TAG, "ERROR: Failed to compute time on air, wrong parameter");
         return 0;
     }
 
@@ -1942,7 +1941,7 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet)
         }
 	else
 	{
-            DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported bandwidth (0x%02X)\n", packet->bandwidth);
+            ESP_LOGE(TAG, "ERROR: Cannot compute time on air for this packet, unsupported bandwidth (0x%02X)", packet->bandwidth);
             return 0;
         }
 
@@ -1954,7 +1953,7 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet)
         }
 	else
 	{
-            DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported datarate (0x%02X)\n", packet->datarate);
+            ESP_LOGE(TAG, "ERROR: Cannot compute time on air for this packet, unsupported datarate (0x%02X)", packet->datarate);
             return 0;
         }
 
@@ -1992,7 +1991,7 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet)
     else
     {
         Tpacket = 0;
-        DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported modulation (0x%02X)\n", packet->modulation);
+        ESP_LOGE(TAG, "ERROR: Cannot compute time on air for this packet, unsupported modulation (0x%02X)", packet->modulation);
     }
     return Tpacket;
 }

@@ -14,36 +14,44 @@ Description:
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
+Modified for ESP32 by: Alois Mbutura.
 */
 
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>     /* C99 types */
+
 #include <stdbool.h>    /* bool type */
-#include <stdio.h>      /* printf fprintf */
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
+#include "unity.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "esp_partition.h"
+#include "esp_log.h"
+#include <string.h>
+
+#include "driver/spi_master.h"
 
 #include "loragw_spi.h"
 #include "loragw_reg.h"
 #include "loragw_fpga.h"
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
+static const char* TAG = "loragw_reg";
+
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_REG == 1
-    #define DEBUG_MSG(str)              fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)  fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
-#else
-    #define DEBUG_MSG(str)
-    #define DEBUG_PRINTF(fmt, args...)
-    #define CHECK_NULL(a)               if(a==NULL){return LGW_REG_ERROR;}
-#endif
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
+#define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return LGW_REG_ERROR;}
+
+
+/* --- PRIVATE CONSTANTS --- */
 
 #define PAGE_ADDR        0x00
 #define PAGE_MASK        0x03
@@ -386,34 +394,30 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS]=
     {1,33,0,0,8,0,0}         /* TX_TRIG_ALL (alias) */
 };
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
+/* --- PRIVATE VARIABLES --- */
 
 static int lgw_regpage = -1; /*! keep the value of the register page selected */
 
-/* -------------------------------------------------------------------------- */
-/* --- INTERNAL SHARED VARIABLES -------------------------------------------- */
+/* --- INTERNAL SHARED VARIABLES --- */
 
-void *lgw_spi_target = NULL; /*! generic pointer to the SPI device */
+spi_device_handle_t lgw_spi_target; /*! The concentrator SPI device */
 uint8_t lgw_spi_mux_mode = 0; /*! current SPI mux mode used */
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS --- */
 
 int page_switch(uint8_t target)
 {
     lgw_regpage = PAGE_MASK & target;
-    lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, PAGE_ADDR, (uint8_t)lgw_regpage);
+    lgw_spi_w(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, PAGE_ADDR, (uint8_t)lgw_regpage);
     return LGW_REG_SUCCESS;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 bool check_fpga_version(uint8_t version)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int i;
 
-    for (i = 0; i < (int)(sizeof FPGA_VERSION); i++)
+    for (i = 0; i < (int)sizeof(FPGA_VERSION); i++)
     {
         if (FPGA_VERSION[i] == version )
         {
@@ -424,10 +428,9 @@ bool check_fpga_version(uint8_t version)
     return false;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int reg_w_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int spi_stat = LGW_REG_SUCCESS;
     int i, size_byte;
     uint8_t buf[4] = "\x00\x00\x00\x00";
@@ -461,16 +464,16 @@ int reg_w_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
     else
     {
         /* register spanning multiple memory bytes but with an offset */
-        DEBUG_MSG("ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED\n");
+        ESP_LOGE(TAG, "ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED");
         return LGW_REG_ERROR;
     }
 
     return spi_stat;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
+int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value)
+{
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t bufu[4] = "\x00\x00\x00\x00";
     int8_t *bufs = (int8_t *)bufu;
@@ -515,7 +518,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
     else
     {
         /* register spanning multiple memory bytes but with an offset */
-        DEBUG_MSG("ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED\n");
+        ESP_LOGE(TAG,"ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED");
         return LGW_REG_ERROR;
     }
     return spi_stat;
@@ -527,22 +530,17 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
 /* Concentrator connect */
 int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
     int x;
 
-    /* check SPI link status */
-    if (lgw_spi_target != NULL)
-    {
-        DEBUG_MSG("WARNING: concentrator was already connected\n");
-        lgw_spi_close(lgw_spi_target);
-    }
-
     /* open the SPI link */
     spi_stat = lgw_spi_open(&lgw_spi_target, speed);
+
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
+        ESP_LOGE(TAG, "ERROR CONNECTING CONCENTRATOR");
         return LGW_REG_ERROR;
     }
 
@@ -550,52 +548,52 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
     {
         /* Detect if the gateway has an FPGA with SPI mux header support */
         /* First, we assume there is an FPGA, and try to read its version */
-        spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
+        spi_stat = lgw_spi_r(&lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
         if (spi_stat != LGW_SPI_SUCCESS)
         {
-            DEBUG_MSG("ERROR READING VERSION REGISTER\n");
+            ESP_LOGE(TAG, "ERROR READING VERSION REGISTER");
             return LGW_REG_ERROR;
         }
         if (check_fpga_version(u) != true)
         {
             /* We failed to read expected FPGA version, so let's assume there is no FPGA */
-            DEBUG_PRINTF("INFO: no FPGA detected or version not supported (v%u)\n", u);
+            ESP_LOGI(TAG,"INFO: no FPGA detected or version not supported (v%u)", u);
             lgw_spi_mux_mode = LGW_SPI_MUX_MODE0;
         }
         else
         {
-            DEBUG_PRINTF("INFO: detected FPGA with SPI mux header (v%u)\n", u);
+            ESP_LOGI(TAG, "INFO: detected FPGA with SPI mux header (v%u)", u);
             lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
             /* FPGA Soft Reset */
-            lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
-            lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
+            lgw_spi_w(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
+            lgw_spi_w(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
             /* FPGA configure */
             x = lgw_fpga_configure(tx_notch_freq);
             if (x != LGW_REG_SUCCESS)
             {
-                DEBUG_MSG("ERROR CONFIGURING FPGA\n");
+                ESP_LOGE(TAG, "ERROR CONFIGURING FPGA");
                 return LGW_REG_ERROR;
             }
         }
 
         /* check SX1301 version */
-        spi_stat = lgw_spi_r(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+        spi_stat = lgw_spi_r(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
         if (spi_stat != LGW_SPI_SUCCESS)
         {
-            DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
+            ESP_LOGE(TAG, "ERROR READING CHIP VERSION REGISTER");
             return LGW_REG_ERROR;
         }
         if (u != loregs[LGW_VERSION].dflt)
         {
-            DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
+            ESP_LOGE(TAG, "ERROR: NOT EXPECTED CHIP VERSION (v%u)", u);
             return LGW_REG_ERROR;
         }
 
         /* write 0 to the page/reset register */
-        spi_stat = lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
+        spi_stat = lgw_spi_w(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
         if (spi_stat != LGW_SPI_SUCCESS)
         {
-            DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
+            ESP_LOGE(TAG, "ERROR WRITING PAGE REGISTER");
             return LGW_REG_ERROR;
         }
         else
@@ -604,7 +602,7 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
         }
     }
 
-    DEBUG_MSG("Note: success connecting the concentrator\n");
+    ESP_LOGI(TAG, "Note: success connecting the concentrator");
     return LGW_REG_SUCCESS;
 }
 
@@ -613,18 +611,10 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
 /* Concentrator disconnect */
 int lgw_disconnect(void)
 {
-    if (lgw_spi_target != NULL)
-    {
-        lgw_spi_close(lgw_spi_target);
-        lgw_spi_target = NULL;
-        DEBUG_MSG("Note: success disconnecting the concentrator\n");
-        return LGW_REG_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("WARNING: concentrator was already disconnected\n");
-        return LGW_REG_ERROR;
-    }
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    lgw_spi_close(&lgw_spi_target);
+    ESP_LOGI(TAG, "Note: success disconnecting the concentrator");
+    return LGW_REG_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -632,13 +622,14 @@ int lgw_disconnect(void)
 /* soft-reset function */
 int lgw_soft_reset(void)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0))
+    if (lgw_regpage < 0)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR UNCONNECTED");
         return LGW_REG_ERROR;
     }
-    lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0, 0x80); /* 1 -> SOFT_RESET bit */
+    lgw_spi_w(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0, 0x80); /* 1 -> SOFT_RESET bit */
     lgw_regpage = 0; /* reset the paging static variable */
     return LGW_REG_SUCCESS;
 }
@@ -646,8 +637,9 @@ int lgw_soft_reset(void)
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* register verification */
-int lgw_reg_check(FILE *f)
+int lgw_reg_check(void)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     struct lgw_reg_s r;
     int32_t read_value;
     char ok_msg[] = "+++MATCH+++";
@@ -656,48 +648,50 @@ int lgw_reg_check(FILE *f)
     int i;
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0))
+    if (lgw_regpage < 0)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
-        fprintf(f, "ERROR: CONCENTRATOR UNCONNECTED\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR UNCONNECTED");
         return LGW_REG_ERROR;
     }
 
-    fprintf(f, "Start of register verification\n");
+    ESP_LOGI(TAG, "Start of register verification");
     for (i=0; i<LGW_TOTALREGS; ++i)
     {
         r = loregs[i];
         lgw_reg_r(i, &read_value);
         ptr = (read_value == r.dflt) ? ok_msg : notok_msg;
         if (r.sign == true)
-            fprintf(f, "%s reg number %d read: %d (%x) default: %d (%x)\n", ptr, i, read_value, read_value, r.dflt, r.dflt);
+        {
+            ESP_LOGI(TAG,"%s reg number %d read: %d (%x) default: %d (%x)", ptr, i, read_value, read_value, r.dflt, r.dflt);
+        }
         else
-            fprintf(f, "%s reg number %d read: %u (%x) default: %u (%x)\n", ptr, i, read_value, read_value, r.dflt, r.dflt);
+        {
+            ESP_LOGI(TAG, "%s reg number %d read: %u (%x) default: %u (%x)", ptr, i, read_value, read_value, r.dflt, r.dflt);
+        }
     }
-    fprintf(f, "End of register verification\n");
+    ESP_LOGI(TAG,"End of register verification");
 
     return LGW_REG_SUCCESS;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 /* Write to a register addressed by name */
 int lgw_reg_w(uint16_t register_id, int32_t reg_value)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
     if (register_id >= LGW_TOTALREGS)
     {
-        DEBUG_MSG("ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0))
+    if (lgw_regpage < 0)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR UNCONNECTED");
         return LGW_REG_ERROR;
     }
 
@@ -721,7 +715,7 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value)
     /* reject write to read-only registers */
     if (r.rdon == 1)
     {
-        DEBUG_MSG("ERROR: TRYING TO WRITE A READ-ONLY REGISTER\n");
+        ESP_LOGE(TAG, "ERROR: TRYING TO WRITE A READ-ONLY REGISTER");
         return LGW_REG_ERROR;
     }
 
@@ -731,11 +725,11 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value)
         spi_stat += page_switch(r.page);
     }
 
-    spi_stat += reg_w_align32(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r, reg_value);
+    spi_stat += reg_w_align32(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r, reg_value);
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
+        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER WRITE");
         return LGW_REG_ERROR;
     }
     else
@@ -744,11 +738,10 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value)
     }
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 /* Read to a register addressed by name */
 int lgw_reg_r(uint16_t register_id, int32_t *reg_value)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
@@ -756,14 +749,14 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value)
     CHECK_NULL(reg_value);
     if (register_id >= LGW_TOTALREGS)
     {
-        DEBUG_MSG("ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0))
+    if (lgw_regpage < 0)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR UNCONNECTED");
         return LGW_REG_ERROR;
     }
 
@@ -776,11 +769,11 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value)
         spi_stat += page_switch(r.page);
     }
 
-    spi_stat += reg_r_align32(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r, reg_value);
+    spi_stat += reg_r_align32(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r, reg_value);
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
+        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER WRITE");
         return LGW_REG_ERROR;
     }
     else
@@ -789,30 +782,30 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value)
     }
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 /* Point to a register by name and do a burst write */
 int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
     CHECK_NULL(data);
-    if (size == 0) {
-        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
+    if (size == 0)
+    {
+        ESP_LOGE(TAG, "ERROR: BURST OF NULL LENGTH");
         return LGW_REG_ERROR;
     }
     if (register_id >= LGW_TOTALREGS)
     {
-        DEBUG_MSG("ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0))
+    if (lgw_regpage < 0)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR UNCONNECTED");
         return LGW_REG_ERROR;
     }
 
@@ -822,7 +815,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
     /* reject write to read-only registers */
     if (r.rdon == 1)
     {
-        DEBUG_MSG("ERROR: TRYING TO BURST WRITE A READ-ONLY REGISTER\n");
+        ESP_LOGE(TAG, "ERROR: TRYING TO BURST WRITE A READ-ONLY REGISTER");
         return LGW_REG_ERROR;
     }
 
@@ -833,11 +826,11 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
     }
 
     /* do the burst write */
-    spi_stat += lgw_spi_wb(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r.addr, data, size);
+    spi_stat += lgw_spi_wb(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r.addr, data, size);
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
+        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER BURST WRITE");
         return LGW_REG_ERROR;
     }
     else
@@ -846,10 +839,10 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
     }
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 /* Point to a register by name and do a burst read */
-int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
+int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size)
+{
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
@@ -857,19 +850,19 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     CHECK_NULL(data);
     if (size == 0)
     {
-        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
+        ESP_LOGE(TAG, "ERROR: BURST OF NULL LENGTH");
         return LGW_REG_ERROR;
     }
     if (register_id >= LGW_TOTALREGS)
     {
-        DEBUG_MSG("ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0))
+    if (lgw_regpage < 0)
     {
-        DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
+        ESP_LOGE(TAG, "ERROR: CONCENTRATOR UNCONNECTED");
         return LGW_REG_ERROR;
     }
 
@@ -883,11 +876,11 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* do the burst read */
-    spi_stat += lgw_spi_rb(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r.addr, data, size);
+    spi_stat += lgw_spi_rb(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r.addr, data, size);
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST READ\n");
+        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER BURST READ");
         return LGW_REG_ERROR;
     }
     else
@@ -896,4 +889,4 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+/* --- EOF --- */

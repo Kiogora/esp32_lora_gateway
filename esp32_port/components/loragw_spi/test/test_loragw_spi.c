@@ -12,7 +12,7 @@ Description:
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
-Modified by: Alois Mbutura
+Modified for ESP32 by: Alois Mbutura.
 */
 
 

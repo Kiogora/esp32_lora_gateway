@@ -14,7 +14,7 @@ Description:
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
-Modified by: Alois Mbutura
+Modified for ESP32 by: Alois Mbutura.
 */
 #include <stdint.h>        /* C99 types */
 #include <stdio.h>         /* printf fprintf */
@@ -46,6 +46,7 @@ static const char* TAG = "loragw_spi";
 
 static uint16_t conv_int_8_16(uint8_t msb, uint8_t lsb)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
     uint16_t combined = 0x0000;
     combined = msb;
     combined = combined << 8;
@@ -246,7 +247,7 @@ int lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t
             ESP_LOGI(TAG, "Received data value is [%u], Value: 0x%02X", i, tx.base.rx_data[i]);
         }
 #endif
-        data = (void*)(tx.base.rx_data); //Pointer points to transaction rx array
+        *data = tx.base.rx_data[0]; //Pointer points to transaction rx array
         ESP_LOGD(TAG, "Note: SPI read success");
         return LGW_SPI_SUCCESS;
     }

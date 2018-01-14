@@ -17,28 +17,32 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-/* fix an issue between POSIX and C99 */
-#if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
-#include <stdint.h>        /* C99 types */
 #include <stdbool.h>       /* bool type */
-#include <stdio.h>         /* printf */
-#include <string.h>        /* memset */
-#include <signal.h>        /* sigaction */
 #include <unistd.h>        /* getopt access */
+#include <string.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
+#include "unity.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "esp_partition.h"
+#include "esp_log.h"
+#include "linenoise/linenoise.h"
+#include "esp_console.h"
+#include "esp_vfs_dev.h"
+#include "driver/uart.h"
+#include "esp_vfs_fat.h"
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
-#include "config.h"
 
-#ifndef SPI_SPEED
 #define SPI_SPEED 8000000
-#endif
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -51,33 +55,40 @@ Maintainer: Sylvain Miermont
 #define DEFAULT_RSSI_OFFSET 0.0
 #define DEFAULT_NOTCH_FREQ  129000U
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
+static void initialize_console()
+{
+    /* Disable buffering on stdin and stdout */
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
 
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
+    /* Minicom, screen, idf_monitor send CR when ENTER key is pressed */
+    esp_vfs_dev_uart_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
+    /* Move the caret to the beginning of the next line on '\n' */
+    esp_vfs_dev_uart_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
+    /* Install UART driver for interrupt-driven reads and writes */
+    ESP_ERROR_CHECK( uart_driver_install(CONFIG_CONSOLE_UART_NUM,
+            256, 0, 0, NULL, 0) );
 
-static void sig_handler(int sigio);
+    /* Tell VFS to use UART driver */
+    esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
+    /* Initialize the console */
+    esp_console_config_t console_config = {
+            .max_cmdline_args = 8,
+            .max_cmdline_length = 256,
+#if CONFIG_LOG_COLORS
+            .hint_color = atoi(LOG_COLOR_CYAN)
+#endif
+    };
+    ESP_ERROR_CHECK( esp_console_init(&console_config) );
 }
-
 /* describe command line options */
 void usage(void) {
     printf("Library version information: %s\n", lgw_version_info());
     printf( "Available options:\n");
-    printf( " -h print this help\n");
+
+    printf( " -q quit this test\n");
     printf( " -a <float> Radio A RX frequency in MHz\n");
     printf( " -b <float> Radio B RX frequency in MHz\n");
     printf( " -t <float> Radio TX frequency in MHz\n");
@@ -85,12 +96,8 @@ void usage(void) {
     printf( " -k <int> Concentrator clock source (0: radio_A, 1: radio_B(default))\n");
 }
 
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
-
-int main(int argc, char **argv)
+int test(int argc, char* argv[])
 {
-    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     struct lgw_conf_board_s boardconf;
     struct lgw_conf_rxrf_s rfconf;
@@ -111,12 +118,11 @@ int main(int argc, char **argv)
     uint8_t status_var = 0;
     double xd = 0.0;
     int xi = 0;
-
+    printf("Got here");
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:t:r:k:")) != -1) {
+    while ((i = getopt (argc, argv, "qa:b:t:r:k:")) != -1) {
         switch (i) {
-            case 'h':
-                usage();
+            case 'q':
                 return -1;
                 break;
             case 'a': /* <float> Radio A RX frequency in MHz */
@@ -172,14 +178,6 @@ int main(int argc, char **argv)
         usage();
         return -1;
     }
-
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
 
     /* beginning of LoRa concentrator-specific code */
     printf("Beginning of test for loragw_hal.c\n");
@@ -324,29 +322,37 @@ int main(int argc, char **argv)
         // fclose(reg_dump);
     // }
 
-    while ((quit_sig != 1) && (exit_sig != 1)) {
+    while (1)
+    {
         loop_cnt++;
 
         /* fetch N packets */
         nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
 
-        if (nb_pkt == 0) {
+        if (nb_pkt == 0)
+        {
             wait_ms(300);
-        } else {
+        }
+        else
+        {
             /* display received packets */
-            for(i=0; i < nb_pkt; ++i) {
+            for(i=0; i < nb_pkt; ++i)
+            {
                 p = &rxpkt[i];
                 printf("---\nRcv pkt #%d >>", i+1);
-                if (p->status == STAT_CRC_OK) {
+                if (p->status == STAT_CRC_OK)
+                {
                     printf(" if_chain:%2d", p->if_chain);
                     printf(" tstamp:%010u", p->count_us);
                     printf(" size:%3u", p->size);
-                    switch (p-> modulation) {
+                    switch (p-> modulation)
+                    {
                         case MOD_LORA: printf(" LoRa"); break;
                         case MOD_FSK: printf(" FSK"); break;
                         default: printf(" modulation?");
                     }
-                    switch (p->datarate) {
+                    switch (p->datarate)
+                    {
                         case DR_LORA_SF7: printf(" SF7"); break;
                         case DR_LORA_SF8: printf(" SF8"); break;
                         case DR_LORA_SF9: printf(" SF9"); break;
@@ -355,7 +361,8 @@ int main(int argc, char **argv)
                         case DR_LORA_SF12: printf(" SF12"); break;
                         default: printf(" datarate?");
                     }
-                    switch (p->coderate) {
+                    switch (p->coderate)
+                    {
                         case CR_LORA_4_5: printf(" CR1(4/5)"); break;
                         case CR_LORA_4_6: printf(" CR2(2/3)"); break;
                         case CR_LORA_4_7: printf(" CR3(4/7)"); break;
@@ -365,21 +372,28 @@ int main(int argc, char **argv)
                     printf("\n");
                     printf(" RSSI:%+6.1f SNR:%+5.1f (min:%+5.1f, max:%+5.1f) payload:\n", p->rssi, p->snr, p->snr_min, p->snr_max);
 
-                    for (j = 0; j < p->size; ++j) {
+                    for (j = 0; j < p->size; ++j)
+                    {
                         printf(" %02X", p->payload[j]);
                     }
                     printf(" #\n");
-                } else if (p->status == STAT_CRC_BAD) {
+                }
+                else if (p->status == STAT_CRC_BAD)
+                {
                     printf(" if_chain:%2d", p->if_chain);
                     printf(" tstamp:%010u", p->count_us);
                     printf(" size:%3u\n", p->size);
                     printf(" CRC error, damaged packet\n\n");
-                } else if (p->status == STAT_NO_CRC){
+                }
+                else if (p->status == STAT_NO_CRC)
+                {
                     printf(" if_chain:%2d", p->if_chain);
                     printf(" tstamp:%010u", p->count_us);
                     printf(" size:%3u\n", p->size);
                     printf(" no CRC\n\n");
-                } else {
+                }
+                else
+                {
                     printf(" if_chain:%2d", p->if_chain);
                     printf(" tstamp:%010u", p->count_us);
                     printf(" size:%3u\n", p->size);
@@ -389,7 +403,8 @@ int main(int argc, char **argv)
         }
 
         /* send a packet every X loop */
-        if (loop_cnt%16 == 0) {
+        if (loop_cnt%16 == 0)
+        {
             /* 32b counter in the payload, big endian */
             txpkt.payload[16] = 0xff & (tx_cnt >> 24);
             txpkt.payload[17] = 0xff & (tx_cnt >> 16);
@@ -398,24 +413,58 @@ int main(int argc, char **argv)
             i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
             j = 0;
             printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
-            do {
+            do
+            {
                 ++j;
                 wait_ms(100);
                 lgw_status(TX_STATUS, &status_var); /* get TX status */
                 printf("%d:", status_var);
-            } while ((status_var != TX_FREE) && (j < 100));
+            }
+            while ((status_var != TX_FREE) && (j < 100));
             ++tx_cnt;
             printf("\nTX finished\n");
         }
-    }
-
-    if (exit_sig == 1) {
-        /* clean up before leaving */
-        lgw_stop();
     }
 
     printf("\nEnd of test for loragw_hal.c\n");
     return 0;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+
+TEST_CASE("loragw_hal", "[loragw_hal]")
+{
+    usage();
+    initialize_console();
+    int max_args=6; /*Change with regard to the args supported in help*/
+    const char* prompt = LOG_COLOR_I "loragw_hal> " LOG_RESET_COLOR;
+    int probe_status = linenoiseProbe();
+    if (probe_status)
+    {
+        /*No escape sequence editing supported*/
+        linenoiseSetDumbMode(1);
+    }
+    uint8_t i = 0;
+    while(i == 0)
+    {
+        char* line = linenoise(prompt);
+        char* argv[max_args];
+
+        if (line == NULL)
+        {   
+            /* Ignore empty lines and restart loop iteration*/
+            continue;
+        }
+        size_t argc = esp_console_split_argv(line, argv, max_args);
+        printf("Number of args is %d",argc);
+        int rv = test(argc, argv);
+        if(rv != 0)
+        {
+            /* If quit, help, or error, Jump back to unity menu*/
+            break;
+        }
+        linenoiseFree(line);
+    }
+
+}
+
+/* --- EOF --- */
