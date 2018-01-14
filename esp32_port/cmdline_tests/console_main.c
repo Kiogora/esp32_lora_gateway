@@ -18,8 +18,9 @@
 #include "argtable3/argtable3.h"
 #include "cmd_decl.h"
 #include "esp_vfs_fat.h"
+#include "nvs_flash.h"
 
-static const char* TAG = "example";
+static const char* TAG = "Console";
 
 /* Console command history can be stored to and loaded from a file.
  * The easiest way to do this is to use FATFS filesystem on top of
@@ -33,12 +34,14 @@ static const char* TAG = "example";
 static void initialize_filesystem()
 {
     static wl_handle_t wl_handle;
-    const esp_vfs_fat_mount_config_t mount_config = {
+    const esp_vfs_fat_mount_config_t mount_config=
+    {
             .max_files = 4,
             .format_if_mount_failed = true
     };
     esp_err_t err = esp_vfs_fat_spiflash_mount(MOUNT_PATH, "storage", &mount_config, &wl_handle);
-    if (err != ESP_OK) {
+    if (err != ESP_OK)
+    {
         ESP_LOGE(TAG, "Failed to mount FATFS (0x%x)", err);
         return;
     }
@@ -57,14 +60,14 @@ static void initialize_console()
     esp_vfs_dev_uart_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
 
     /* Install UART driver for interrupt-driven reads and writes */
-    ESP_ERROR_CHECK( uart_driver_install(CONFIG_CONSOLE_UART_NUM,
-            256, 0, 0, NULL, 0) );
+    ESP_ERROR_CHECK( uart_driver_install(CONFIG_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0) );
 
     /* Tell VFS to use UART driver */
     esp_vfs_dev_uart_use_driver(CONFIG_CONSOLE_UART_NUM);
 
     /* Initialize the console */
-    esp_console_config_t console_config = {
+    esp_console_config_t console_config =
+    {
             .max_cmdline_args = 8,
             .max_cmdline_length = 256,
 #if CONFIG_LOG_COLORS
@@ -94,6 +97,7 @@ static void initialize_console()
 
 void app_main()
 {
+    nvs_flash_init();
 #if CONFIG_STORE_HISTORY
     initialize_filesystem();
 #endif
@@ -104,6 +108,7 @@ void app_main()
     esp_console_register_help_command();
     register_system();
     register_wifi();
+    register_loragw_hal();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.
@@ -133,7 +138,8 @@ void app_main()
     }
 
     /* Main loop */
-    while(true) {
+    while(true)
+    {
         /* Get a line using linenoise.
          * The line is returned when ENTER is pressed.
          */
@@ -151,13 +157,21 @@ void app_main()
         /* Try to run the command */
         int ret;
         esp_err_t err = esp_console_run(line, &ret);
-        if (err == ESP_ERR_NOT_FOUND) {
+        if (err == ESP_ERR_NOT_FOUND)
+        {
             printf("Unrecognized command\n");
-        } else if (err == ESP_ERR_INVALID_ARG) {
+        }
+        else if (err == ESP_ERR_INVALID_ARG)
+        {
             // command was empty
-        } else if (err == ESP_OK && ret != ESP_OK) {
+        }
+        else if (err == ESP_OK && ret != ESP_OK)
+        {
             printf("Command returned non-zero error code: 0x%x\n", ret);
-        } else if (err != ESP_OK) {
+        }
+        /*Add error definitions for the loragw components we are testing over the console*/
+        else if (err != ESP_OK)
+        {
             printf("Internal error: 0x%x\n", err);
         }
         /* linenoise allocates line buffer on the heap, so need to free it */

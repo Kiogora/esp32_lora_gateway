@@ -8,8 +8,8 @@
 */
 #pragma once
 
-// Register system functions
-void register_system();
+//Register LoRagw_hal functions
+void register_loragw_cal();
 
-// Register WiFi functions
-void register_wifi();
+//Register LoRagw_hal functions
+void register_loragw_hal();

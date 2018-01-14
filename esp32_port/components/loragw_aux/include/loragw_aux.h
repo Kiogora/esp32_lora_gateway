@@ -17,6 +17,9 @@ Maintainer: Sylvain Miermont
 #ifndef _LORAGW_AUX_H
 #define _LORAGW_AUX_H
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
@@ -32,14 +35,12 @@ Maintainer: Sylvain Miermont
 */
 #define TAKE_N_BITS_FROM(b, p, n) (((b) >> (p)) & ((1 << (n)) - 1))
 
-/* -------------------------------------------------------------------------- */
-/* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
-
 /**
 @brief Wait for a certain time (millisecond accuracy)
 @param t number of milliseconds to wait.
 */
-void wait_ms(unsigned long t);
+/*Implemented as a macro to avoid function call overhead*/
+#define wait_ms(a) (vTaskDelay(a / portTICK_PERIOD_MS))
 
 #endif
 
