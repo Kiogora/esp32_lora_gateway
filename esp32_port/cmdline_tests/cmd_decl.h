@@ -13,3 +13,6 @@ void register_loragw_cal();
 
 //Register LoRagw_hal functions
 void register_loragw_hal();
+
+//Register spi stress functions
+void register_spi_stress();

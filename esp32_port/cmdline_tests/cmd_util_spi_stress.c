@@ -16,31 +16,31 @@ Maintainer: Sylvain Miermont
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
-
-/* fix an issue between POSIX and C99 */
-#ifdef __MACH__
-#elif __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf sprintf fopen fputs */
-
-#include <signal.h>     /* sigaction */
-#include <unistd.h>     /* getopt access */
 #include <stdlib.h>     /* rand */
+#include <ctype.h>
+#include "esp_log.h"
+#include "esp_console.h"
+#include "esp_system.h"
+#include "argtable3/argtable3.h"
+#include "cmd_decl.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "loragw_reg.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
+#define NB_STRESS_MAX 3000
+
 #define ARRAY_SIZE(a)    (sizeof(a) / sizeof((a)[0]))
+
 #define MSG(args...)    fprintf(stderr, args) /* message that is destined to the user */
 
+#define SPI_SPEED 8000000
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -49,49 +49,23 @@ Maintainer: Sylvain Miermont
 #define BUFF_SIZE               1024 /* maximum number of bytes that we can write in sx1301 RX data buffer */
 #define DEFAULT_TX_NOTCH_FREQ   129E3
 
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
-
-/* signal handling variables */
-struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
-
-static void sig_handler(int sigio);
-
-void usage (void);
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
-/* describe command line options */
-void usage(void) {
-    MSG( "Available options:\n");
-    MSG( " -h print this help\n");
-    MSG( " -t <int> specify which test you want to run (1-4)\n");
-}
-
+static struct
+{
+    struct arg_int *t;
+    struct arg_int *n;
+    struct arg_end *end;
+}spi_stress_args;
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
+int util_spi_stress(int argc, char **argv)
 {
     int i;
     int xi = 0;
 
     /* application option */
     int test_number = 1;
+    int target_cycles=0;
     int cycle_number = 0;
     int repeats_per_cycle = 1000;
     bool error = false;
@@ -106,50 +80,47 @@ int main(int argc, char **argv)
     uint8_t test_buff[BUFF_SIZE];
     uint8_t read_buff[BUFF_SIZE];
 
-    /* parse command line options */
-    while ((i = getopt (argc, argv, "ht:")) != -1) {
-        switch (i) {
-            case 'h':
-                usage();
-                return EXIT_FAILURE;
-                break;
-
-            case 't':
-                i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || (xi < 1) || (xi > 4)) {
-                    MSG("ERROR: invalid test number\n");
-                    return EXIT_FAILURE;
-                } else {
-                    test_number = xi;
-                }
-                break;
-
-            default:
-                MSG("ERROR: argument parsing use -h option for help\n");
-                usage();
-                return EXIT_FAILURE;
-        }
+    int nerrors = arg_parse(argc, argv, (void**) &spi_stress_args);
+    if (nerrors != 0)
+    {
+        return 1;
     }
+
+    if ((spi_stress_args.t->count != 1) || (spi_stress_args.t->ival[0] < 1) || (spi_stress_args.t->ival[0] > 4))
+    {
+        MSG("ERROR: invalid test number\n");
+        return EXIT_FAILURE;
+    }
+    else 
+    {
+        test_number = (uint8_t)(spi_stress_args.t->ival[0]);;
+    }
+    
+    if(spi_stress_args.n->count != 1 || ((unsigned int)(spi_stress_args.n->ival[0]) > NB_STRESS_MAX)|| ((unsigned int)(spi_stress_args.n->ival[0]) < 1))
+    {
+        printf("ERROR: invalid number of R/W cycles (MAX %d)\n",NB_STRESS_MAX);
+        return 1;
+    }
+    else
+    {
+        target_cycles=spi_stress_args.n->ival[0];
+    }
+
     MSG("INFO: Starting LoRa concentrator SPI stress-test number %i\n", test_number);
 
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
-
     /* start SPI link */
-    i = lgw_connect(false, DEFAULT_TX_NOTCH_FREQ);
-    if (i != LGW_REG_SUCCESS) {
+    i = lgw_connect(false, DEFAULT_TX_NOTCH_FREQ, SPI_SPEED);
+    if (i != LGW_REG_SUCCESS)
+    {
         MSG("ERROR: lgw_connect() did not return SUCCESS");
         return EXIT_FAILURE;
     }
 
-    if (test_number == 1) {
+    if (test_number == 1)
+    {
         /* single 8b register R/W stress test */
-        while ((quit_sig != 1) && (exit_sig != 1)) {
+        while (cycle_number<target_cycles)
+        {
             printf("Cycle %i > ", cycle_number);
             for (i=0; i<repeats_per_cycle; ++i) {
                 test_value = (rand() % 256);
@@ -160,82 +131,108 @@ int main(int argc, char **argv)
                     break;
                 }
             }
-            if (error) {
+            if (error)
+            {
                 printf("error during the %ith iteration: write 0x%02X, read 0x%02X\n", i+1, test_value, read_value);
                 printf("Repeat read of target register:");
-                for (i=0; i<READS_WHEN_ERROR; ++i) {
+                for (i=0; i<READS_WHEN_ERROR; ++i)
+                {
                     lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
                     printf(" 0x%02X", read_value);
                 }
                 printf("\n");
                 return EXIT_FAILURE;
-            } else {
+            }
+            else
+            {
                 printf("did %i R/W on an 8 bits reg with no error\n", repeats_per_cycle);
                 ++cycle_number;
             }
         }
-    } else if (test_number == 2) {
+    }
+    else if (test_number == 2)
+    {
         /* single 8b register R/W with interstitial VERSION check stress test */
-        while ((quit_sig != 1) && (exit_sig != 1)) {
+        while (cycle_number<target_cycles)
+        {
             printf("Cycle %i > ", cycle_number);
-            for (i=0; i<repeats_per_cycle; ++i) {
+            for (i=0; i<repeats_per_cycle; ++i)
+            {
                 test_value = (rand() % 256);
                 lgw_reg_r(LGW_VERSION, &rb1);
                 lgw_reg_w(LGW_IMPLICIT_PAYLOAD_LENGHT, test_value);
                 lgw_reg_r(LGW_VERSION, &rb2);
                 lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
                 lgw_reg_r(LGW_VERSION, &rb3);
-                if ((rb1 != VERS) || (rb2 != VERS) || (rb3 != VERS) || (read_value != test_value)) {
+                if ((rb1 != VERS) || (rb2 != VERS) || (rb3 != VERS) || (read_value != test_value))
+                {
                     error = true;
                     break;
                 }
             }
-            if (error) {
+            if (error)
+            {
                 printf("error during the %ith iteration: write %02X, read %02X, version (%i, %i, %i)\n", i+1, test_value, read_value, rb1, rb2, rb3);
                 printf("Repeat read of target register:");
-                for (i=0; i<READS_WHEN_ERROR; ++i) {
+                for (i=0; i<READS_WHEN_ERROR; ++i)
+                {
                     lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
                     printf(" 0x%02X", read_value);
                 }
                 printf("\n");
                 return EXIT_FAILURE;
-            } else {
+            }
+            else
+            {
                 printf("did %i R/W on an 8 bits reg with no error\n", repeats_per_cycle);
                 ++cycle_number;
             }
         }
-    } else if (test_number == 3) {
+    }
+    else if (test_number == 3)
+    {
         /* 32b register R/W stress test */
-        while ((quit_sig != 1) && (exit_sig != 1)) {
+        while (cycle_number<target_cycles)
+        {
             printf("Cycle %i > ", cycle_number);
-            for (i=0; i<repeats_per_cycle; ++i) {
+            for (i=0; i<repeats_per_cycle; ++i)
+            {
                 test_value = (rand() & 0x0000FFFF);
                 test_value += (int32_t)(rand() & 0x0000FFFF) << 16;
                 lgw_reg_w(LGW_FSK_REF_PATTERN_LSB, test_value);
                 lgw_reg_r(LGW_FSK_REF_PATTERN_LSB, &read_value);
-                if (read_value != test_value) {
+                if (read_value != test_value)
+                {
                     error = true;
                     break;
                 }
             }
-            if (error) {
+            if (error)
+            {
                 printf("error during the %ith iteration: write 0x%08X, read 0x%08X\n", i+1, test_value, read_value);
                 printf("Repeat read of target register:");
-                for (i=0; i<READS_WHEN_ERROR; ++i) {
+                for (i=0; i<READS_WHEN_ERROR; ++i)
+                {
                     lgw_reg_r(LGW_FSK_REF_PATTERN_LSB, &read_value);
                     printf(" 0x%08X", read_value);
                 }
                 printf("\n");
                 return EXIT_FAILURE;
-            } else {
+            }
+            else
+            {
                 printf("did %i R/W on a 32 bits reg with no error\n", repeats_per_cycle);
                 ++cycle_number;
             }
         }
-    } else if (test_number == 4) {
+    }
+    else if (test_number == 4)
+    {
         /* databuffer R/W stress test */
-        while ((quit_sig != 1) && (exit_sig != 1)) {
-            for (i=0; i<BUFF_SIZE; ++i) {
+        while (cycle_number<target_cycles)
+        {
+            for (i=0; i<BUFF_SIZE; ++i)
+            {
                 test_buff[i] = rand() & 0xFF;
             }
             printf("Cycle %i > ", cycle_number);
@@ -245,16 +242,19 @@ int main(int argc, char **argv)
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
             lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, BUFF_SIZE);
             for (i=0; ((i<BUFF_SIZE) && (test_buff[i] == read_buff[i])); ++i);
-            if (i != BUFF_SIZE) {
+            if (i != BUFF_SIZE)
+            {
                 printf("error during the buffer comparison\n");
                 printf("Written values:\n");
-                for (i=0; i<BUFF_SIZE; ++i) {
+                for (i=0; i<BUFF_SIZE; ++i)
+                {
                     printf(" %02X ", test_buff[i]);
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");
                 printf("Read values:\n");
-                for (i=0; i<BUFF_SIZE; ++i) {
+                for (i=0; i<BUFF_SIZE; ++i)
+                {
                     printf(" %02X ", read_buff[i]);
                     if (i%16 == 15) printf("\n");
                 }
@@ -262,25 +262,31 @@ int main(int argc, char **argv)
                 lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
                 lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, BUFF_SIZE);
                 printf("Re-read values:\n");
-                for (i=0; i<BUFF_SIZE; ++i) {
+                for (i=0; i<BUFF_SIZE; ++i)
+                {
                     printf(" %02X ", read_buff[i]);
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");
                 return EXIT_FAILURE;
-            } else {
+            }
+            else
+            {
                 printf("did a %i-byte R/W on a data buffer with no error\n", BUFF_SIZE);
                 ++cycle_number;
             }
         }
-    } else {
+    }
+    else
+    {
         MSG("ERROR: invalid test number");
-        usage();
+        return -1;
     }
 
     /* close SPI link */
     i = lgw_disconnect();
-    if (i != LGW_REG_SUCCESS) {
+    if (i != LGW_REG_SUCCESS)
+    {
         MSG("ERROR: lgw_disconnect() did not return SUCCESS");
         return EXIT_FAILURE;
     }
@@ -289,5 +295,23 @@ int main(int argc, char **argv)
     return EXIT_SUCCESS;
 }
 
-/* --- EOF ------------------------------------------------------------------ */
+void register_spi_stress()
+{
+    spi_stress_args.t = arg_int1("t", NULL, "<T>", "<int> specify which test you want to run (1-4)");
+    spi_stress_args.n = arg_int1("n", NULL, "<N>", "<int> specify read write cycles to perform, max 3000");
+    spi_stress_args.end = arg_end(1);
+
+    const esp_console_cmd_t util_spi_stress_cmd=
+    {
+        .command = "Util_spi_stress",
+        .help = "Run SPI stress tests",
+        .hint = NULL,
+        .func = &util_spi_stress,
+        .argtable = &spi_stress_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&util_spi_stress_cmd) );
+}
+
+/* --- EOF ---- */
 

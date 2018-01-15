@@ -108,6 +108,7 @@ void app_main()
     esp_console_register_help_command();
     register_loragw_hal();
     register_loragw_cal();
+    register_spi_stress();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.
@@ -132,7 +133,7 @@ void app_main()
         /* Since the terminal doesn't support escape sequences,
          * don't use color codes in the prompt.
          */
-        prompt = "esp32> ";
+        prompt = "ESP32 loragw console> ";
 #endif //CONFIG_LOG_COLORS
     }
 
@@ -143,7 +144,8 @@ void app_main()
          * The line is returned when ENTER is pressed.
          */
         char* line = linenoise(prompt);
-        if (line == NULL) { /* Ignore empty lines */
+        if (line == NULL) 
+        { /* Ignore empty lines */
             continue;
         }
         /* Add the command to the history */

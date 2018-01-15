@@ -185,7 +185,7 @@ int loragw_cal_test(int argc, char **argv)
             return -1;
     }
     clocksource = (uint8_t)loragw_cal_args.k->ival[0];
-    if(((unsigned int)(loragw_cal_args.n->ival[0]) != 1) || ((unsigned int)(loragw_cal_args.n->ival[0]) > NB_CAL_MAX))
+    if(loragw_cal_args.n->count != 1 || ((unsigned int)(loragw_cal_args.n->ival[0]) > NB_CAL_MAX)|| ((unsigned int)(loragw_cal_args.n->ival[0]) < 1))
     {
         printf("ERROR: invalid number of calibration iterations (MAX %d)\n",NB_CAL_MAX);
         return 1;
