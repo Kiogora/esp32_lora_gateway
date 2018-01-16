@@ -1,8 +1,0 @@
-1. Reorganise build scripts for compatibility to the ESP32 build environment.
-2. Eliminate any code not needed. Example: FPGA hex files and such.
-3. Transform the code from a hosted linux environment to a freestanding environment. Do this without changing the
-   function names, parameters passed and return values to ensure compatibility.
-4. Move the libloragw/test files as individual test for the various components as per 
-   http://esp-idf.readthedocs.io/en/latest/api-guides/unit-tests.html#add-normal-test-cases
-5. Put various utilities(utils) in the main folder that can be used for testing as the main file.
-6. When done find a way to extract the .a file to be used in the packet forwarder.
