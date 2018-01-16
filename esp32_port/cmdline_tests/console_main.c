@@ -110,6 +110,7 @@ void app_main()
     register_loragw_cal();
     register_spi_stress();
     register_loragw_lbt();
+    register_tx_continuous();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

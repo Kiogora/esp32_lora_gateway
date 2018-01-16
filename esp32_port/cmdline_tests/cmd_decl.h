@@ -19,3 +19,6 @@ void register_spi_stress();
 
 //Register LoRagw_lbt functions
 void register_loragw_lbt();
+
+//Register LoRagw_tx continuous functions
+void register_tx_continuous();

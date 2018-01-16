@@ -63,7 +63,8 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES --------------------------------------------------------- */
 
-struct cal_res_s {
+struct cal_res_s
+{
     int8_t amp_a;
     int8_t phi_a;
     int8_t amp_b;

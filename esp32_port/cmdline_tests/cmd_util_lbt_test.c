@@ -136,6 +136,7 @@ int loragw_lbt_test(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
+
     /* Check if FPGA supports LBT */
     lgw_fpga_reg_r(LGW_FPGA_FEATURE, &val);
     if (TAKE_N_BITS_FROM((uint8_t)val, 2, 1) != true)
