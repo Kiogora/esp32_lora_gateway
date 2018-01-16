@@ -90,8 +90,6 @@ int read_capture(int16_t *i, int16_t *q, int nb_samp);
 
 uint8_t get_img_rej(int16_t *sig_i, int16_t *sig_q, int nb_samp, double f_sig_norm);
 
-void usage (void);
-
 static struct
 {
     struct arg_dbl *a;
@@ -296,6 +294,7 @@ int loragw_cal_test(int argc, char **argv)
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_CAL) {
         printf("ERROR: Version of calibration firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_CAL);
+        lgw_disconnect();
         return -1;
     }
 

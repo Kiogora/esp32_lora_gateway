@@ -36,7 +36,7 @@ static void initialize_filesystem()
     static wl_handle_t wl_handle;
     const esp_vfs_fat_mount_config_t mount_config=
     {
-            .max_files = 4,
+            .max_files = 7,
             .format_if_mount_failed = true
     };
     esp_err_t err = esp_vfs_fat_spiflash_mount(MOUNT_PATH, "storage", &mount_config, &wl_handle);
@@ -109,6 +109,7 @@ void app_main()
     register_loragw_hal();
     register_loragw_cal();
     register_spi_stress();
+    register_loragw_lbt();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

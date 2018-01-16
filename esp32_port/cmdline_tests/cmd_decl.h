@@ -16,3 +16,6 @@ void register_loragw_hal();
 
 //Register spi stress functions
 void register_spi_stress();
+
+//Register LoRagw_lbt functions
+void register_loragw_lbt();
