@@ -18,14 +18,6 @@ Maintainer: Michael Coracin
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDENCIES --------------------------------------------------------- */
 
-/* Fix an issue between POSIX and C99 */
-#ifdef __MACH__
-#elif __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
 #include <stdint.h>     /* C99 types */
 #include <stdio.h>      /* NULL printf */
 #include <stdlib.h>     /* EXIT atoi */
@@ -42,6 +34,8 @@ Maintainer: Michael Coracin
 /* --- MACROS & CONSTANTS --------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+
+#define SPI_SPEED                   8000000
 
 #define DEFAULT_START_FREQ          863000000   /* start frequency, Hz */
 #define DEFAULT_STOP_FREQ           870000000   /* stop frequency, Hz */
@@ -64,13 +58,20 @@ Maintainer: Michael Coracin
 #define LBT_DEFAULT_RSSI_PTS    129*129 /* number of RSSI reads, hard-coded in FPGA*/
 #define LBT_MIN_STEP_FREQ       100000
 
-/* -------------------------------------------------------------------------- */
-/* --- GLOBAL VARIABLES ----------------------------------------------------- */
+static struct{
+    struct arg_int *f;
+    struct arg_int *b;
+    struct arg_int *n;
+    struct arg_int *o;
+    struct arg_int *l;
+    struct arg_end *end;
+}util_spectral_scan;
+
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main( int argc, char ** argv )
+int util_spectral( int argc, char ** argv )
 {
     int i, j, k; /* loop and temporary variables */
     int x; /* return code for functions */
@@ -204,7 +205,7 @@ int main( int argc, char ** argv )
     /* Start message */
     printf("+++ Start spectral scan of LoRa gateway channels +++\n");
 
-    x = lgw_connect(true, 0); /* SPI only, no FPGA reset/configure (for now) */
+    x = lgw_connect(true, 0, SPI_SPEED); /* SPI only, no FPGA reset/configure (for now) */
     if(x != 0) {
         printf("ERROR: Failed to connect to FPGA\n");
         return EXIT_FAILURE;
@@ -265,7 +266,7 @@ int main( int argc, char ** argv )
             printf("ERROR: Failed to disconnect from FPGA\n");
             return EXIT_FAILURE;
         }
-        x = lgw_connect(false, LGW_DEFAULT_NOTCH_FREQ); /* FPGA reset/configure */
+        x = lgw_connect(false, LGW_DEFAULT_NOTCH_FREQ, SPI_SPEED); /* FPGA reset/configure */
         if(x != 0) {
             printf("ERROR: Failed to connect to FPGA\n");
             return EXIT_FAILURE;
@@ -322,7 +323,8 @@ int main( int argc, char ** argv )
         lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 1);
 
         /* Wait for histogram clean to start */
-        do {
+        do
+        {
             wait_ms(10);
             lgw_fpga_reg_r(LGW_FPGA_STATUS, &reg_val);
         }
@@ -398,6 +400,38 @@ int main( int argc, char ** argv )
     return EXIT_SUCCESS;
 }
 
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+            printf(" -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n");
+            printf("                               start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6);
+            printf(" -b <uint>  Channel bandwidth in KHz [25,50,100,125,200,250,500]\n");
+            printf(" -n <uint>  Total number of RSSI points [1..65535]\n");
+            printf(" -o <int>   Offset in dB to be applied to the SX127x RSSI [-128..127]\n");
+            printf(" -l <char>  Log file name\n");
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+
+void register_loragw_cal()
+{
+    loragw_cal_args.a = arg_dbl1("a", NULL, "<A>", "<float> Radio A frequency in MHz");
+    loragw_cal_args.b = arg_dbl1("b", NULL, "<B>", "<float> Radio B frequency in MHz");
+    loragw_cal_args.r = arg_int1("r", NULL, "<R>", "<int> Radio type (SX1255:1255, SX1257:1257)");
+    loragw_cal_args.n = arg_int1("n", NULL, "<N>", "<uint> Number of calibration iterations");
+    loragw_cal_args.k = arg_int1("k", NULL, "<K>", "<int> Concentrator clock source (0:radio_A, 1:radio_B(default))");
+    loragw_cal_args.k ->ival[0]=1; /*Set default value*/
+    loragw_cal_args.t = arg_int1("t", NULL, "<T>", "<int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)");
+    loragw_cal_args.t ->ival[0]=0; /*Set default value*/
+    loragw_cal_args.end = arg_end(7);
+
+    const esp_console_cmd_t loragw_cal_cmd=
+    {
+        .command = "loragw_cal",
+        .help = "Run loragw_cal test",
+        .hint = NULL,
+        .func = &loragw_cal_test,
+        .argtable = &loragw_cal_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&loragw_cal_cmd) );
+}
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* --- EOF ------------------------------------------------------------------ */

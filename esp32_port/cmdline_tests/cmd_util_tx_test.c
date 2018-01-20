@@ -19,9 +19,16 @@ Maintainer: Sylvain Miermont
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf sprintf fopen fputs */
-
 #include <string.h>     /* memset */
 #include <stdlib.h>     /* exit codes */
+#include <ctype.h>
+#include "esp_log.h"
+#include "esp_console.h"
+#include "esp_system.h"
+#include "argtable3/argtable3.h"
+#include "cmd_decl.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -117,8 +124,6 @@ static struct{
     struct arg_int *lbt_rssi_offset;
     struct arg_end *end;
 }util_tx_args;
-/* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
 
 int util_tx(int argc, char **argv)
 {
@@ -173,7 +178,7 @@ int util_tx(int argc, char **argv)
     {
         return 1;
     }
-
+    //1
     xd=util_tx_args.f ->dval[0];
     i=util_tx_args.f ->count;
     if ((i != 1) || (xd < 30.0) || (xd > 3000.0))
@@ -185,7 +190,7 @@ int util_tx(int argc, char **argv)
     {
         f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
     }
-
+    //2
     xi=util_tx_args.n ->dval[0];
     i=util_tx_args.n ->count;
     if ((i != 1) || ((xi < 126) || (xi > 250)))
@@ -197,7 +202,7 @@ int util_tx(int argc, char **argv)
     {
         tx_notch_freq = xi*1000;
     }
-
+    //3
     arg_s=util_tx_args.n->sval[0];
     i=util_tx_args.n ->count;
     if ((i != 1) || ((strcmp(arg_s,"LORA") != 0) && (strcmp(arg_s,"FSK"))))
@@ -209,7 +214,7 @@ int util_tx(int argc, char **argv)
     {
         sprintf(mod, "%s", arg_s);
     }
-
+    //4
     xi=util_tx_args.b->ival[0];
     i=util_tx_args.b ->count;
     if ((i != 1) || ((xi != 125) && (xi != 250) && (xi != 500))) {
@@ -220,7 +225,7 @@ int util_tx(int argc, char **argv)
     {
         bw = xi;
     }
-
+    //5
     xi=util_tx_args.s->ival[0];
     i=util_tx_args.s->count;
     if ((i != 1) || (xi < 7) || (xi > 12))
@@ -233,6 +238,7 @@ int util_tx(int argc, char **argv)
         sf = xi;
     }
 
+    //6
     xi=util_tx_args.c->ival[0];
     i=util_tx_args.c->count;
     if ((i != 1) || (xi < 1) || (xi > 4))
@@ -246,6 +252,7 @@ int util_tx(int argc, char **argv)
         cr = xi;
     }
 
+    //7
     xi=util_tx_args.p->ival[0];
     i=util_tx_args.p->count;
     if ((i != 1) || (xi < -60) || (xi > 60))
@@ -259,12 +266,12 @@ int util_tx(int argc, char **argv)
         pow = xi;
     }
 
+    //8
     xi=util_tx_args.d->ival[0];
     i=util_tx_args.d->count;
     if ((i != 1) || (xu < 1) || (xu > 250))
     {
         MSG("ERROR: invalid FSK frequency deviation\n");
-        usage();
         return EXIT_FAILURE;
     }
     else
@@ -272,12 +279,12 @@ int util_tx(int argc, char **argv)
         fdev_khz = (uint8_t)xu;
     }
 
+    //9
     xi=util_tx_args.q->dval[0];
     i=util_tx_args.q->count;
     if ((i != 1) || (xf < 0.5) || (xf > 250))
     {
         MSG("ERROR: invalid FSK bitrate\n");
-        usage();
         return EXIT_FAILURE;
     }
     else
@@ -285,18 +292,20 @@ int util_tx(int argc, char **argv)
         br_kbps = xf;
     }
 
+    //10
     xi=util_tx_args.l->dval[0];
     i=util_tx_args.l->count;
     if ((i != 1) || (xi < 6))
     {
         MSG("ERROR: preamble length must be >6 symbols \n");
-        usage();
         return EXIT_FAILURE;
     }
     else
     {
         preamb = xi;
     }
+
+    //11
     xi=util_tx_args.z->ival[0];
     i=util_tx_args.z->count;
     if ((i != 1) || (xi <= 0))
@@ -309,6 +318,7 @@ int util_tx(int argc, char **argv)
         pl_size = xi;
     }
     
+    //12
     xi=util_tx_args.t->ival[0];
     i=util_tx_args.t->count;
     if ((i != 1) || (xi < 0))
@@ -321,12 +331,12 @@ int util_tx(int argc, char **argv)
         delay = xi;
     }
 
+    //13
     xi=util_tx_args.x->ival[0];
     i=util_tx_args.x->count;
     if ((i != 1) || (xi < -1))
     {
         MSG("ERROR: invalid number of repeats\n");
-        usage();
         return EXIT_FAILURE;
     }
     else
@@ -334,10 +344,10 @@ int util_tx(int argc, char **argv)
         repeat = xi;
     }
     
-    xi=util_tx_args.l->ival[0];
-    i=util_tx_args.l->count;
-
-    switch (r) {
+    //14
+    r=util_tx_args.r->ival[0];
+    switch (r)
+    {
         case 1255:
             radio_type = LGW_RADIO_TYPE_SX1255;
             break;
@@ -346,83 +356,104 @@ int util_tx(int argc, char **argv)
             break;
         default:
             printf("ERROR: invalid radio type\n");
+            return EXIT_FAILURE;
+    }
+
+    //16
+    case 'i': /* Send packet using inverted modulation polarity */
+        invert = true;
+
+    //17
+    xi=util_tx_args.k->ival[0];
+    i=util_tx_args.k->count;
+
+    if ((i != 1) || ((xi != 0) && (xi != 1))) {
+        MSG("ERROR: invalid clock source\n");
+        return EXIT_FAILURE;
+    }
+    else
+    {
+        clocksource = (uint8_t)xi;
+    }
+
+    //18
+    xi=util_tx_args.lbt_freq->ival[0];
+    i=util_tx_args.lbt_freq->count;
+
+    if ((i != 1) || (xd < 30.0) || (xd > 3000.0))
+    {
+        MSG("ERROR: invalid LBT start frequency\n");
+        return EXIT_FAILURE;
+    }
+    else
+    {
+        lbt_f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+        lbt_enable = true;
+    }
+
+    //19
+    xi=util_tx_args.lbt_sctm->ival[0];
+    i=util_tx_args.lbt_sctm->count;
+    if (lbt_enable == true) 
+    {
+        if ((i != 1) || (xi < 0))
+        {
+            MSG("ERROR: invalid LBT scan time\n");
             usage();
             return EXIT_FAILURE;
-                }
+        }
+        else
+        {
+            lbt_sc_time = xi;
+        }
+    }
+    //20
+    xi=util_tx_args.lbt_rssi->ival[0];
+    i=util_tx_args.lbt_rssi->count;
+    if (lbt_enable == true) {
+        if ((i != 1) || ((xi < -128) && (xi > 0)))
+        {
+            MSG("ERROR: invalid LBT RSSI target\n");
+            usage();
+            return EXIT_FAILURE;
+        }
+        else
+        {
+            lbt_rssi_target_dBm = xi;
+        }
+    }
+    //21
+    xi=util_tx_args.lbt_rssi_offset->ival[0];
+    i=util_tx_args.lbt_rssi_offset->count;
+    if (lbt_enable == true)
+    {
+        if ((i != 1) || ((xi < -128) && (xi > 127)))
+        {
+            MSG("ERROR: invalid LBT RSSI offset\n");
+            usage();
+            return EXIT_FAILURE;
+        }
+        else
+        {
+            lbt_rssi_offset_dB = xi;
+        }
 
-            case 'i': /* Send packet using inverted modulation polarity */
-                invert = true;
-
-                if ((i != 1) || ((xi != 0) && (xi != 1))) {
-                    MSG("ERROR: invalid clock source\n");
-                    usage();
-                    return EXIT_FAILURE;
-                }
-                else
-                {
-                    clocksource = (uint8_t)xi;
-                }
-                if ((i != 1) || (xd < 30.0) || (xd > 3000.0)) {
-                    MSG("ERROR: invalid LBT start frequency\n");
-                    usage();
-                    return EXIT_FAILURE;
-                }
-                else
-                {
-                    lbt_f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                    lbt_enable = true;
-                }
-                
-                if (lbt_enable == true) 
-                {
-                    if ((i != 1) || (xi < 0))
-                    {
-                        MSG("ERROR: invalid LBT scan time\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                    else
-                    {
-                        lbt_sc_time = xi;
-                    }
-                }
-                if (lbt_enable == true) {
-                    if ((i != 1) || ((xi < -128) && (xi > 0)))
-                    {
-                        MSG("ERROR: invalid LBT RSSI target\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                    else
-                    {
-                        lbt_rssi_target_dBm = xi;
-                    }
-                }
-                if (lbt_enable == true)
-                {
-                    if ((i != 1) || ((xi < -128) && (xi > 127)))
-                    {
-                        MSG("ERROR: invalid LBT RSSI offset\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                    else
-                    {
-                        lbt_rssi_offset_dB = xi;
-                    }
-                if (lbt_enable == true) 
-                {
-                    if ((i != 1) || (xi < 0)) 
-                    {
-                        MSG("ERROR: invalid LBT number of channels\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                    else
-                    {
-                        lbt_nb_channel = xi;
-                    }
-                }
+    //22
+    xi=util_tx_args.lbt_nbch->ival[0];
+    i=util_tx_args.lbt_nbch->count;
+    if (lbt_enable == true) 
+    {
+        if ((i != 1) || (xi < 0)) 
+        {
+            MSG("ERROR: invalid LBT number of channels\n");
+            usage();
+            return EXIT_FAILURE;
+        }
+        else
+        {
+            lbt_nb_channel = xi;
+        }
+    }
 
     /* Summary of packet parameters */
     if (strcmp(mod, "FSK") == 0)
@@ -502,7 +533,8 @@ int util_tx(int argc, char **argv)
     }
     txpkt.rf_chain = TX_RF_CHAIN;
     txpkt.rf_power = pow;
-    if( strcmp( mod, "FSK" ) == 0 ) {
+    if( strcmp( mod, "FSK" ) == 0 )
+    {
         txpkt.modulation = MOD_FSK;
         txpkt.datarate = br_kbps * 1e3;
         txpkt.f_dev = fdev_khz;
@@ -652,9 +684,9 @@ void register_tx_continuous()
     util_tx_args.x=arg_int1("x", NULL, NULL, "<int>   nb of times the sequence is repeated (-1 loop until stopped)");
     util_tx_args.lbt_freq=arg_dbl1(NULL, "lbt-freq", NULL, "<float> lbt first channel frequency in MHz");
     util_tx_args.lbt_nbch=arg_int1(NULL, "lbt-nbch", NULL, "<uint>  lbt number of channels [1..8]");
-    util_tx_args.lbt_sctm=arg_int1(NULL, "lbt_sctm", NULL, "<uint>  lbt scan time in usec to be applied to all channels [128, 5000]");
-    util_tx_args.lbt_rssi=arg_int1(NULL, "lbt_rssi", NULL, "<int>   lbt rssi target in dBm [-128..0]");
-    util_tx_args.lbt_rssi_offset=arg_int1(NULL, "lbt_rssi_offset", NULL, "<int>   rssi offset in dB to be applied to SX127x RSSI [-128..127]");
+    util_tx_args.lbt_sctm=arg_int1(NULL, "lbt-sctm", NULL, "<uint>  lbt scan time in usec to be applied to all channels [128, 5000]");
+    util_tx_args.lbt_rssi=arg_int1(NULL, "lbt-rssi", NULL, "<int>   lbt rssi target in dBm [-128..0]");
+    util_tx_args.lbt_rssi_offset=arg_int1(NULL, "lbt-rssi-offset", NULL, "<int>   rssi offset in dB to be applied to SX127x RSSI [-128..127]");
     util_tx_args.end= arg_end(21);
 
     const esp_console_cmd_t tx_cmd=
