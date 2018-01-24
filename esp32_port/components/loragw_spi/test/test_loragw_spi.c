@@ -106,10 +106,10 @@ TEST_CASE("loragw_spi", "[loragw_spi]")
     }
     
     /* last read (blocking), just to be sure no to quit before the FTDI buffer is flushed */
-    /*
+    
     lgw_spi_r(spi_target, spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0x55, &data);
     printf("data received (simple read): %d\n",data);
-    */
+    
     lgw_spi_close(&concentrator);
     printf("End of test for loragw_spi.c\n");
 }
