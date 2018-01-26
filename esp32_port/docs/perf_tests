@@ -11,8 +11,8 @@ RPI: 7.8904-3.3556=5.65782 ms from initial CS high->low to final CS low->high
 ESP32: 134.11688-107.3742=26.74268 ms from initial CS high->low to final CS low->high
 
 
-3. Throughput TCP tests with iperf tool on Ubuntu 16.04 and ESP32 in server mode, in station mode.
-==================================================================================================
+3. Throughput TCP tests with iperf tool on Ubuntu 16.04 and ESP32 in server mode, in Wifi station mode.
+=======================================================================================================
    0-   3 sec       0.13 Mbits/sec
    3-   6 sec       1.59 Mbits/sec
    6-   9 sec       2.73 Mbits/sec
@@ -55,8 +55,8 @@ ESP32: 134.11688-107.3742=26.74268 ms from initial CS high->low to final CS low-
  117- 120 sec       2.40 Mbits/sec
    0- 120 sec       2.19 Mbits/sec
 
-4. Throughput TCP tests with iperf tool on Ubuntu 16.04 and ESP32 in client mode, in station mode.
-==================================================================================================
+4. Throughput TCP tests with iperf tool on Ubuntu 16.04 and ESP32 in client mode, in WiFi station mode.
+=======================================================================================================
         Interval Bandwidth
    0-   3 sec       2.53 Mbits/sec
    3-   6 sec       6.47 Mbits/sec
