@@ -244,7 +244,6 @@ static int loragw_hal_test(int argc, char** argv)
     else 
     {
         printf("*** Impossible to start concentrator ***\n");
-        lgw_stop();
         return -1;
     }
 
