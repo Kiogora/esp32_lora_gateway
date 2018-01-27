@@ -142,7 +142,6 @@ int util_spi_stress(int argc, char **argv)
                     printf(" 0x%02X", read_value);
                 }
                 printf("\n");
-                i = lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -182,7 +181,6 @@ int util_spi_stress(int argc, char **argv)
                     printf(" 0x%02X", read_value);
                 }
                 printf("\n");
-                i = lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -220,7 +218,6 @@ int util_spi_stress(int argc, char **argv)
                     printf(" 0x%08X", read_value);
                 }
                 printf("\n");
-                i = lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -272,7 +269,6 @@ int util_spi_stress(int argc, char **argv)
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");
-                i = lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -293,7 +289,7 @@ int util_spi_stress(int argc, char **argv)
     if (i != LGW_REG_SUCCESS)
     {
         MSG("ERROR: lgw_disconnect() did not return SUCCESS");
-        i = lgw_disconnect(); //Try again
+        lgw_disconnect(); //Force and try again
         return EXIT_FAILURE;
     }
 
