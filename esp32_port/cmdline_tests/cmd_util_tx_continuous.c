@@ -134,7 +134,6 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.dac ->count;
     if ((i != 1) || (arg_u > 3)) {
         printf("ERROR: argument parsing of --dac argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -147,7 +146,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || (arg_u > 15))
     {
         printf("ERROR: argument parsing of --mix argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -160,7 +158,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || (arg_u > 3))
     {
         printf("ERROR: argument parsing of --pa argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -173,7 +170,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || ((strcmp(arg_s,"LORA") != 0) && (strcmp(arg_s,"FSK") != 0)  && (strcmp(arg_s,"CW") != 0)))
     {
         printf("ERROR: argument parsing of --mod argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -185,7 +181,6 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.sf ->count;
     if ((i != 1) || (arg_u < 7) || (arg_u > 12)) {
         printf("ERROR: argument parsing of --sf argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -198,7 +193,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || ((arg_u != 125) && (arg_u != 250) && (arg_u != 500)))
     {
         printf("ERROR: argument parsing of --bw argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -211,7 +205,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || (arg_f < 0.5) || (arg_f > 250))
     {
         printf("ERROR: argument parsing of --br argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -224,7 +217,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || (arg_u < 1) || (arg_u > 250))
     {
         printf("ERROR: argument parsing of --fdev argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -237,7 +229,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || (arg_u > 3))
     {
         printf("ERROR: argument parsing of --bt argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else 
@@ -249,7 +240,6 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.notch ->count;
     if ((i != 1) || ((arg_u < 126) || (arg_u > 250))) {
         printf("ERROR: argument parsing of --notch argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
     else
@@ -262,7 +252,6 @@ int util_tx_continuous(int argc, char **argv)
     if ((i != 1) || (arg_f < 1))
     {
     printf("ERROR: argument parsing of -f argument. \n");
-    lgw_stop();
     return EXIT_FAILURE;
     }
     else
@@ -281,7 +270,6 @@ int util_tx_continuous(int argc, char **argv)
         break;
     default:
         printf("ERROR: argument parsing of -r argument. \n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
 
@@ -320,7 +308,6 @@ int util_tx_continuous(int argc, char **argv)
     else
     {
         MSG("ERROR: failed to start the concentrator\n");
-        lgw_stop();
         return EXIT_FAILURE;
     }
 
@@ -343,7 +330,6 @@ int util_tx_continuous(int argc, char **argv)
             case 500: txpkt.bandwidth = BW_500KHZ; break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
-                lgw_stop();
                 return EXIT_FAILURE;
         }
         switch (sf) 
@@ -356,7 +342,6 @@ int util_tx_continuous(int argc, char **argv)
             case 12: txpkt.datarate = DR_LORA_SF12; break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
-                lgw_stop();
                 return EXIT_FAILURE;
         }
     }
@@ -403,7 +388,6 @@ int util_tx_continuous(int argc, char **argv)
             break;
         default:
             printf("ERROR: undefined radio type\n");
-            lgw_stop();
             break;
     }
     printf("Frequency: %4.3f MHz\n", freq_hz/1e6);
@@ -413,12 +397,6 @@ int util_tx_continuous(int argc, char **argv)
         lgw_reg_r(LGW_TX_OFFSET_I, &offset_i);
         lgw_reg_r(LGW_TX_OFFSET_Q, &offset_q);
         printf("Calibrated DC offsets: I:%d Q:%d\n", offset_i, offset_q);
-    }
-
-    /* waiting for user input */
-    while (1)
-    {
-        wait_ms(100);
     }
 
     /* clean up before leaving */
