@@ -89,6 +89,7 @@ int lgw_spi_open(spi_device_handle_t* spi_target_ptr, long speed)
     else
     {
         ESP_LOGD(TAG, "ERROR: SPI BUS INITIALISE FAILURE");
+        lgw_spi_close(spi_target_ptr);
         return LGW_SPI_ERROR;
     }
     //Attach the spi_target_ptr to the SPI bus
@@ -101,6 +102,7 @@ int lgw_spi_open(spi_device_handle_t* spi_target_ptr, long speed)
     else
     {
         ESP_LOGD(TAG, "ERROR: SPI DEVICE ADD FAILURE");
+        lgw_spi_close(spi_target_ptr);
         return LGW_SPI_ERROR;
     }
 }
