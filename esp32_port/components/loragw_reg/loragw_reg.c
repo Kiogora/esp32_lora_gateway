@@ -540,6 +540,7 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
     if (spi_stat != LGW_SPI_SUCCESS)
     {
         ESP_LOGE(TAG, "ERROR CONNECTING CONCENTRATOR");
+        lgw_disconnect();
         return LGW_REG_ERROR;
     }
 
@@ -551,6 +552,7 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
         if (spi_stat != LGW_SPI_SUCCESS)
         {
             ESP_LOGE(TAG, "ERROR READING VERSION REGISTER");
+            lgw_disconnect();
             return LGW_REG_ERROR;
         }
         if (check_fpga_version(u) != true)
@@ -571,6 +573,7 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
             if (x != LGW_REG_SUCCESS)
             {
                 ESP_LOGE(TAG, "ERROR CONFIGURING FPGA");
+                lgw_disconnect();
                 return LGW_REG_ERROR;
             }
         }
@@ -580,11 +583,13 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
         if (spi_stat != LGW_SPI_SUCCESS)
         {
             ESP_LOGE(TAG, "ERROR READING CHIP VERSION REGISTER");
+            lgw_disconnect();
             return LGW_REG_ERROR;
         }
         if (u != loregs[LGW_VERSION].dflt)
         {
             ESP_LOGE(TAG, "ERROR: NOT EXPECTED CHIP VERSION (v%u)", u);
+            lgw_disconnect();
             return LGW_REG_ERROR;
         }
 
@@ -593,6 +598,7 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
         if (spi_stat != LGW_SPI_SUCCESS)
         {
             ESP_LOGE(TAG, "ERROR WRITING PAGE REGISTER");
+            lgw_disconnect();
             return LGW_REG_ERROR;
         }
         else
