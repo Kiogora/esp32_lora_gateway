@@ -561,7 +561,7 @@ int loragw_cal_test(int argc, char **argv)
         }
     }
 
-    lgw_stop();
+    lgw_disconnect();
 
     printf("\nEnd of radio calibration test\n");
 
