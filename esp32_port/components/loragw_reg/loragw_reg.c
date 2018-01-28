@@ -540,7 +540,9 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
     if (spi_stat != LGW_SPI_SUCCESS)
     {
         ESP_LOGE(TAG, "ERROR CONNECTING CONCENTRATOR");
+#ifdef LOW_LEVEL_MENU_TEST
         lgw_disconnect();
+#endif
         return LGW_REG_ERROR;
     }
 
