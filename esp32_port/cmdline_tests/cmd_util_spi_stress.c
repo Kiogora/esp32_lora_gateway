@@ -289,7 +289,6 @@ int util_spi_stress(int argc, char **argv)
     if (i != LGW_REG_SUCCESS)
     {
         MSG("ERROR: lgw_disconnect() did not return SUCCESS");
-        lgw_disconnect(); //Force and try again
         return EXIT_FAILURE;
     }
 
