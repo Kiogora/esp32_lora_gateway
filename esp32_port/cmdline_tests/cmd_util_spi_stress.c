@@ -122,7 +122,8 @@ int util_spi_stress(int argc, char **argv)
         while (cycle_number<target_cycles)
         {
             printf("Cycle %i > ", cycle_number);
-            for (i=0; i<repeats_per_cycle; ++i) {
+            for (i=0; i<repeats_per_cycle; ++i) 
+            {
                 test_value = (rand() % 256);
                 lgw_reg_w(LGW_IMPLICIT_PAYLOAD_LENGHT, test_value);
                 lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
@@ -142,6 +143,7 @@ int util_spi_stress(int argc, char **argv)
                     printf(" 0x%02X", read_value);
                 }
                 printf("\n");
+                lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -181,6 +183,7 @@ int util_spi_stress(int argc, char **argv)
                     printf(" 0x%02X", read_value);
                 }
                 printf("\n");
+                lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -218,6 +221,7 @@ int util_spi_stress(int argc, char **argv)
                     printf(" 0x%08X", read_value);
                 }
                 printf("\n");
+                lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -269,6 +273,7 @@ int util_spi_stress(int argc, char **argv)
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");
+                lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
@@ -281,6 +286,7 @@ int util_spi_stress(int argc, char **argv)
     else
     {
         MSG("ERROR: invalid test number");
+        lgw_disconnect();
         return -1;
     }
 

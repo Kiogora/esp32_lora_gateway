@@ -295,6 +295,7 @@ int loragw_cal_test(int argc, char **argv)
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_CAL) {
         printf("ERROR: Version of calibration firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_CAL);
+        lgw_disconnect();
         return -1;
     }
 

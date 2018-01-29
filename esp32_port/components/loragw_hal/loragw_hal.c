@@ -794,7 +794,6 @@ int lgw_start(long speed)
     if (lgw_is_started == true)
     {
         ESP_LOGI(TAG, "Note: LoRa concentrator already started, restarting it now");
-	lgw_stop();
     }
 
     reg_stat = lgw_connect(false, rf_tx_notch_freq[rf_tx_enable[1]?1:0], speed);
@@ -843,7 +842,7 @@ int lgw_start(long speed)
         lgw_reg_w(LGW_CLK32M_EN, 1);
         i = lbt_setup();
         if (i != LGW_LBT_SUCCESS)
-	{
+	    {
             ESP_LOGE(TAG, "ERROR: lbt_setup() did not return SUCCESS");
             return LGW_HAL_ERROR;
         }

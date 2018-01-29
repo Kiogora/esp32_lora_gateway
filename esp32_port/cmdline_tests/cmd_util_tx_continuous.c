@@ -330,6 +330,7 @@ int util_tx_continuous(int argc, char **argv)
             case 500: txpkt.bandwidth = BW_500KHZ; break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
+                lgw_stop();
                 return EXIT_FAILURE;
         }
         switch (sf) 
@@ -342,6 +343,7 @@ int util_tx_continuous(int argc, char **argv)
             case 12: txpkt.datarate = DR_LORA_SF12; break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
+                lgw_stop();
                 return EXIT_FAILURE;
         }
     }
