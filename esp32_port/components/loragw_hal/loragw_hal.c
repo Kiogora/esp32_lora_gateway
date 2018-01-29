@@ -800,6 +800,7 @@ int lgw_start(long speed)
     if (reg_stat == LGW_REG_ERROR)
     {
         ESP_LOGE(TAG, "ERROR: FAIL TO CONNECT BOARD\n");
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 
@@ -823,12 +824,14 @@ int lgw_start(long speed)
     if (err != 0)
     {
         ESP_LOGE(TAG, "ERROR: Failed to setup sx125x radio for RF chain 0");
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
     err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
     if (err != 0)
     {
         ESP_LOGE(TAG, "ERROR: Failed to setup sx125x radio for RF chain 0");
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 
@@ -844,6 +847,7 @@ int lgw_start(long speed)
         if (i != LGW_LBT_SUCCESS)
 	    {
             ESP_LOGE(TAG, "ERROR: lbt_setup() did not return SUCCESS");
+            lgw_stop();
             return LGW_HAL_ERROR;
         }
 
@@ -853,6 +857,7 @@ int lgw_start(long speed)
         if (i != LGW_LBT_SUCCESS)
 	{
             ESP_LOGE(TAG, "ERROR: lbt_start() did not return SUCCESS");
+            lgw_stop();
             return LGW_HAL_ERROR;
         }
     }
@@ -906,6 +911,7 @@ int lgw_start(long speed)
     if (fw_version != FW_VERSION_CAL)
     {
         ESP_LOGE(TAG, "ERROR: Version of calibration firmware not expected, actual:%d expected:%d", fw_version, FW_VERSION_CAL);
+        lgw_stop();
         return -1;
     }
 
@@ -933,6 +939,7 @@ int lgw_start(long speed)
     if ((cal_status & 0x81) != 0x81)
     {
         ESP_LOGE(TAG, "ERROR: CALIBRATION FAILURE (STATUS = %u)", cal_status);
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
     else 
@@ -988,6 +995,7 @@ int lgw_start(long speed)
     if (rf_rx_freq[0] == 0)
     {
         ESP_LOGE(TAG, "ERROR: wrong configuration, rf_rx_freq[0] is not set");
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 
@@ -1047,6 +1055,7 @@ int lgw_start(long speed)
             case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW, 2); break;
             default:
                 ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", lora_rx_bw);
+                lgw_stop();
                 return LGW_HAL_ERROR;
         }
         switch(lora_rx_sf)
@@ -1059,6 +1068,7 @@ int lgw_start(long speed)
             case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF, 12); break;
             default:
                 ESP_LOGE(TAG, "ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT", lora_rx_sf);
+                lgw_stop();
                 return LGW_HAL_ERROR;
         }
         lgw_reg_w(LGW_MBWSSF_PPM_OFFSET, lora_rx_ppm_offset); /* default 0 */
@@ -1109,6 +1119,7 @@ int lgw_start(long speed)
     if (fw_version != FW_VERSION_AGC)
     {
         ESP_LOGE(TAG, "ERROR: Version of AGC firmware not expected, actual:%d expected:%d", fw_version, FW_VERSION_AGC);
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
     lgw_reg_w(LGW_DBG_ARB_MCU_RAM_ADDR, FW_VERSION_ADDR);
@@ -1117,6 +1128,7 @@ int lgw_start(long speed)
     if (fw_version != FW_VERSION_ARB)
     {
         ESP_LOGE(TAG, "ERROR: Version of arbiter firmware not expected, actual:%d expected:%d", fw_version, FW_VERSION_ARB);
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 
@@ -1127,6 +1139,7 @@ int lgw_start(long speed)
     if (read_val != 0x10)
     {
         ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 
@@ -1142,6 +1155,7 @@ int lgw_start(long speed)
         if (read_val != (0x30 + i))
 	{
             ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
+            lgw_stop();
             return LGW_HAL_ERROR;
         }
     }
@@ -1157,6 +1171,7 @@ int lgw_start(long speed)
         if (read_val != 0x30)
 	{
             ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
+            lgw_stop();
             return LGW_HAL_ERROR;
         }
     }
@@ -1170,6 +1185,7 @@ int lgw_start(long speed)
     if (read_val != 0x33)
     {
         ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 
@@ -1182,6 +1198,7 @@ int lgw_start(long speed)
     if (read_val != 0x30)
     {
         ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 
@@ -1195,6 +1212,7 @@ int lgw_start(long speed)
     if (read_val != 0x40)
     {
         ESP_LOGE(TAG, "ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X", (uint8_t)read_val);
+        lgw_stop();
         return LGW_HAL_ERROR;
     }
 

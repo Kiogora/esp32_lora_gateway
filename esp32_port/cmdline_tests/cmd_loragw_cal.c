@@ -293,14 +293,16 @@ int loragw_cal_test(int argc, char **argv)
     lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
     lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
     fw_version = (uint8_t)read_val;
-    if (fw_version != FW_VERSION_CAL) {
+    if (fw_version != FW_VERSION_CAL)
+    {
         printf("ERROR: Version of calibration firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_CAL);
         lgw_disconnect();
         return -1;
     }
 
     /* Run Rx A IQ mismatch calibration only */
-    for (i=0; i<nb_cal; i++) {
+    for (i=0; i<nb_cal; i++)
+    {
         cal_status = sx125x_cal(cal_cmd | 0x01, &cal_res[i]);
         x = read_capture(sig_i, sig_q, RAM_SIZE);
         /*
@@ -317,7 +319,8 @@ int loragw_cal_test(int argc, char **argv)
 
     /* Run Rx B IQ mismatch calibation only */
     printf("\n");
-    for (i=0; i<nb_cal; i++) {
+    for (i=0; i<nb_cal; i++)
+    {
         cal_status = sx125x_cal(cal_cmd | 0x02, &cal_res[i]);
         x = read_capture(sig_i, sig_q, RAM_SIZE);
         img_rej_b[i] = get_img_rej(sig_i, sig_q, RAM_SIZE, FREQ_SIG_NORM);
