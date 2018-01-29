@@ -56,7 +56,10 @@
                 "${workspaceRoot}/components/loragw_radio/include",
                 "${workspaceRoot}/components/loragw_spi/include",
                 "${workspaceRoot}/components/loragw_lbt/include",
-                "${workspaceRoot}/components/loragw_fpga/include"
+                "${workspaceRoot}/components/loragw_fpga/include",
+                "/home/alois/Documents/esp-idf/esp-idf/components/idf_test/include",
+                "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/components/unity/include",
+                "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/build/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -71,7 +74,9 @@
                     "/usr/include/x86_64-linux-gnu",
                     "/usr/include",
                     "${workspaceRoot}",
-                    "/home/alois/Documents/esp-idf/esp-idf/components"
+                    "/home/alois/Documents/esp-idf/esp-idf/components",
+                    "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/build",
+                    "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/components"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""

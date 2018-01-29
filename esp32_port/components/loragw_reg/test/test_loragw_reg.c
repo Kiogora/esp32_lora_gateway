@@ -14,8 +14,6 @@ Maintainer: Sylvain Miermont
 Modified for ESP32 by: Alois Mbutura.
 */
 
-static const char* TAG = "test_loragw_reg"
-
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
@@ -37,6 +35,8 @@ static const char* TAG = "test_loragw_reg"
 
 #include "loragw_reg.h"
 
+
+static const char* TAG = "test_loragw_reg";
 
 #define SPI_SPEED 10000000
 

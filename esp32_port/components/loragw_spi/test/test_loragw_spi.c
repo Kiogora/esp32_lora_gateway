@@ -75,11 +75,11 @@ TEST_CASE("loragw_spi", "[loragw_spi]")
     /* normal R/W test */
     for (i = 0; i < TIMING_REPEAT; ++i)
     {
-        lgw_spi_w(&concentrator, spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0x5A, 0x96);
+        lgw_spi_w(&concentrator, spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0xAA, 0x96);
     }
     for (i = 0; i < TIMING_REPEAT; ++i)
     {
-        lgw_spi_r(&concentrator, spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0x5A, &data);
+        lgw_spi_r(&concentrator, spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0x55  , &data);
     }
     /* burst R/W test, small bursts << LGW_BURST_CHUNK */
 
@@ -107,7 +107,7 @@ TEST_CASE("loragw_spi", "[loragw_spi]")
     
     /* last read (blocking), just to be sure no to quit before the FTDI buffer is flushed */
     
-    lgw_spi_r(spi_target, spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0x55, &data);
+    lgw_spi_r(&concentrator, spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0x55, &data);
     printf("data received (simple read): %d\n",data);
     
     lgw_spi_close(&concentrator);
