@@ -59,7 +59,9 @@
                 "${workspaceRoot}/components/loragw_fpga/include",
                 "/home/alois/Documents/esp-idf/esp-idf/components/idf_test/include",
                 "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/components/unity/include",
-                "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/build/include"
+                "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/build/include",
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip",
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip/port"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",

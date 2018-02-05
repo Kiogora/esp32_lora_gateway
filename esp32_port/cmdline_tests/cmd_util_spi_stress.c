@@ -40,7 +40,7 @@ Maintainer: Sylvain Miermont
 
 #define MSG(args...)    fprintf(stderr, args) /* message that is destined to the user */
 
-#define SPI_SPEED 8000000
+#define SPI_SPEED 10000000
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -91,19 +91,28 @@ int util_spi_stress(int argc, char **argv)
         MSG("ERROR: invalid test number\n");
         return EXIT_FAILURE;
     }
-    else 
+    else
     {
         test_number = (uint8_t)(spi_stress_args.t->ival[0]);;
     }
     
-    if(spi_stress_args.n->count != 1 || ((unsigned int)(spi_stress_args.n->ival[0]) > NB_STRESS_MAX)|| ((unsigned int)(spi_stress_args.n->ival[0]) < 1))
+    if(spi_stress_args.n->count != 1 ||((unsigned int)(spi_stress_args.n->ival[0]) < 1))
     {
-        printf("ERROR: invalid number of R/W cycles (MAX %d)\n",NB_STRESS_MAX);
+        printf("ERROR: invalid number of R/W cycles (MIN 1)\n");
         return 1;
     }
     else
     {
         target_cycles=spi_stress_args.n->ival[0];
+
+        if(target_cycles>NB_STRESS_MAX)
+        {
+            printf("Setting up infinite R/W test for long operation tests, usually ~24hrs");
+        }
+        else
+        {
+            printf("Setting up a test to run for %d R/W cycles", target_cycles);
+        }
     }
 
     MSG("INFO: Starting LoRa concentrator SPI stress-test number %i\n", test_number);
@@ -119,7 +128,7 @@ int util_spi_stress(int argc, char **argv)
     if (test_number == 1)
     {
         /* single 8b register R/W stress test */
-        while (cycle_number<target_cycles)
+        while (target_cycles>NB_STRESS_MAX ? 1:(cycle_number<target_cycles))
         {
             printf("Cycle %i > ", cycle_number);
             for (i=0; i<repeats_per_cycle; ++i) 
@@ -156,7 +165,7 @@ int util_spi_stress(int argc, char **argv)
     else if (test_number == 2)
     {
         /* single 8b register R/W with interstitial VERSION check stress test */
-        while (cycle_number<target_cycles)
+        while (target_cycles>NB_STRESS_MAX ? 1:(cycle_number<target_cycles))
         {
             printf("Cycle %i > ", cycle_number);
             for (i=0; i<repeats_per_cycle; ++i)
@@ -196,7 +205,7 @@ int util_spi_stress(int argc, char **argv)
     else if (test_number == 3)
     {
         /* 32b register R/W stress test */
-        while (cycle_number<target_cycles)
+        while (target_cycles>NB_STRESS_MAX ? 1:(cycle_number<target_cycles))
         {
             printf("Cycle %i > ", cycle_number);
             for (i=0; i<repeats_per_cycle; ++i)
@@ -234,7 +243,7 @@ int util_spi_stress(int argc, char **argv)
     else if (test_number == 4)
     {
         /* databuffer R/W stress test */
-        while (cycle_number<target_cycles)
+        while (target_cycles>NB_STRESS_MAX ? 1:(cycle_number<target_cycles))
         {
             for (i=0; i<BUFF_SIZE; ++i)
             {

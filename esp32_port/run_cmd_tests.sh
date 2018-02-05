@@ -1,4 +1,4 @@
-#!/bin/bash
+x    nnnn    #!/bin/bash
 
 #Set preconfigured sdkconfig as working sdkconfig.
 cp sdkconfig.cmdline sdkconfig

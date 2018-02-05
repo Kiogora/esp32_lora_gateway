@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "mutex": "c",
+        "*.ipp": "c"
+    }
+}
