@@ -61,7 +61,12 @@
                 "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/components/unity/include",
                 "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/build/include",
                 "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip",
-                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip/port"
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip/port",
+                "${workspaceRoot}/components/base64/include",
+                "${workspaceRoot}/components/jitqueue/include",
+                "${workspaceRoot}/components/timersync/include",
+                "${workspaceRoot}/components/parson/include",
+                "${workspaceRoot}/components/trace/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
