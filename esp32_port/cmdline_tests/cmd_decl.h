@@ -22,3 +22,6 @@ void register_loragw_lbt();
 
 //Register LoRagw_tx continuous functions
 void register_tx_continuous();
+
+//Register parson Json parser test
+void register_parson_test();

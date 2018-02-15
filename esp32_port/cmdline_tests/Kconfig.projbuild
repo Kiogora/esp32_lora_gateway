@@ -1,4 +1,4 @@
-menu "Example Configuration"
+menu "**Command-line Configuration**"
 
 config STORE_HISTORY
     bool "Store command history in flash"

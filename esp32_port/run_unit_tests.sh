@@ -5,4 +5,7 @@
 #Compile and flash using the ESP-IDF unit-test-app residing on the system. Add project components.
 
 project_dir=$(pwd)
-make  -j4 -C ${IDF_PATH}/tools/unit-test-app menuconfig flash monitor EXTRA_COMPONENT_DIRS=$project_dir/components TEST_COMPONENTS='loragw_spi loragw_reg ttn_connector'
+#Must read the extra component directories before running menuconfig in order to load configuration.
+cd ${IDF_PATH}/tools/unit-test-app
+make EXTRA_COMPONENT_DIRS=${project_dir}/components menuconfig flash monitor TEST_COMPONENTS='loragw_spi loragw_reg parson_test'
+cd ${project_dir}

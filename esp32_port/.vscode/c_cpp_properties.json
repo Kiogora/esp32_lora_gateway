@@ -66,7 +66,8 @@
                 "${workspaceRoot}/components/jitqueue/include",
                 "${workspaceRoot}/components/timersync/include",
                 "${workspaceRoot}/components/parson/include",
-                "${workspaceRoot}/components/trace/include"
+                "${workspaceRoot}/components/trace/include",
+                "/home/alois/Documents/esp-idf/esp-idf/components/spiffs/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
