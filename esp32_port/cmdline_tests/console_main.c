@@ -36,13 +36,13 @@ static void initialize_filesystem()
     static wl_handle_t wl_handle;
     const esp_vfs_fat_mount_config_t mount_config=
     {
-            .max_files = 7,
+            .max_files = 2,
             .format_if_mount_failed = true
     };
     esp_err_t err = esp_vfs_fat_spiflash_mount(MOUNT_PATH, "storage", &mount_config, &wl_handle);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to mount FATFS (0x%x)", err);
+        ESP_LOGE(TAG, "Failed to fmount FATFS (0x%x)", err);
         return;
     }
 }
