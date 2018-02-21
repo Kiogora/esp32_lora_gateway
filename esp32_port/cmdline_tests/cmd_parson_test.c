@@ -24,6 +24,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#include "esp_heap_trace.h"
+
 #include "parson.h"
 
 #include <stdio.h>
@@ -58,6 +60,7 @@
 #include "cmd_decl.h"
 #include "esp_partition.h"
 
+#define NUM_RECORDS 100
 
 #define TEST(A) printf("%d %-72s-", __LINE__, #A);\
                 if(A){puts(" OK");tests_passed++;}\
@@ -98,44 +101,48 @@ static char * read_file(const char * filename);
 static int tests_passed;
 static int tests_failed;
 
-int parson_test(int argc, char **argv)
-{
-    /* Example functions from readme file:      */
-    /* print_commits_info("torvalds", "linux"); */
-    /* serialization_example(); */
-    /* persistence_example(); */
+int freedom=0;
+
+static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in internal RAM
+
+int parson_test(int argc, char **argv) {
+
+    ESP_ERROR_CHECK( heap_trace_init_standalone(trace_record, NUM_RECORDS) );
     printf("\r\n\n");
     printf("====MOUNTING SPIFFS====\r\n");
-/*
-    esp_vfs_spiffs_conf_t conf = 
-    {
-      .base_path = "/spiffs",
-      .partition_label = spiffs_partition_label,
-      .max_files = 8,
-      .format_if_mount_failed = false
-    };
-*/
     vfs_spiffs_register();
     printf("\r\n\n");
-
-    if (/*esp_vfs_spiffs_register(&conf)==ESP_OK*/spiffs_is_mounted)
+    int freedom=xPortGetFreeHeapSize();
+    if (spiffs_is_mounted)
     {
-        json_set_allocation_functions(counted_malloc, counted_free);
-        test_suite_1();
-        test_suite_2_no_comments();
-        test_suite_2_with_comments();
-        test_suite_3();
-        test_suite_4();
-        test_suite_5();
-        test_suite_6();
-        test_suite_7();
-        test_suite_8();
-        test_suite_9();
-        test_suite_10();
-        printf("Tests failed: %d\n", tests_failed);
-        printf("Tests passed: %d\n", tests_passed);
-        //vfs_spiffs_unregister(spiffs_partition_label);
-        return 0;
+    printf("Free heap is: %d\n", freedom);
+    while(1)
+    {
+	/* Example functions from readme file:      */
+	/* print_commits_info("torvalds", "linux"); */
+	/* serialization_example(); */
+	/* persistence_example(); */
+	json_set_allocation_functions(counted_malloc, counted_free);
+    //ESP_ERROR_CHECK( heap_trace_start(HEAP_TRACE_LEAKS) );
+	test_suite_1();
+	test_suite_2_no_comments();
+    //ESP_ERROR_CHECK( heap_trace_stop() );
+    //heap_trace_dump();
+	test_suite_2_with_comments();
+	test_suite_3();
+	test_suite_4();
+	//test_suite_5();
+	//test_suite_6();
+	//test_suite_7();
+	//test_suite_8();
+	//test_suite_9();
+	//test_suite_10();
+    freedom=xPortGetFreeHeapSize();
+    printf("Free heap is: %d\n", freedom);
+    }
+	printf("Tests failed: %d\n", tests_failed);
+	printf("Tests passed: %d\n", tests_passed);
+    return 0;
     }
     else
     {
@@ -151,8 +158,8 @@ void test_suite_1(void) {
     TEST(json_value_equals(json_parse_string(json_serialize_to_string_pretty(val)), val));
     if (val) { json_value_free(val); }
 
-//    TEST((val = json_parse_file("/spiffs/test_1_2.txt")) == NULL); /* Over 2048 levels of nesting */
-//    if (val) { json_value_free(val); }
+    //TEST((val = json_parse_file("/spiffs/test_1_2.txt")) == NULL); /* Over 2048 levels of nesting */
+    //if (val) { json_value_free(val); }
 
     TEST((val = json_parse_file("/spiffs/test_1_3.txt")) != NULL);
     TEST(json_value_equals(json_parse_string(json_serialize_to_string(val)), val));
@@ -165,7 +172,7 @@ void test_suite_1(void) {
     if (val) { json_value_free(val); }
 
     //TEST((val = json_parse_file_with_comments("/spiffs/test_1_2.txt")) == NULL); /* Over 2048 levels of nesting */
-    //	if (val) { json_value_free(val); }
+    //if (val) { json_value_free(val); }
 
     TEST((val = json_parse_file_with_comments("/spiffs/test_1_3.txt")) != NULL);
     TEST(json_value_equals(json_parse_string(json_serialize_to_string(val)), val));
@@ -589,6 +596,7 @@ void test_suite_10(void) {
     val = json_parse_file("/spiffs/test_2.txt");
     serialized = json_serialize_to_string_pretty(val);
     json_free_serialized_string(serialized);
+    freedom=xPortGetFreeHeapSize();
     json_value_free(val);
 
     val = json_parse_file("/spiffs/test_2_pretty.txt");

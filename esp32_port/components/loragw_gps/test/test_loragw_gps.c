@@ -5,10 +5,8 @@
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
   (C)2013 Semtech-Cycleo
-
 Description:
     Minimum test program for the loragw_gps 'library'
-
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Michael Coracin
 */
@@ -17,25 +15,34 @@ Maintainer: Michael Coracin
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-/* fix an issue between POSIX and C99 */
-#if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
-#include <stdint.h>     /* C99 types */
-#include <stdbool.h>    /* bool type */
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_system.h"
+#include "esp_log.h"
+#include "driver/uart.h"
+#include "soc/uart_struct.h"
+#include "string.h"
+#include <time.h>       /* struct timespec */
+#include <math.h>       /* modf */
 #include <stdio.h>      /* printf */
-#include <string.h>     /* memset */
-#include <signal.h>     /* sigaction */
 #include <stdlib.h>     /* exit */
-#include <unistd.h>     /* read */
+
+#include <stdint.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <time.h>
+#include "unity.h"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "esp_partition.h"
+#include "esp_log.h"
 
 #include "loragw_hal.h"
 #include "loragw_gps.h"
 #include "loragw_aux.h"
-#include "config.h"
 
 #ifndef SPI_SPEED
 #define SPI_SPEED 8000000
@@ -43,30 +50,16 @@ Maintainer: Michael Coracin
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
 struct tref ppm_ref;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-static void sig_handler(int sigio);
 static void gps_process_sync(void);
 static void gps_process_coords(void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
 static void gps_process_sync(void) {
     /* variables for PPM pulse GPS synchronization */
     uint32_t ppm_tstamp;
@@ -136,10 +129,8 @@ static void gps_process_coords(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main()
+TEST_CASE("loragw_gps", "[loragw_gps]")
 {
-    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-
     int i;
 
     /* concentrator variables */
@@ -154,20 +145,12 @@ int main()
     /* NMEA/UBX variables */
     enum gps_msg latest_msg; /* keep track of latest NMEA/UBX message parsed */
 
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
-
     /* Intro message and library information */
     printf("Beginning of test for loragw_gps.c\n");
     printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 
     /* Open and configure GPS */
-    i = lgw_gps_enable("/dev/ttyAMA0", "ubx7", 0, &gps_tty_dev);
+    i = lgw_gps_enable("ubx7", 0, &gps_tty_dev);
     if (i != LGW_GPS_SUCCESS) {
         printf("ERROR: IMPOSSIBLE TO ENABLE GPS\n");
         exit(EXIT_FAILURE);
@@ -196,12 +179,12 @@ int main()
     memset(&ppm_ref, 0, sizeof ppm_ref);
 
     /* loop until user action */
-    while ((quit_sig != 1) && (exit_sig != 1)) {
+    while (1) {
         size_t rd_idx = 0;
         size_t frame_end_idx = 0;
 
-        /* blocking non-canonical read on serial port */
-        ssize_t nb_char = read(gps_tty_dev, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
+        /* blocking non-canonical read on serial port-1s timeout*/
+        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 1000 / portTICK_RATE_MS);
         if (nb_char <= 0) {
             printf("WARNING: [gps] read() returned value %d\n", nb_char);
             continue;
@@ -279,13 +262,7 @@ int main()
             wr_idx -= LGW_GPS_MIN_MSG_SIZE;
         }
     }
-
-    /* clean up before leaving */
-    if (exit_sig == 1) {
-        lgw_gps_disable(gps_tty_dev);
-        lgw_stop();
-    }
-
+    //Unreachable dead code
     printf("\nEnd of test for loragw_gps.c\n");
     exit(EXIT_SUCCESS);
 }

@@ -22,13 +22,8 @@ Maintainer: Michael Coracin
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#define _GNU_SOURCE
 #include <stdint.h>     /* C99 types */
 #include <time.h>       /* time library */
-#include <termios.h>    /* speed_t */
-#include <unistd.h>     /* ssize_t */
-
-#include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
@@ -41,7 +36,7 @@ struct tref {
     time_t          systime;    /*!> system time when solution was calculated */
     uint32_t        count_us;   /*!> reference concentrator internal timestamp */
     struct timespec utc;        /*!> reference UTC time (from GPS/NMEA) */
-    struct timespec gps;        /*!> reference GPS time (since 01.Jan.1980) */
+    struct timespec gps;        /*!> reference GPS time (since 01.Jan.1980) => 06.Jan.1980 or 01.Jan?????*/
     double          xtal_err;   /*!> raw clock error (eg. <1 'slow' XTAL) */
 };
 
@@ -99,13 +94,12 @@ enum gps_msg {
 /**
 @brief Configure a GPS module
 
-@param tty_path path to the TTY connected to the GPS
 @param gps_familly parameter (eg. ubx6 for uBlox gen.6)
 @param target_brate target baudrate for communication (0 keeps default target baudrate)
 @param fd_ptr pointer to a variable to receive file descriptor on GPS tty
 @return success if the function was able to connect and configure a GPS module
 */
-int lgw_gps_enable(char* tty_path, char* gps_familly, speed_t target_brate, int* fd_ptr);
+int lgw_gps_enable(char* gps_familly, int target_brate, int* fd_ptr);
 
 /**
 @brief Restore GPS serial configuration and close serial device

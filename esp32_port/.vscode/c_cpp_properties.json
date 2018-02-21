@@ -67,7 +67,8 @@
                 "${workspaceRoot}/components/timersync/include",
                 "${workspaceRoot}/components/parson/include",
                 "${workspaceRoot}/components/trace/include",
-                "/home/alois/Documents/esp-idf/esp-idf/components/spiffs/include"
+                "/home/alois/Documents/esp-idf/esp-idf/components/spiffs/include",
+                "${workspaceRoot}/components/loragw_gps/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
