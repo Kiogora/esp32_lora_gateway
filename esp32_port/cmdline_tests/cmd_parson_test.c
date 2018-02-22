@@ -24,8 +24,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include "esp_heap_trace.h"
-
 #include "parson.h"
 
 #include <stdio.h>
@@ -59,8 +57,6 @@
 #include "argtable3/argtable3.h"
 #include "cmd_decl.h"
 #include "esp_partition.h"
-
-#define NUM_RECORDS 100
 
 #define TEST(A) printf("%d %-72s-", __LINE__, #A);\
                 if(A){puts(" OK");tests_passed++;}\
@@ -101,48 +97,34 @@ static char * read_file(const char * filename);
 static int tests_passed;
 static int tests_failed;
 
-int freedom=0;
+int parson_test(int argc, char **argv)
+{
 
-static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in internal RAM
-
-int parson_test(int argc, char **argv) {
-
-    ESP_ERROR_CHECK( heap_trace_init_standalone(trace_record, NUM_RECORDS) );
     printf("\r\n\n");
     printf("====MOUNTING SPIFFS====\r\n");
     vfs_spiffs_register();
     printf("\r\n\n");
-    int freedom=xPortGetFreeHeapSize();
     if (spiffs_is_mounted)
-    {
-    printf("Free heap is: %d\n", freedom);
-    while(1)
     {
 	/* Example functions from readme file:      */
 	/* print_commits_info("torvalds", "linux"); */
 	/* serialization_example(); */
 	/* persistence_example(); */
 	json_set_allocation_functions(counted_malloc, counted_free);
-    //ESP_ERROR_CHECK( heap_trace_start(HEAP_TRACE_LEAKS) );
 	test_suite_1();
 	test_suite_2_no_comments();
-    //ESP_ERROR_CHECK( heap_trace_stop() );
-    //heap_trace_dump();
 	test_suite_2_with_comments();
 	test_suite_3();
 	test_suite_4();
-	//test_suite_5();
-	//test_suite_6();
-	//test_suite_7();
-	//test_suite_8();
-	//test_suite_9();
-	//test_suite_10();
-    freedom=xPortGetFreeHeapSize();
-    printf("Free heap is: %d\n", freedom);
-    }
+	test_suite_5();
+	test_suite_6();
+	test_suite_7();
+	test_suite_8();
+	test_suite_9();
+	test_suite_10();
 	printf("Tests failed: %d\n", tests_failed);
 	printf("Tests passed: %d\n", tests_passed);
-    return 0;
+        return 0;
     }
     else
     {
@@ -596,7 +578,6 @@ void test_suite_10(void) {
     val = json_parse_file("/spiffs/test_2.txt");
     serialized = json_serialize_to_string_pretty(val);
     json_free_serialized_string(serialized);
-    freedom=xPortGetFreeHeapSize();
     json_value_free(val);
 
     val = json_parse_file("/spiffs/test_2_pretty.txt");

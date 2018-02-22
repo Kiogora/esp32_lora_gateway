@@ -62,8 +62,7 @@ char* TAG = "loragw_gps"
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 /* result of the NMEA parsing */
-;extern long timezone;
-static short gps_yea = 0; /* year (2 or 4 digits) */
+;static short gps_yea = 0; /* year (2 or 4 digits) */
 static short gps_mon = 0; /* month (1-12) */
 static short gps_day = 0; /* day of the month (1-31) */
 static short gps_hou = 0; /* hours (0-23) */
@@ -279,6 +278,10 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx)
 
 int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
 {
+    //Applicable to Ublox 7 and 8 GNSS modules
+    //Send rate on each event to serial port 1 and 2. Disable all other I/O ports,
+    //Note that I/O Ports 1 and 2 correspond to serial ports 1 and 2. I/O port 0 is DDC. I/O port 3 is USB. 
+    //I/O port 4 is SPI. I/O port 5 is reserved for future use.
     uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN]=
     {
                     0xB5, 0x62, /* UBX Sync Chars */
@@ -289,7 +292,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
     };
     size_t num_written;
 
-    // We won't use a buffer for sending data.
+    // We won't use user buffer for TX, we shall use the serial port's buffer.
     
     //esp_err_t uart_driver_install(uart_port_t uart_num, int rx_buffer_size, int tx_buffer_size, int queue_size, QueueHandle_t *uart_queue, int intr_alloc_flags)
 
@@ -658,7 +661,7 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
         x.tm_hour = gps_hou;
         x.tm_min = gps_min;
         x.tm_sec = gps_sec;
-        y = mktime(&x) - timezone; /* need to substract timezone bc mktime assumes time vector is local time */
+        y = mktime(&x); /* need to substract timezone bc mktime assumes time vector is local time */
         if (y == (time_t)(-1))
         {
             DEBUG_MSG("ERROR: FAILED TO CONVERT BROKEN-DOWN TIME\n");
