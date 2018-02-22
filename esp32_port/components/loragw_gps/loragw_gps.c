@@ -290,6 +290,15 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
                     0x01, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NAV-TIMEGPS output on serial */
                     0x32, 0x94  /* Checksum */
     };
+
+    uint8_t nmea_cmd_rmc[UBX_MSG_NAVTIMEGPS_LEN]=
+    {
+                    0xB5, 0x62, /* UBX Sync Chars */
+                    0x06, 0x01, /* CFG-MSG Class/ID */
+                    0x08, 0x00, /* Payload length */
+                    0xf0, 0x04, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, /* Enable NMEA-RMC sentences output on serial */
+                    0x05, 0x48  /* Checksum */
+    };
     size_t num_written;
 
     // We won't use user buffer for TX, we shall use the serial port's buffer.
