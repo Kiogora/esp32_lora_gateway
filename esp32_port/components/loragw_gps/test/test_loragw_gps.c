@@ -17,6 +17,7 @@ Maintainer: Michael Coracin
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "driver/uart.h"
@@ -40,6 +41,13 @@ Maintainer: Michael Coracin
 #include "esp_partition.h"
 #include "esp_log.h"
 
+#include "esp_wifi.h"
+#include "esp_event_loop.h"
+#include "esp_attr.h"
+
+#include "lwip/err.h"
+#include "apps/sntp/sntp.h"
+
 #include "loragw_hal.h"
 #include "loragw_gps.h"
 #include "loragw_aux.h"
@@ -48,19 +56,34 @@ Maintainer: Michael Coracin
 #define SPI_SPEED 8000000
 #endif
 
+#define EXAMPLE_WIFI_SSID "EED Sky"
+#define EXAMPLE_WIFI_PASS "20150815"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 struct tref ppm_ref;
+/* FreeRTOS event group to signal when we are connected & ready to make a request */
+static EventGroupHandle_t wifi_event_group;
+
+/* The event group allows multiple bits for each event,
+   but we only care about one event - are we connected
+   to the AP with an IP? */
+const int CONNECTED_BIT = BIT0;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 static void gps_process_sync(void);
 static void gps_process_coords(void);
+static void obtain_time(void);
+static void initialize_sntp(void);
+static void initialise_wifi(void);
+static esp_err_t event_handler(void *ctx, system_event_t *event);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-static void gps_process_sync(void) {
+static void gps_process_sync(void)
+{
     /* variables for PPM pulse GPS synchronization */
     uint32_t ppm_tstamp;
     struct timespec ppm_gps;
@@ -113,7 +136,8 @@ static void gps_process_sync(void) {
     printf("    Converted back: %u ==> %dµs\n", z, (int32_t)(z-x));
 }
 
-static void gps_process_coords(void) {
+static void gps_process_coords(void)
+{
     /* position variable */
     struct coord_s coord;
     struct coord_s gpserr;
@@ -126,11 +150,103 @@ static void gps_process_coords(void) {
     }
 }
 
+static void obtain_time(void)
+{
+    ESP_ERROR_CHECK( nvs_flash_init() );
+    initialise_wifi();
+    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+                        false, true, portMAX_DELAY);
+    initialize_sntp();
+
+    // wait for time to be set
+    time_t now = 0;
+    struct tm timeinfo = { 0 };
+    int retry = 0;
+    const int retry_count = 10;
+    while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
+        printf("Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        time(&now);
+        localtime_r(&now, &timeinfo);
+    }
+
+    ESP_ERROR_CHECK( esp_wifi_stop() );
+}
+
+static void initialize_sntp(void)
+{
+    printf("Initializing SNTP");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+}
+
+static void initialise_wifi(void)
+{
+    tcpip_adapter_init();
+    wifi_event_group = xEventGroupCreate();
+    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = EXAMPLE_WIFI_SSID,
+            .password = EXAMPLE_WIFI_PASS,
+        },
+    };
+    printf("Setting WiFi configuration SSID %s...", wifi_config.sta.ssid);
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
+}
+
+static esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+    switch(event->event_id) {
+    case SYSTEM_EVENT_STA_START:
+        esp_wifi_connect();
+        break;
+    case SYSTEM_EVENT_STA_GOT_IP:
+        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        /* This is a workaround as ESP32 WiFi libs don't currently
+           auto-reassociate. */
+        esp_wifi_connect();
+        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
 TEST_CASE("loragw_gps", "[loragw_gps]")
 {
+
+    time_t now;
+    struct tm timeinfo;
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    // Is time set? If not, tm_year will be (1970 - 1900).
+    if (timeinfo.tm_year < (2016 - 1900)) {
+        printf("Time is not set yet. Connecting to WiFi and getting time over NTP.");
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now);
+    }
+    char strftime_buf[64];
+
+    // Set UTC
+    tzset();
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    printf("The current date/time in UTC+0:00 is: %s", strftime_buf);
+
     int i;
 
     /* concentrator variables */
@@ -146,7 +262,7 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
     enum gps_msg latest_msg; /* keep track of latest NMEA/UBX message parsed */
 
     /* Intro message and library information */
-    printf("Beginning of test for loragw_gps.c\n");
+    printf("\nBeginning of test for loragw_gps.c\n");
     printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 
     /* Open and configure GPS */
@@ -168,6 +284,7 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
     rfconf.enable = true;
     rfconf.freq_hz = 868000000;
     rfconf.rssi_offset = 0.0;
+    rfconf.tx_notch_freq = 129000U;
     rfconf.type = LGW_RADIO_TYPE_SX1257;
     rfconf.tx_enable = true;
     lgw_rxrf_setconf(0, rfconf);
@@ -184,10 +301,15 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
         size_t frame_end_idx = 0;
 
         /* blocking non-canonical read on serial port-1s timeout*/
-        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 1000 / portTICK_RATE_MS);
-        if (nb_char <= 0) {
-            printf("WARNING: [gps] read() returned value %d\n", nb_char);
+        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 200 / portTICK_RATE_MS);
+        if (nb_char == 0)
+        {
+            printf("WARNING: [gps] uart_read_bytes() returned value %d bytes\n", nb_char);
             continue;
+        }
+        else if (nb_char == -1) {
+            printf("ERROR: uart_read_bytes() returned error value %d\n", nb_char);
+            break;
         }
         wr_idx += (size_t)nb_char;
 
@@ -266,5 +388,7 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
     printf("\nEnd of test for loragw_gps.c\n");
     exit(EXIT_SUCCESS);
 }
+
+
 
 /* --- EOF ------------------------------------------------------------------ */

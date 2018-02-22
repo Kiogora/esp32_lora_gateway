@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "mqttclient.h": "c",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "array": "c"
     },
     "C_Cpp.intelliSenseEngineFallback": "Enabled",
     "C_Cpp.errorSquiggles": "Disabled"
