@@ -56,7 +56,7 @@ char* TAG = "loragw_gps"
 #define MINUS_10PPM         0.99999
 #define DEFAULT_BAUDRATE    9600
 
-#define UBX_MSG_NAVTIMEGPS_LEN  16
+#define UBX_MSG_LEN  16
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -282,7 +282,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
     //Send rate on each event to serial port 1 and 2. Disable all other I/O ports,
     //Note that I/O Ports 1 and 2 correspond to serial ports 1 and 2. I/O port 0 is DDC. I/O port 3 is USB. 
     //I/O port 4 is SPI. I/O port 5 is reserved for future use.
-    uint8_t ubx_cmd_timegps[UBX_MSG_NAVTIMEGPS_LEN]=
+    uint8_t ubx_cmd_timegps[UBX_MSG_LEN]=
     {
                     0xB5, 0x62, /* UBX Sync Chars */
                     0x06, 0x01, /* CFG-MSG Class/ID */
@@ -291,7 +291,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
                     0x32, 0x94  /* Checksum */
     };
 
-    uint8_t nmea_cmd_rmc[UBX_MSG_NAVTIMEGPS_LEN]=
+    uint8_t nmea_cmd_rmc[UBX_MSG_LEN]=
     {
                     0xB5, 0x62, /* UBX Sync Chars */
                     0x06, 0x01, /* CFG-MSG Class/ID */
@@ -350,13 +350,20 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
 
     /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
     /* This is a binary message, serial port has to be properly configured to handle this */
-    num_written = uart_write_bytes(gps_tty_dev, (char*)ubx_cmd_timegps, UBX_MSG_NAVTIMEGPS_LEN);
-
+    num_written = uart_write_bytes(gps_tty_dev, (char*)ubx_cmd_timegps, UBX_MSG_LEN);
     if (num_written != UBX_MSG_NAVTIMEGPS_LEN)
     {
         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
     }
 
+    /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
+    /* This is a binary message, serial port has to be properly configured to handle this */
+    num_written = uart_write_bytes(gps_tty_dev, (char*)nmea_cmd_rmc, UBX_MSG_LEN);
+    if (num_written != UBX_MSG_NAVTIMEGPS_LEN)
+    {
+        DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
+    }
+    
     /* get timezone info */
     tzset();
 
