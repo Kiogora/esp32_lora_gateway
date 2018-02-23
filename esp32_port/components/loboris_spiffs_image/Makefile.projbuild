@@ -1,4 +1,10 @@
 SPIFFS_IMAGE_COMPONENT_PATH := $(COMPONENT_PATH)
+
+#Set default for image_folder variable.
+
+#Conditional variable for image
+image ?= image
+
 ifeq ($(OS),Windows_NT)
 	MKSPIFFS_BIN="mkspiffs.exe"
 else
@@ -12,13 +18,15 @@ endif
 flashfs: $(SDKCONFIG_MAKEFILE) mkspiffs
 	@echo "Making spiffs image ..."
 	@echo "$(ESPTOOLPY_WRITE_FLASH)"
-	$(MKSPIFFS_COMPONENT_PATH)/../loboris_mkspiffs/src/$(MKSPIFFS_BIN) -c $(SPIFFS_IMAGE_COMPONENT_PATH)/image -b $(CONFIG_SPIFFS_LOG_BLOCK_SIZE) -p $(CONFIG_SPIFFS_LOG_PAGE_SIZE) -s $(CONFIG_SPIFFS_SIZE) $(BUILD_DIR_BASE)/spiffs_image.img
+	$(MKSPIFFS_COMPONENT_PATH)/../loboris_mkspiffs/src/$(MKSPIFFS_BIN) -c $(SPIFFS_IMAGE_COMPONENT_PATH)/$(image) -b $(CONFIG_SPIFFS_LOG_BLOCK_SIZE) \
+	-p $(CONFIG_SPIFFS_LOG_PAGE_SIZE) -s $(CONFIG_SPIFFS_SIZE) $(BUILD_DIR_BASE)/spiffs_image.img
 	$(ESPTOOLPY_WRITE_FLASH) $(CONFIG_SPIFFS_BASE_ADDR) $(BUILD_DIR_BASE)/spiffs_image.img
 
 makefs: $(SDKCONFIG_MAKEFILE) mkspiffs
 	@echo "Making spiffs image ..."
 	@echo "$(ESPTOOLPY_WRITE_FLASH)"
-	$(MKSPIFFS_COMPONENT_PATH)/../loboris_mkspiffs/src/$(MKSPIFFS_BIN) -c $(SPIFFS_IMAGE_COMPONENT_PATH)/image -b $(CONFIG_SPIFFS_LOG_BLOCK_SIZE) -p $(CONFIG_SPIFFS_LOG_PAGE_SIZE) -s $(CONFIG_SPIFFS_SIZE) $(BUILD_DIR_BASE)/spiffs_image.img
+	$(MKSPIFFS_COMPONENT_PATH)/../loboris_mkspiffs/src/$(MKSPIFFS_BIN) -c $(SPIFFS_IMAGE_COMPONENT_PATH)/$(image) -b $(CONFIG_SPIFFS_LOG_BLOCK_SIZE) -p $(CONFIG_SPIFFS_LOG_PAGE_SIZE) \
+	-s $(CONFIG_SPIFFS_SIZE) $(BUILD_DIR_BASE)/spiffs_image.img
 
 copyfs: 
 	@echo "Flashing spiffs image ..."
