@@ -351,7 +351,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
     /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
     /* This is a binary message, serial port has to be properly configured to handle this */
     num_written = uart_write_bytes(gps_tty_dev, (char*)ubx_cmd_timegps, UBX_MSG_LEN);
-    if (num_written != UBX_MSG_NAVTIMEGPS_LEN)
+    if (num_written != UBX_MSG_LEN)
     {
         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
     }
@@ -359,7 +359,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
     /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
     /* This is a binary message, serial port has to be properly configured to handle this */
     num_written = uart_write_bytes(gps_tty_dev, (char*)nmea_cmd_rmc, UBX_MSG_LEN);
-    if (num_written != UBX_MSG_NAVTIMEGPS_LEN)
+    if (num_written != UBX_MSG_LEN)
     {
         DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
     }
