@@ -35,15 +35,6 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
-/*
-#include <stdio.h>
-#include <string.h>
-#include <sys/unistd.h>
-#include <sys/stat.h>
-#include "esp_err.h"
-#include "esp_log.h"
-#include "esp_spiffs.h"
-*/
 
 #include <errno.h>
 #include <sys/fcntl.h>

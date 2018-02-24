@@ -36,7 +36,7 @@ static void initialize_filesystem()
     static wl_handle_t wl_handle;
     const esp_vfs_fat_mount_config_t mount_config=
     {
-            .max_files = 2,
+            .max_files = 10,
             .format_if_mount_failed = true
     };
     esp_err_t err = esp_vfs_fat_spiflash_mount(MOUNT_PATH, "storage", &mount_config, &wl_handle);
@@ -68,7 +68,7 @@ static void initialize_console()
     /* Initialize the console */
     esp_console_config_t console_config =
     {
-            .max_cmdline_args = 8,
+            .max_cmdline_args = 15,
             .max_cmdline_length = 256,
 #if CONFIG_LOG_COLORS
             .hint_color = atoi(LOG_COLOR_CYAN)
@@ -106,6 +106,7 @@ void app_main()
 
     /* Register commands */
     esp_console_register_help_command();
+    register_util_pkt_logger();
     register_loragw_hal();
     register_loragw_cal();
     register_spi_stress();
@@ -116,7 +117,7 @@ void app_main()
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.
      */
-    const char* prompt = LOG_COLOR_I "esp32> " LOG_RESET_COLOR;
+    const char* prompt = LOG_COLOR_I "loragw test console> " LOG_RESET_COLOR;
 
     printf("\n"
            "This is an example of ESP-IDF console component.\n"
@@ -136,7 +137,7 @@ void app_main()
         /* Since the terminal doesn't support escape sequences,
          * don't use color codes in the prompt.
          */
-        prompt = "ESP32 loragw console> ";
+        prompt = "loragw test console> ";
 #endif //CONFIG_LOG_COLORS
     }
 

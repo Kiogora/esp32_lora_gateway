@@ -8,6 +8,9 @@
 */
 #pragma once
 
+//Register util pkt logger test
+void register_util_pkt_logger();
+
 //Register LoRagw_cal functions
 void register_loragw_cal();
 
