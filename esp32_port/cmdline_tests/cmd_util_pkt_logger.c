@@ -138,6 +138,8 @@ without any consequence for the program execution.
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
 /* configuration variables needed by the application  */
+uint8_t mac_val[8] = {0};
+uint64_t mac = 0;
 uint64_t lgwm = 0; /* LoRa gateway MAC address */
 char lgwm_str[17];
 
@@ -149,10 +151,13 @@ char log_file_name[64];
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
+static void get_base_mac(uint8_t* mac_buffer);
 
 int parse_SX1301_configuration(const char * conf_file);
 
 int parse_gateway_configuration(const char * conf_file);
+
+
 
 void open_log(void);
 
@@ -165,6 +170,29 @@ static struct
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+static void get_base_mac(uint8_t* mac_buffer)
+{
+    uint64_t temp_mac = 0;
+    if(mac_buffer != NULL)
+    {
+        if(esp_efuse_mac_get_default(mac_buffer) == ESP_OK)
+        {
+
+            MSG("SUCCESSFULLY READ BASE_MAC FROM EFUSE!\n");
+            for(int i=0; i<8; i++)
+            {
+                temp_mac = mac_buffer[i];
+                mac |= (temp_mac << (7-i)*8);
+            }
+             MSG("INFO: Actual gateway MAC address is configured to 0x%016llX\n", mac);
+        }
+        else
+        {
+            MSG("UNSUCCESSFUL IN READING BASE_MAC FROM EFUSE!\n");
+        }
+    }
+}
 
 int parse_SX1301_configuration(const char * conf_file) {
     int i;
@@ -414,7 +442,7 @@ int parse_gateway_configuration(const char * conf_file) {
     if (str != NULL) {
         sscanf(str, "%llx", &ull);
         lgwm = ull;
-        MSG("INFO: gateway MAC address is configured to %016llX\n", ull);
+        MSG("INFO: Hardcoded gateway MAC address read is %016llX...shall be overridden by ddynamic mac\n", ull);
     }
 
     json_value_free(root_val);
@@ -452,7 +480,7 @@ int util_pkt_logger(int argc, char **argv)
     int sleep_time = 3; /* 3 ms */
 
     /* clock and log rotation management */
-    int slog_rotate_interval = 3600; /* by default, rotation every hour */
+    int log_rotate_interval = 3600; /* by default, rotation every hour */
     int time_check = 0; /* variable used to limit the number of calls to time() function */
     unsigned long pkt_in_log = 0; /* count the number of packet written in each log file */
 
@@ -493,6 +521,7 @@ int util_pkt_logger(int argc, char **argv)
     printf("\r\n\n");
     if (spiffs_is_mounted)
     {
+        get_base_mac(mac_val);
         FILE* fp=fopen(debug_conf_fname, "r");
         FILE* fp1=fopen(global_conf_fname, "r");
         FILE* fp2=fopen(local_conf_fname, "r");
@@ -543,8 +572,8 @@ int util_pkt_logger(int argc, char **argv)
         }
 
         /* transform the MAC address into a string */
-        sprintf(lgwm_str, "%08X%08X", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
-
+        //sprintf(lgwm_str, "%08X%08X", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
+        sprintf(lgwm_str, "%08X%08X", (uint32_t)(mac >> 32), (uint32_t)(mac & 0xFFFFFFFF));
         /* opening log file and writing CSV header*/
         time(&now_time);
         open_log();
@@ -570,8 +599,8 @@ int util_pkt_logger(int argc, char **argv)
                 p = &rxpkt[i];
 
                 /* writing gateway ID */
-                fprintf(log_file, "\"%08X%08X\",", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
-
+                //fprintf(log_file, "\"%08X%08X\",", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
+                fprintf(log_file, "\"%08X%08X\",", (uint32_t)(mac >> 32), (uint32_t)(mac & 0xFFFFFFFF));
                 /* writing node MAC address */
                 fputs("\"\",", log_file); // TODO: need to parse payload
 
