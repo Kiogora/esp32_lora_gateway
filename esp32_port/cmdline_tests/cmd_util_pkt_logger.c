@@ -452,7 +452,7 @@ int util_pkt_logger(int argc, char **argv)
     int sleep_time = 3; /* 3 ms */
 
     /* clock and log rotation management */
-    int log_rotate_interval = 3600; /* by default, rotation every hour */
+    int slog_rotate_interval = 3600; /* by default, rotation every hour */
     int time_check = 0; /* variable used to limit the number of calls to time() function */
     unsigned long pkt_in_log = 0; /* count the number of packet written in each log file */
 
@@ -485,7 +485,7 @@ int util_pkt_logger(int argc, char **argv)
     }
     else
     {
-        log_rotate_interval = (uint8_t)util_pkt_logger_args.r->ival[0];;
+        log_rotate_interval = util_pkt_logger_args.r->ival[0];;
     }
     printf("\r\n\n");
     printf("====MOUNTING SPIFFS====\r\n");
