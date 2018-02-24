@@ -55,7 +55,7 @@ VERSION ?= $(shell git describe --always)
 
 all: $(TARGET)
 
-$(TARGET):
+$(TARGET): tclap/*.h spiffs/*.c spiffs/*.h main.cpp
 	@echo "Building mkspiffs ..."
 	$(CC) $(TARGET_CFLAGS) -c spiffs/spiffs_cache.c -o spiffs/spiffs_cache.o
 	$(CC) $(TARGET_CFLAGS) -c spiffs/spiffs_check.c -o spiffs/spiffs_check.o

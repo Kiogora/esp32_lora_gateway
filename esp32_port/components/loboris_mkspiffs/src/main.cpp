@@ -374,6 +374,11 @@ bool unpackFile(spiffs_dirent *spiffsFile, const char *destPath) {
     // Open file.
     FILE* dst = fopen(destPath, "wb");
 
+    if(dst == NULL)
+    {
+         std::cout << "Directory destpath is NULL"<< std::endl;
+    }
+
     // Write content into file.
     fwrite(buffer, sizeof(u8_t), sizeof(buffer), dst);
 
