@@ -376,16 +376,16 @@ bool unpackFile(spiffs_dirent *spiffsFile, const char *destPath) {
 
     if(dst == NULL)
     {
-         std::cout << "Directory destpath is NULL"<< std::endl;
+        /*Added due to improper handling of "/."*/
+         std::cout << "Failed to open file, is this the current folder representation \".\"? Ignoring..." << std::endl;
     }
-
-    // Write content into file.
-    fwrite(buffer, sizeof(u8_t), sizeof(buffer), dst);
-
-    // Close file.
-    fclose(dst);
-
-
+    else
+    {
+        // Write content into file.
+        fwrite(buffer, sizeof(u8_t), sizeof(buffer), dst);
+        // Close file.
+        fclose(dst);
+    }
     return true;
 }
 
