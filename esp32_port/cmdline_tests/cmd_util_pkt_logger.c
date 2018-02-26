@@ -113,9 +113,15 @@ without any consequence for the program execution.
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "freertos/event_groups.h"
+#include "esp_wifi.h"
+#include "esp_event_loop.h"
 
 #include <errno.h>
 #include <sys/fcntl.h>
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "esp_partition.h"
 #include "esp_vfs.h"
 #include "esp_vfs_fat.h"
 #include "esp_log.h"
@@ -126,6 +132,9 @@ without any consequence for the program execution.
 #include "argtable3/argtable3.h"
 #include "cmd_decl.h"
 
+#include "lwip/err.h"
+#include "apps/sntp/sntp.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -134,13 +143,24 @@ without any consequence for the program execution.
 
 #define SPI_SPEED 8000000
 
+#define EXAMPLE_WIFI_SSID "EED Sky"
+#define EXAMPLE_WIFI_PASS "20150815"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
+
+/* FreeRTOS event group to signal when we are connected & ready to make a request */
+static EventGroupHandle_t wifi_event_group;
+
+/* The event group allows multiple bits for each event,
+   but we only care about one event - are we connected
+   to the AP with an IP? */
+const int CONNECTED_BIT = BIT0;
 
 /* configuration variables needed by the application  */
 uint8_t mac_val[8] = {0};
 uint64_t mac = 0;
-uint64_t lgwm = 0; /* LoRa gateway MAC address */
+uint64_t lgwm = 0; /* LoRa gateway hardcoded default MAC address */
 char lgwm_str[17];
 
 /* clock and log file management */
@@ -148,18 +168,6 @@ time_t now_time;
 time_t log_start_time;
 FILE * log_file = NULL;
 char log_file_name[64];
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
-static void get_base_mac(uint8_t* mac_buffer);
-
-int parse_SX1301_configuration(const char * conf_file);
-
-int parse_gateway_configuration(const char * conf_file);
-
-
-
-void open_log(void);
 
 /** Arguments**/
 static struct
@@ -169,7 +177,92 @@ static struct
 } util_pkt_logger_args;
 
 /* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
+static void obtain_time(void);
+static void initialize_sntp(void);
+static void initialise_wifi(void);
+static esp_err_t event_handler(void *ctx, system_event_t *event);
+
+static void get_base_mac(uint8_t* mac_buffer);
+
+int parse_SX1301_configuration(const char * conf_file);
+int parse_gateway_configuration(const char * conf_file);
+void open_log(void);
+
+/* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+static void obtain_time(void)
+{
+    ESP_ERROR_CHECK( nvs_flash_init() );
+    initialise_wifi();
+    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+                        false, true, portMAX_DELAY);
+    initialize_sntp();
+
+    // wait for time to be set
+    now_time = 0;
+    struct tm timeinfo = { 0 };
+    int retry = 0;
+    const int retry_count = 10;
+    while(timeinfo.tm_year < (2018 - 1900) && ++retry < retry_count) {
+        MSG("Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        time(&now_time);
+        localtime_r(&now_time, &timeinfo);
+    }
+
+    ESP_ERROR_CHECK( esp_wifi_stop() );
+}
+
+static void initialize_sntp(void)
+{
+    MSG("Initializing SNTP\n");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+}
+
+static void initialise_wifi(void)
+{
+    tcpip_adapter_init();
+    wifi_event_group = xEventGroupCreate();
+    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = EXAMPLE_WIFI_SSID,
+            .password = EXAMPLE_WIFI_PASS,
+        },
+    };
+    MSG("Setting WiFi configuration SSID %s...\n", wifi_config.sta.ssid);
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
+}
+
+static esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+    switch(event->event_id) {
+    case SYSTEM_EVENT_STA_START:
+        esp_wifi_connect();
+        break;
+    case SYSTEM_EVENT_STA_GOT_IP:
+        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        /* This is a workaround as ESP32 WiFi libs don't currently
+           auto-reassociate. */
+        esp_wifi_connect();
+        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
+}
 
 static void get_base_mac(uint8_t* mac_buffer)
 {
@@ -442,7 +535,7 @@ int parse_gateway_configuration(const char * conf_file) {
     if (str != NULL) {
         sscanf(str, "%llx", &ull);
         lgwm = ull;
-        MSG("INFO: Hardcoded gateway MAC address read is %016llX...shall be overridden by ddynamic mac\n", ull);
+        MSG("INFO: Hardcoded gateway MAC address read is %016llX...shall be overridden by dynamic mac\n", ull);
     }
 
     json_value_free(root_val);
@@ -499,7 +592,7 @@ int util_pkt_logger(int argc, char **argv)
     //struct timespec fetchtime;
     char fetch_timestamp[30];
     struct tm * x;
-
+    struct tm timeinfo;
     int nerrors = arg_parse(argc, argv, (void**) &util_pkt_logger_args);
     if (nerrors != 0)
     {
@@ -515,6 +608,25 @@ int util_pkt_logger(int argc, char **argv)
     {
         log_rotate_interval = util_pkt_logger_args.r->ival[0];;
     }
+
+    time(&now_time);
+    localtime_r(&now_time, &timeinfo);
+    // Is time set? If not, tm_year will be (1970 - 1900).
+    if (timeinfo.tm_year < (2018 - 1900)) {
+        MSG("Time is not set yet. Connecting to WiFi and getting time over NTP.");
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now_time);
+    }
+    char strftime_buf[64];
+
+    // Set timezone to Africa/Nairobi and print local time
+    setenv("TZ", "EAT-3", 1);
+    tzset();
+    localtime_r(&now_time, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    MSG("The current date/time in Nairobi is: %s", strftime_buf);
+
     printf("\r\n\n");
     printf("====MOUNTING SPIFFS====\r\n");
     vfs_spiffs_register();
