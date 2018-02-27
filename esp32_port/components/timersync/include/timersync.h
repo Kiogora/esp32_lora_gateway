@@ -27,6 +27,6 @@ Maintainer: Michael Coracin
 
 int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time);
 
-void thread_timersync(void);
+void task_timersync(void *pvParameters);
 
 #endif

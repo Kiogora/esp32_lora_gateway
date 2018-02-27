@@ -19,7 +19,10 @@ Maintainer: Michael Coracin
 
 #include <stdio.h>        /* printf, fprintf, snprintf, fopen, fputs */
 #include <stdint.h>        /* C99 types */
-#include <pthread.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 
 #include "trace.h"
 #include "timersync.h"
@@ -31,29 +34,14 @@ Maintainer: Michael Coracin
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
-
-#define timersub(a, b, result)                                                \
-  do {                                                                        \
-    (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;                             \
-    (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;                          \
-    if ((result)->tv_usec < 0) {                                              \
-      --(result)->tv_sec;                                                     \
-      (result)->tv_usec += 1000000;                                           \
-    }                                                                         \
-  } while (0)
-
-/* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
-static pthread_mutex_t mx_timersync = PTHREAD_MUTEX_INITIALIZER; /* control access to timer sync offsets */
+static SemaphoreHandle_t mx_timersync = NULL;
 static struct timeval offset_unix_concent = {0,0}; /* timer offset between unix host and concentrator */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
-extern bool exit_sig;
-extern bool quit_sig;
-extern pthread_mutex_t mx_concent;
+extern SemaphoreHandle_t mx_concent;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -66,9 +54,9 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
         return -1;
     }
 
-    pthread_mutex_lock(&mx_timersync); /* protect global variable access */
+    xSemaphoreTake(mx_timersync, portMAX_DELAY); /* protect global variable access */
     timersub(&unix_time, &offset_unix_concent, &local_timeval);
-    pthread_mutex_unlock(&mx_timersync);
+    xSemaphoreGive(mx_timersync);
 
     /* TODO: handle sx1301 coutner wrap-up !! */
     concent_time->tv_sec = local_timeval.tv_sec;
@@ -84,28 +72,29 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
 /* ---------------------------------------------------------------------------------------------- */
 /* --- THREAD 6: REGULARLAY MONITOR THE OFFSET BETWEEN UNIX CLOCK AND CONCENTRATOR CLOCK -------- */
 
-void thread_timersync(void) {
+void task_timersync(void *pvParameters)
+{
     struct timeval unix_timeval;
     struct timeval concentrator_timeval;
     uint32_t sx1301_timecount = 0;
     struct timeval offset_previous = {0,0};
     struct timeval offset_drift = {0,0}; /* delta between current and previous offset */
 
-    while (!exit_sig && !quit_sig) {
+    while (1) {
         /* Regularly disable GPS mode of concentrator's counter, in order to get
             real timer value for synchronizing with host's unix timer */
         MSG("\nINFO: Disabling GPS mode for concentrator's counter...\n");
-        pthread_mutex_lock(&mx_concent);
+        xSemaphoreTake(mx_concent, portMAX_DELAY);
         lgw_reg_w(LGW_GPS_EN, 0);
-        pthread_mutex_unlock(&mx_concent);
+        xSemaphoreGive(mx_concent);
 
         /* Get current unix time */
         gettimeofday(&unix_timeval, NULL);
 
         /* Get current concentrator counter value (1MHz) */
-        pthread_mutex_lock(&mx_concent);
+        xSemaphoreTake(mx_concent, portMAX_DELAY);
         lgw_get_trigcnt(&sx1301_timecount);
-        pthread_mutex_unlock(&mx_concent);
+        xSemaphoreGive(mx_concent);
         concentrator_timeval.tv_sec = sx1301_timecount / 1000000UL;
         concentrator_timeval.tv_usec = sx1301_timecount - (concentrator_timeval.tv_sec * 1000000UL);
 
@@ -114,9 +103,9 @@ void thread_timersync(void) {
         offset_previous.tv_usec = offset_unix_concent.tv_usec;
 
         /* TODO: handle sx1301 coutner wrap-up */
-        pthread_mutex_lock(&mx_timersync); /* protect global variable access */
+        xSemaphoreTake(mx_timersync, portMAX_DELAY); /* protect global variable access */
         timersub(&unix_timeval, &concentrator_timeval, &offset_unix_concent);
-        pthread_mutex_unlock(&mx_timersync);
+        xSemaphoreGive(mx_timersync);
 
         timersub(&offset_unix_concent, &offset_previous, &offset_drift);
 
@@ -131,9 +120,9 @@ void thread_timersync(void) {
             offset_unix_concent.tv_usec,
             offset_drift.tv_sec * 1000000UL + offset_drift.tv_usec);
         MSG("INFO: Enabling GPS mode for concentrator's counter.\n\n");
-        pthread_mutex_lock(&mx_concent); /* TODO: Is it necessary to protect here? */
+        xSemaphoreTake(mx_concent, portMAX_DELAY); /* TODO: Is it necessary to protect here? */
         lgw_reg_w(LGW_GPS_EN, 1);
-        pthread_mutex_unlock(&mx_concent);
+        xSemaphoreGive(mx_concent);
 
         /* delay next sync */
         /* If we consider a crystal oscillator precision of about 20ppm worst case, and a clock
