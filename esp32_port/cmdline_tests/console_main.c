@@ -113,6 +113,7 @@ void app_main()
     register_loragw_lbt();
     register_tx_continuous();
     register_parson_test();
+    register_lora_pkt_fwd();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

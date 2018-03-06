@@ -28,3 +28,6 @@ void register_tx_continuous();
 
 //Register parson Json parser test
 void register_parson_test();
+
+//Register parson Json parser test
+void register_lora_pkt_fwd();

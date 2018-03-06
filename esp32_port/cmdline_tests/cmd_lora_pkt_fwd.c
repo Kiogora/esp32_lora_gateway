@@ -19,19 +19,11 @@ Maintainer: Michael Coracin
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-/* fix an issue between POSIX and C99 */
-#if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
 #include <stdint.h>         /* C99 types */
 #include <stdbool.h>        /* bool type */
 #include <stdio.h>          /* printf, fprintf, snprintf, fopen, fputs */
 
 #include <string.h>         /* memset */
-#include <signal.h>         /* sigaction */
 #include <time.h>           /* time, clock_gettime, strftime, gmtime */
 #include <sys/time.h>       /* timeval */
 #include <unistd.h>         /* getopt, access */
@@ -40,12 +32,37 @@ Maintainer: Michael Coracin
 #include <math.h>           /* modf */
 #include <assert.h>
 
-#include <sys/socket.h>     /* socket specific definitions */
-#include <netinet/in.h>     /* INET constants and stuff */
-#include <arpa/inet.h>      /* IP address conversion stuff */
-#include <netdb.h>          /* gai_strerror */
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
 
-#include <pthread.h>
+#include "esp_event_loop.h"
+#include "esp_wifi.h"
+#include "esp_system.h"
+#include "esp_log.h"
+#include "driver/uart.h"
+#include "soc/uart_struct.h"
+
+#include <lwip/sockets.h>     /* socket specific definitions */
+#include <lwip/inet.h>      /* IP address conversion stuff */
+#include <lwip/netdb.h>          /* gai_strerror */
+
+#include <errno.h>
+#include <sys/fcntl.h>
+#include "esp_vfs.h"
+#include "esp_vfs_fat.h"
+#include "esp_log.h"
+#include "spiffs_vfs.h"
+
+#include "esp_console.h"
+#include "esp_system.h"
+#include "argtable3/argtable3.h"
+#include "cmd_decl.h"
+#include "esp_partition.h"
+
+#include "esp_log.h"
+#include "nvs_flash.h"
 
 #include "trace.h"
 #include "jitqueue.h"
@@ -56,6 +73,9 @@ Maintainer: Michael Coracin
 #include "loragw_gps.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
+
+#include "lwip/err.h"
+#include "apps/sntp/sntp.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -115,12 +135,30 @@ Maintainer: Michael Coracin
 #define DEFAULT_BEACON_POWER        14
 #define DEFAULT_BEACON_INFODESC     0
 
+#ifndef SPI_SPEED
+#define SPI_SPEED 8000000
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
-/* signal handling variables */
-volatile bool exit_sig = false; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-volatile bool quit_sig = false; /* 1 -> application terminates without shutting down the hardware */
+static struct
+{
+    struct arg_end *end;
+} lora_pkt_fwd_args;
+
+#define EXAMPLE_WIFI_SSID "EED Sky"
+#define EXAMPLE_WIFI_PASS "20150815"
+
+/* FreeRTOS event group to signal when we are connected & ready to make a request */
+static EventGroupHandle_t wifi_event_group;
+
+/* The event group allows multiple bits for each event,
+   but we only care about one event - are we connected
+   to the AP with an IP? */
+const static int CONNECTED_BIT = BIT0;
+
+static const char *TAG = "Time";
 
 /* packets filtering configuration variables */
 static bool fwd_valid_pkt = true; /* packets with PAYLOAD CRC OK are forwarded */
@@ -150,18 +188,20 @@ static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut i
 static struct timeval pull_timeout = {0, (PULL_TIMEOUT_MS * 1000)}; /* non critical for throughput */
 
 /* hardware access control and correction */
-pthread_mutex_t mx_concent = PTHREAD_MUTEX_INITIALIZER; /* control access to the concentrator */
-static pthread_mutex_t mx_xcorr = PTHREAD_MUTEX_INITIALIZER; /* control access to the XTAL correction */
+//pthread_mutex_t mx_concent = PTHREAD_MUTEX_INITIALIZER;
+SemaphoreHandle_t mx_concent = NULL; /* control access to the concentrator */
+//static pthread_mutex_t mx_xcorr = PTHREAD_MUTEX_INITIALIZER; 
+static SemaphoreHandle_t mx_xcorr = NULL; /* control access to the XTAL correction */
 static bool xtal_correct_ok = false; /* set true when XTAL correction is stable enough */
 static double xtal_correct = 1.0;
 
 /* GPS configuration and synchronization */
-static char gps_tty_path[64] = "\0"; /* path of the TTY port GPS is connected on */
-static int gps_tty_fd = -1; /* file descriptor of the GPS TTY port */
+int gps_tty_dev; /* descriptor to the serial port of the GNSS module */
 static bool gps_enabled = false; /* is GPS enabled on that gateway ? */
 
 /* GPS time reference */
-static pthread_mutex_t mx_timeref = PTHREAD_MUTEX_INITIALIZER; /* control access to GPS time reference */
+//static pthread_mutex_t mx_timeref = PTHREAD_MUTEX_INITIALIZER;
+static SemaphoreHandle_t mx_timeref = NULL; /* control access to GPS time reference */
 static bool gps_ref_valid; /* is GPS reference acceptable (ie. not too old) */
 static struct tref time_reference_gps; /* time reference used for GPS <-> timestamp conversion */
 
@@ -172,7 +212,8 @@ static struct coord_s reference_coord;
 static bool gps_fake_enable; /* enable the feature */
 
 /* measurements to establish statistics */
-static pthread_mutex_t mx_meas_up = PTHREAD_MUTEX_INITIALIZER; /* control access to the upstream measurements */
+//static pthread_mutex_t mx_meas_up = PTHREAD_MUTEX_INITIALIZER;
+static SemaphoreHandle_t mx_meas_up = NULL; /* control access to the upstream measurements */
 static uint32_t meas_nb_rx_rcv = 0; /* count packets received */
 static uint32_t meas_nb_rx_ok = 0; /* count packets received with PAYLOAD CRC OK */
 static uint32_t meas_nb_rx_bad = 0; /* count packets received with PAYLOAD CRC ERROR */
@@ -183,7 +224,8 @@ static uint32_t meas_up_payload_byte = 0; /* sum of radio payload bytes sent for
 static uint32_t meas_up_dgram_sent = 0; /* number of datagrams sent for upstream traffic */
 static uint32_t meas_up_ack_rcv = 0; /* number of datagrams acknowledged for upstream traffic */
 
-static pthread_mutex_t mx_meas_dw = PTHREAD_MUTEX_INITIALIZER; /* control access to the downstream measurements */
+//static pthread_mutex_t mx_meas_dw = PTHREAD_MUTEX_INITIALIZER;
+static SemaphoreHandle_t mx_meas_dw = NULL; /* control access to the downstream measurements */
 static uint32_t meas_dw_pull_sent = 0; /* number of PULL requests sent for downstream traffic */
 static uint32_t meas_dw_ack_rcv = 0; /* number of PULL requests acknowledged for downstream traffic */
 static uint32_t meas_dw_dgram_rcv = 0; /* count PULL response packets received for downstream traffic */
@@ -200,12 +242,14 @@ static uint32_t meas_nb_beacon_queued = 0; /* count beacon inserted in jit queue
 static uint32_t meas_nb_beacon_sent = 0; /* count beacon actually sent to concentrator */
 static uint32_t meas_nb_beacon_rejected = 0; /* count beacon rejected for queuing */
 
-static pthread_mutex_t mx_meas_gps = PTHREAD_MUTEX_INITIALIZER; /* control access to the GPS statistics */
+//static pthread_mutex_t mx_meas_gps = PTHREAD_MUTEX_INITIALIZER;
+static SemaphoreHandle_t mx_meas_gps = NULL; /* control access to the GPS statistics */
 static bool gps_coord_valid; /* could we get valid GPS coordinates ? */
 static struct coord_s meas_gps_coord; /* GPS position of the gateway */
 static struct coord_s meas_gps_err; /* GPS position of the gateway */
 
-static pthread_mutex_t mx_stat_rep = PTHREAD_MUTEX_INITIALIZER; /* control access to the status report */
+//static pthread_mutex_t mx_stat_rep = PTHREAD_MUTEX_INITIALIZER;
+static SemaphoreHandle_t mx_stat_rep = NULL; /* control access to the status report */
 static bool report_ready = false; /* true when there is a new report to send to the server */
 static char status_report[STATUS_SIZE]; /* status report as a JSON object */
 
@@ -236,40 +280,44 @@ static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-static void sig_handler(int sigio);
-
 static int parse_SX1301_configuration(const char * conf_file);
 
 static int parse_gateway_configuration(const char * conf_file);
 
 static uint16_t crc16(const uint8_t * data, unsigned size);
 
-static double difftimespec(struct timespec end, struct timespec beginning);
+static double difftimeval(struct timeval end, struct timeval beginning);
+
+static void obtain_time(void);
+static void initialize_sntp(void);
+static void initialise_wifi(void);
+static esp_err_t event_handler(void *ctx, system_event_t *event);
+
+//static double difftimespec(struct timespec end, struct timespec beginning);
 
 static void gps_process_sync(void);
 
 static void gps_process_coords(void);
 
-/* threads */
+/* tasks */
+static void task_up(void *pvParameters);
+static void task_down(void *pvParameters);
+static void task_gps(void *pvParameters);
+static void task_valid(void *pvParameters);
+static void task_jit(void *pvParameters);
+void task_timersync(void *pvParameters);
+
+/*
 void thread_up(void);
 void thread_down(void);
 void thread_gps(void);
 void thread_valid(void);
 void thread_jit(void);
 void thread_timersync(void);
+*/
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
-
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = true;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = true;
-    }
-    return;
-}
-
 static int parse_SX1301_configuration(const char * conf_file) {
     int i;
     char param_name[32]; /* used to generate variable parameter names */
@@ -747,13 +795,15 @@ static int parse_gateway_configuration(const char * conf_file) {
     }
     MSG("INFO: packets received with no CRC will%s be forwarded\n", (fwd_nocrc_pkt ? "" : " NOT"));
 
-    /* GPS module TTY path (optional) */
-    str = json_object_get_string(conf_obj, "gps_tty_path");
+
+/* GPS module TTY path (optional) */
+/*    str = json_object_get_string(conf_obj, "gps_tty_path");
     if (str != NULL) {
         strncpy(gps_tty_path, str, sizeof gps_tty_path);
         MSG("INFO: GPS serial port path is configured to \"%s\"\n", gps_tty_path);
     }
 
+*/
     /* get reference coordinates */
     val = json_object_get_value(conf_obj, "ref_latitude");
     if (val != NULL) {
@@ -875,6 +925,16 @@ static uint16_t crc16(const uint8_t * data, unsigned size) {
     return x;
 }
 
+static double difftimeval(struct timeval end, struct timeval beginning) {
+    double x;
+
+    x = 1E-6 * (double)(end.tv_usec - beginning.tv_usec);
+    x += (double)(end.tv_sec - beginning.tv_sec);
+
+    return x;
+}
+
+/*
 static double difftimespec(struct timespec end, struct timespec beginning) {
     double x;
 
@@ -883,6 +943,8 @@ static double difftimespec(struct timespec end, struct timespec beginning) {
 
     return x;
 }
+*/
+
 
 static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error) {
     uint8_t buff_ack[64]; /* buffer to give feedback to server */
@@ -914,33 +976,33 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"COLLISION_PACKET\"", 18);
                 buff_index += 18;
                 /* update stats */
-                pthread_mutex_lock(&mx_meas_dw);
+                xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                 meas_nb_tx_rejected_collision_packet += 1;
-                pthread_mutex_unlock(&mx_meas_dw);
+                xSemaphoreGive(mx_meas_dw);
                 break;
             case JIT_ERROR_TOO_LATE:
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"TOO_LATE\"", 10);
                 buff_index += 10;
                 /* update stats */
-                pthread_mutex_lock(&mx_meas_dw);
+                xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                 meas_nb_tx_rejected_too_late += 1;
-                pthread_mutex_unlock(&mx_meas_dw);
+                xSemaphoreGive(mx_meas_dw);
                 break;
             case JIT_ERROR_TOO_EARLY:
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"TOO_EARLY\"", 11);
                 buff_index += 11;
                 /* update stats */
-                pthread_mutex_lock(&mx_meas_dw);
+                xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                 meas_nb_tx_rejected_too_early += 1;
-                pthread_mutex_unlock(&mx_meas_dw);
+                xSemaphoreGive(mx_meas_dw);
                 break;
             case JIT_ERROR_COLLISION_BEACON:
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"COLLISION_BEACON\"", 18);
                 buff_index += 18;
                 /* update stats */
-                pthread_mutex_lock(&mx_meas_dw);
+                xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                 meas_nb_tx_rejected_collision_beacon += 1;
-                pthread_mutex_unlock(&mx_meas_dw);
+                xSemaphoreGive(mx_meas_dw);
                 break;
             case JIT_ERROR_TX_FREQ:
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"TX_FREQ\"", 9);
@@ -970,479 +1032,586 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
     return send(sock_down, (void *)buff_ack, buff_index, 0);
 }
 
+static void obtain_time(void)
+{
+    ESP_ERROR_CHECK( nvs_flash_init() );
+    initialise_wifi();
+    xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
+                        false, true, portMAX_DELAY);
+    initialize_sntp();
+
+    // wait for time to be set
+    time_t now = 0;
+    struct tm timeinfo = { 0 };
+    int retry = 0;
+    const int retry_count = 10;
+    while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        time(&now);
+        localtime_r(&now, &timeinfo);
+    }
+
+    //ESP_ERROR_CHECK( esp_wifi_stop() );
+}
+
+static void initialize_sntp(void)
+{
+    ESP_LOGI(TAG, "Initializing SNTP");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    sntp_init();
+}
+
+static void initialise_wifi(void)
+{
+    tcpip_adapter_init();
+    wifi_event_group = xEventGroupCreate();
+    ESP_ERROR_CHECK( esp_event_loop_init(event_handler, NULL) );
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK( esp_wifi_init(&cfg) );
+    ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_RAM) );
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = EXAMPLE_WIFI_SSID,
+            .password = EXAMPLE_WIFI_PASS,
+        },
+    };
+    ESP_LOGI(TAG, "Setting WiFi configuration SSID %s...", wifi_config.sta.ssid);
+    ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+    ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
+    ESP_ERROR_CHECK( esp_wifi_start() );
+}
+
+static esp_err_t event_handler(void *ctx, system_event_t *event)
+{
+    switch(event->event_id) {
+    case SYSTEM_EVENT_STA_START:
+        printf("[WIFI SYS]: STARTED STATION MODE\n");
+        esp_wifi_connect();
+        break;
+    case SYSTEM_EVENT_STA_GOT_IP:
+        printf("[WIFI SYS]: OBTAINED IP, NOW CONNECTED\n");
+        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        break;
+    case SYSTEM_EVENT_STA_DISCONNECTED:
+        printf("[WIFI SYS]: LOST IP ADDRESS...RECONNECTING...\n");
+        /* This is a workaround as ESP32 WiFi libs don't currently
+           auto-reassociate. */
+        esp_wifi_connect();
+        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(void)
+int lora_pkt_fwd(int argc, char **argv)
 {
-    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-    int i; /* loop variable and temporary variable for return value */
-    int x;
 
-    /* configuration file related */
-    char *global_cfg_path= "/spiffs/global_conf.json"; /* contain global (typ. network-wide) configuration */
-    char *local_cfg_path = "/spiffs/local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
-    char *debug_cfg_path = "/spiffs/debug_conf.json"; /* if present, all other configuration files are ignored */
-
-    /* threads */
-    pthread_t thrid_up;
-    pthread_t thrid_down;
-    pthread_t thrid_gps;
-    pthread_t thrid_valid;
-    pthread_t thrid_jit;
-    pthread_t thrid_timersync;
-
-    /* network socket creation */
-    struct addrinfo hints;
-    struct addrinfo *result; /* store result of getaddrinfo */
-    struct addrinfo *q; /* pointer to move into *result data */
-    char host_name[64];
-    char port_name[64];
-
-    /* variables to get local copies of measurements */
-    uint32_t cp_nb_rx_rcv;
-    uint32_t cp_nb_rx_ok;
-    uint32_t cp_nb_rx_bad;
-    uint32_t cp_nb_rx_nocrc;
-    uint32_t cp_up_pkt_fwd;
-    uint32_t cp_up_network_byte;
-    uint32_t cp_up_payload_byte;
-    uint32_t cp_up_dgram_sent;
-    uint32_t cp_up_ack_rcv;
-    uint32_t cp_dw_pull_sent;
-    uint32_t cp_dw_ack_rcv;
-    uint32_t cp_dw_dgram_rcv;
-    uint32_t cp_dw_network_byte;
-    uint32_t cp_dw_payload_byte;
-    uint32_t cp_nb_tx_ok;
-    uint32_t cp_nb_tx_fail;
-    uint32_t cp_nb_tx_requested = 0;
-    uint32_t cp_nb_tx_rejected_collision_packet = 0;
-    uint32_t cp_nb_tx_rejected_collision_beacon = 0;
-    uint32_t cp_nb_tx_rejected_too_late = 0;
-    uint32_t cp_nb_tx_rejected_too_early = 0;
-    uint32_t cp_nb_beacon_queued = 0;
-    uint32_t cp_nb_beacon_sent = 0;
-    uint32_t cp_nb_beacon_rejected = 0;
-
-    /* GPS coordinates variables */
-    bool coord_ok = false;
-    struct coord_s cp_gps_coord = {0.0, 0.0, 0};
-
-    /* SX1301 data variables */
-    uint32_t trig_tstamp;
-
-    /* statistics variable */
-    time_t t;
-    char stat_timestamp[24];
-    float rx_ok_ratio;
-    float rx_bad_ratio;
-    float rx_nocrc_ratio;
-    float up_ack_ratio;
-    float dw_ack_ratio;
-
-    /* display version informations */
-    MSG("*** Beacon Packet Forwarder for Lora Gateway ***\nVersion: " VERSION_STRING "\n");
-    MSG("*** Lora concentrator HAL library version info ***\n%s\n***\n", lgw_version_info());
-
-    /* display host endianness */
-    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        MSG("INFO: Little endian host\n");
-    #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        MSG("INFO: Big endian host\n");
-    #else
-        MSG("INFO: Host endianness unknown\n");
-    #endif
-
-    /* load configuration files */
-    if (access(debug_cfg_path, R_OK) == 0) { /* if there is a debug conf, parse only the debug conf */
-        MSG("INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
-        MSG("INFO: other configuration files will be ignored\n");
-        x = parse_SX1301_configuration(debug_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_gateway_configuration(debug_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-    } else if (access(global_cfg_path, R_OK) == 0) { /* if there is a global conf, parse it and then try to parse local conf  */
-        MSG("INFO: found global configuration file %s, parsing it\n", global_cfg_path);
-        x = parse_SX1301_configuration(global_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_gateway_configuration(global_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        if (access(local_cfg_path, R_OK) == 0) {
-            MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
-            MSG("INFO: redefined parameters will overwrite global parameters\n");
-            parse_SX1301_configuration(local_cfg_path);
-            parse_gateway_configuration(local_cfg_path);
-        }
-    } else if (access(local_cfg_path, R_OK) == 0) { /* if there is only a local conf, parse it and that's all */
-        MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
-        x = parse_SX1301_configuration(local_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-        x = parse_gateway_configuration(local_cfg_path);
-        if (x != 0) {
-            exit(EXIT_FAILURE);
-        }
-    } else {
-        MSG("ERROR: [main] failed to find any configuration file named %s, %s OR %s\n", global_cfg_path, local_cfg_path, debug_cfg_path);
-        exit(EXIT_FAILURE);
+    int nerrors = arg_parse(argc, argv, (void**) & lora_pkt_fwd_args);
+    if (nerrors != 0)
+    {
+        return 1;
     }
 
-    /* Start GPS a.s.a.p., to allow it to lock */
-    if (gps_tty_path[0] != '\0') { /* do not try to open GPS device if no path set */
-        i = lgw_gps_enable(gps_tty_path, "ubx7", 0, &gps_tty_fd); /* HAL only supports u-blox 7 for now */
-        if (i != LGW_GPS_SUCCESS) {
-            printf("WARNING: [main] impossible to open %s for GPS sync (check permissions)\n", gps_tty_path);
-            gps_enabled = false;
-            gps_ref_valid = false;
-        } else {
-            printf("INFO: [main] TTY port %s open for GPS synchronization\n", gps_tty_path);
-            gps_enabled = true;
-            gps_ref_valid = false;
-        }
-    }
+    time_t now;
+    struct tm timeinfo;
 
-    /* get timezone info */
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    // Is time set? If not, tm_year will be (1970 - 1900).
+    if (timeinfo.tm_year < (2018 - 1900)) {
+        MSG("Time is not set yet. Connecting to WiFi and getting time over NTP.");
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now);
+    }
+    char strftime_buf[64];
+
+    // Set timezone to Africa/Nairobi and print local time
+    //setenv("TZ", "EAT-3", 1);
     tzset();
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    MSG("The current date/time in Nairobi is: %s", strftime_buf);
 
-    /* sanity check on configuration variables */
-    // TODO
+    printf("\r\n\n");
+    printf("====MOUNTING SPIFFS====\r\n");
+    vfs_spiffs_register();
+    printf("\r\n\n");
+    if (spiffs_is_mounted)
+    {
+        mx_stat_rep = xSemaphoreCreateMutex();
+        mx_timeref = xSemaphoreCreateMutex();
+        mx_meas_up = xSemaphoreCreateMutex();
+        mx_meas_dw = xSemaphoreCreateMutex();
+        mx_meas_gps = xSemaphoreCreateMutex();
+        mx_stat_rep = xSemaphoreCreateMutex();
+        mx_concent = xSemaphoreCreateMutex();
+        mx_xcorr = xSemaphoreCreateMutex();
 
-    /* process some of the configuration variables */
-    net_mac_h = htonl((uint32_t)(0xFFFFFFFF & (lgwm>>32)));
-    net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
+        TaskHandle_t xtaskhandle_up = NULL;
+        TaskHandle_t xtaskhandle_down = NULL;
+        TaskHandle_t xtaskhandle_gps = NULL;
+        TaskHandle_t xtaskhandle_valid = NULL;
+        TaskHandle_t xtaskhandle_jit = NULL;
+        TaskHandle_t xtaskhandle_timersync = NULL;
 
-    /* prepare hints to open network sockets */
-    memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET; /* WA: Forcing IPv4 as AF_UNSPEC makes connection on localhost to fail */
-    hints.ai_socktype = SOCK_DGRAM;
+        int i; /* loop variable and temporary variable for return value */
+        int x;
 
-    /* look for server address w/ upstream port */
-    i = getaddrinfo(serv_addr, serv_port_up, &hints, &result);
-    if (i != 0) {
-        MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
-        exit(EXIT_FAILURE);
-    }
+        /* configuration file related */
+        char *global_cfg_path= "/spiffs/global_conf.json"; /* contain global (typ. network-wide) configuration */
+        char *local_cfg_path = "/spiffs/local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
+        char *debug_cfg_path = "/spiffs/debug_conf.json"; /* if present, all other configuration files are ignored */
 
-    /* try to open socket for upstream traffic */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
-        if (sock_up == -1) continue; /* try next field */
-        else break; /* success, get out of loop */
-    }
-    if (q == NULL) {
-        MSG("ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
-        i = 1;
-        for (q=result; q!=NULL; q=q->ai_next) {
-            getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
-            ++i;
-        }
-        exit(EXIT_FAILURE);
-    }
+        /* network socket creation */
+        struct addrinfo hints;
+        struct addrinfo *result; /* store result of getaddrinfo */
+        struct addrinfo *q; /* pointer to move into *result data */
+        char host_name[64];
+        char port_name[64];
 
-    /* connect so we can send/receive packet with the server only */
-    i = connect(sock_up, q->ai_addr, q->ai_addrlen);
-    if (i != 0) {
-        MSG("ERROR: [up] connect returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    freeaddrinfo(result);
+        /* variables to get local copies of measurements */
+        uint32_t cp_nb_rx_rcv;
+        uint32_t cp_nb_rx_ok;
+        uint32_t cp_nb_rx_bad;
+        uint32_t cp_nb_rx_nocrc;
+        uint32_t cp_up_pkt_fwd;
+        uint32_t cp_up_network_byte;
+        uint32_t cp_up_payload_byte;
+        uint32_t cp_up_dgram_sent;
+        uint32_t cp_up_ack_rcv;
+        uint32_t cp_dw_pull_sent;
+        uint32_t cp_dw_ack_rcv;
+        uint32_t cp_dw_dgram_rcv;
+        uint32_t cp_dw_network_byte;
+        uint32_t cp_dw_payload_byte;
+        uint32_t cp_nb_tx_ok;
+        uint32_t cp_nb_tx_fail;
+        uint32_t cp_nb_tx_requested = 0;
+        uint32_t cp_nb_tx_rejected_collision_packet = 0;
+        uint32_t cp_nb_tx_rejected_collision_beacon = 0;
+        uint32_t cp_nb_tx_rejected_too_late = 0;
+        uint32_t cp_nb_tx_rejected_too_early = 0;
+        uint32_t cp_nb_beacon_queued = 0;
+        uint32_t cp_nb_beacon_sent = 0;
+        uint32_t cp_nb_beacon_rejected = 0;
 
-    /* look for server address w/ downstream port */
-    i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
-    if (i != 0) {
-        MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
-        exit(EXIT_FAILURE);
-    }
+        /* GPS coordinates variables */
+        bool coord_ok = false;
+        struct coord_s cp_gps_coord = {0.0, 0.0, 0};
 
-    /* try to open socket for downstream traffic */
-    for (q=result; q!=NULL; q=q->ai_next) {
-        sock_down = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
-        if (sock_down == -1) continue; /* try next field */
-        else break; /* success, get out of loop */
-    }
-    if (q == NULL) {
-        MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
-        i = 1;
-        for (q=result; q!=NULL; q=q->ai_next) {
-            getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
-            ++i;
-        }
-        exit(EXIT_FAILURE);
-    }
+        /* SX1301 data variables */
+        uint32_t trig_tstamp;
 
-    /* connect so we can send/receive packet with the server only */
-    i = connect(sock_down, q->ai_addr, q->ai_addrlen);
-    if (i != 0) {
-        MSG("ERROR: [down] connect returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-    freeaddrinfo(result);
+        /* statistics variable */
+        time_t t;
+        char stat_timestamp[24];
+        float rx_ok_ratio;
+        float rx_bad_ratio;
+        float rx_nocrc_ratio;
+        float up_ack_ratio;
+        float dw_ack_ratio;
 
-    /* starting the concentrator */
-    i = lgw_start();
-    if (i == LGW_HAL_SUCCESS) {
-        MSG("INFO: [main] concentrator started, packet can now be received\n");
-    } else {
-        MSG("ERROR: [main] failed to start the concentrator\n");
-        exit(EXIT_FAILURE);
-    }
+        /* display version informations */
+        MSG("*** Beacon Packet Forwarder for Lora Gateway ***\nVersion: " VERSION_STRING "\n");
+        MSG("*** Lora concentrator HAL library version info ***\n%s\n***\n", lgw_version_info());
 
-    /* spawn threads to manage upstream and downstream */
-    i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create upstream thread\n");
-        exit(EXIT_FAILURE);
-    }
-    i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create downstream thread\n");
-        exit(EXIT_FAILURE);
-    }
-    i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create JIT thread\n");
-        exit(EXIT_FAILURE);
-    }
-    i = pthread_create( &thrid_timersync, NULL, (void * (*)(void *))thread_timersync, NULL);
-    if (i != 0) {
-        MSG("ERROR: [main] impossible to create Timer Sync thread\n");
-        exit(EXIT_FAILURE);
-    }
+        /* display host endianness */
+        #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+            MSG("INFO: Little endian host\n");
+        #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+            MSG("INFO: Big endian host\n");
+        #else
+            MSG("INFO: Host endianness unknown\n");
+        #endif
 
-    /* spawn thread to manage GPS */
-    if (gps_enabled == true) {
-        i = pthread_create( &thrid_gps, NULL, (void * (*)(void *))thread_gps, NULL);
-        if (i != 0) {
-            MSG("ERROR: [main] impossible to create GPS thread\n");
+        FILE* fp=fopen(debug_cfg_path, "r");
+        FILE* fp1=fopen(global_cfg_path, "r");
+        FILE* fp2=fopen(local_cfg_path, "r");
+
+        /* load configuration files */
+        if (fp != NULL) {
+            /* if there is a debug conf, parse only the debug conf */
+            fclose(fp);
+            fclose(fp1);
+            fclose(fp2);
+            MSG("INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
+            MSG("INFO: other configuration files will be ignored\n");
+            x = parse_SX1301_configuration(debug_cfg_path);
+            if (x != 0) {
+                exit(EXIT_FAILURE);
+            }
+            x = parse_gateway_configuration(debug_cfg_path);
+            if (x != 0) {
+                exit(EXIT_FAILURE);
+            }
+        } else if (fp1 != NULL) {
+            /* if there is a global conf, parse it and then try to parse local conf  */
+            fclose(fp);
+            fclose(fp1);
+            MSG("INFO: found global configuration file %s, parsing it\n", global_cfg_path);
+            x = parse_SX1301_configuration(global_cfg_path);
+            if (x != 0) {
+                exit(EXIT_FAILURE);
+            }
+            x = parse_gateway_configuration(global_cfg_path);
+            if (x != 0) {
+                exit(EXIT_FAILURE);
+            }
+            if (fp2 != NULL) {
+                fclose(fp2);
+                MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
+                MSG("INFO: redefined parameters will overwrite global parameters\n");
+                parse_SX1301_configuration(local_cfg_path);
+                parse_gateway_configuration(local_cfg_path);
+            }
+        } else if (fp2 != NULL) {
+            /* if there is only a local conf, parse it and that's all */
+            fclose(fp);
+            fclose(fp1);
+            fclose(fp2);
+            MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
+            x = parse_SX1301_configuration(local_cfg_path);
+            if (x != 0) {
+                exit(EXIT_FAILURE);
+            }
+            x = parse_gateway_configuration(local_cfg_path);
+            if (x != 0) {
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            MSG("ERROR: [main] failed to find any configuration file named %s, %s OR %s\n", global_cfg_path, local_cfg_path, debug_cfg_path);
             exit(EXIT_FAILURE);
         }
-        i = pthread_create( &thrid_valid, NULL, (void * (*)(void *))thread_valid, NULL);
+
+        /* Start GPS a.s.a.p. if gps_fake is set to false, to allow it to lock */
+        
+        if(gps_fake_enable == false)
+        {
+            i = lgw_gps_enable("ubx8", 0, &gps_tty_dev);
+            if (i != LGW_GPS_SUCCESS)
+            {
+                printf("WARNING: [main] impossible to open GPS for sync\n");
+                gps_enabled = false;
+                gps_ref_valid = false;
+            }
+            else
+            {
+                printf("INFO: [main] GPS open for synchronization\n");
+                gps_enabled = true;
+                gps_ref_valid = false;
+            }
+        }
+
+        /* get timezone info */
+        tzset();
+
+        /* sanity check on configuration variables */
+        // TODO
+
+        /* process some of the configuration variables */
+        net_mac_h = htonl((uint32_t)(0xFFFFFFFF & (lgwm>>32)));
+        net_mac_l = htonl((uint32_t)(0xFFFFFFFF &  lgwm  ));
+
+        /* prepare hints to open network sockets */
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_INET; /* WA: Forcing IPv4 as AF_UNSPEC makes connection on localhost to fail */
+        hints.ai_socktype = SOCK_DGRAM;
+
+        /* look for server address w/ upstream port */
+        i = getaddrinfo(serv_addr, serv_port_up, &hints, &result);
         if (i != 0) {
-            MSG("ERROR: [main] impossible to create validation thread\n");
+            MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned error code %d\n", serv_addr, serv_port_up, i);
             exit(EXIT_FAILURE);
         }
-    }
 
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL); /* Ctrl-\ */
-    sigaction(SIGINT, &sigact, NULL); /* Ctrl-C */
-    sigaction(SIGTERM, &sigact, NULL); /* default "kill" command */
-
-    /* main loop task : statistics collection */
-    while (!exit_sig && !quit_sig) {
-        /* wait for next reporting interval */
-        wait_ms(1000 * stat_interval);
-
-        /* get timestamp for statistics */
-        t = time(NULL);
-        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
-
-        /* access upstream statistics, copy and reset them */
-        pthread_mutex_lock(&mx_meas_up);
-        cp_nb_rx_rcv       = meas_nb_rx_rcv;
-        cp_nb_rx_ok        = meas_nb_rx_ok;
-        cp_nb_rx_bad       = meas_nb_rx_bad;
-        cp_nb_rx_nocrc     = meas_nb_rx_nocrc;
-        cp_up_pkt_fwd      = meas_up_pkt_fwd;
-        cp_up_network_byte = meas_up_network_byte;
-        cp_up_payload_byte = meas_up_payload_byte;
-        cp_up_dgram_sent   = meas_up_dgram_sent;
-        cp_up_ack_rcv      = meas_up_ack_rcv;
-        meas_nb_rx_rcv = 0;
-        meas_nb_rx_ok = 0;
-        meas_nb_rx_bad = 0;
-        meas_nb_rx_nocrc = 0;
-        meas_up_pkt_fwd = 0;
-        meas_up_network_byte = 0;
-        meas_up_payload_byte = 0;
-        meas_up_dgram_sent = 0;
-        meas_up_ack_rcv = 0;
-        pthread_mutex_unlock(&mx_meas_up);
-        if (cp_nb_rx_rcv > 0) {
-            rx_ok_ratio = (float)cp_nb_rx_ok / (float)cp_nb_rx_rcv;
-            rx_bad_ratio = (float)cp_nb_rx_bad / (float)cp_nb_rx_rcv;
-            rx_nocrc_ratio = (float)cp_nb_rx_nocrc / (float)cp_nb_rx_rcv;
-        } else {
-            rx_ok_ratio = 0.0;
-            rx_bad_ratio = 0.0;
-            rx_nocrc_ratio = 0.0;
+        /* try to open socket for upstream traffic */
+        for (q=result; q!=NULL; q=q->ai_next) {
+            sock_up = socket(q->ai_family, q->ai_socktype, q->ai_protocol);
+            if (sock_up == -1) continue; /* try next field */
+            else break; /* success, get out of loop */
         }
-        if (cp_up_dgram_sent > 0) {
-            up_ack_ratio = (float)cp_up_ack_rcv / (float)cp_up_dgram_sent;
-        } else {
-            up_ack_ratio = 0.0;
-        }
-
-        /* access downstream statistics, copy and reset them */
-        pthread_mutex_lock(&mx_meas_dw);
-        cp_dw_pull_sent    =  meas_dw_pull_sent;
-        cp_dw_ack_rcv      =  meas_dw_ack_rcv;
-        cp_dw_dgram_rcv    =  meas_dw_dgram_rcv;
-        cp_dw_network_byte =  meas_dw_network_byte;
-        cp_dw_payload_byte =  meas_dw_payload_byte;
-        cp_nb_tx_ok        =  meas_nb_tx_ok;
-        cp_nb_tx_fail      =  meas_nb_tx_fail;
-        cp_nb_tx_requested                 +=  meas_nb_tx_requested;
-        cp_nb_tx_rejected_collision_packet +=  meas_nb_tx_rejected_collision_packet;
-        cp_nb_tx_rejected_collision_beacon +=  meas_nb_tx_rejected_collision_beacon;
-        cp_nb_tx_rejected_too_late         +=  meas_nb_tx_rejected_too_late;
-        cp_nb_tx_rejected_too_early        +=  meas_nb_tx_rejected_too_early;
-        cp_nb_beacon_queued   +=  meas_nb_beacon_queued;
-        cp_nb_beacon_sent     +=  meas_nb_beacon_sent;
-        cp_nb_beacon_rejected +=  meas_nb_beacon_rejected;
-        meas_dw_pull_sent = 0;
-        meas_dw_ack_rcv = 0;
-        meas_dw_dgram_rcv = 0;
-        meas_dw_network_byte = 0;
-        meas_dw_payload_byte = 0;
-        meas_nb_tx_ok = 0;
-        meas_nb_tx_fail = 0;
-        meas_nb_tx_requested = 0;
-        meas_nb_tx_rejected_collision_packet = 0;
-        meas_nb_tx_rejected_collision_beacon = 0;
-        meas_nb_tx_rejected_too_late = 0;
-        meas_nb_tx_rejected_too_early = 0;
-        meas_nb_beacon_queued = 0;
-        meas_nb_beacon_sent = 0;
-        meas_nb_beacon_rejected = 0;
-        pthread_mutex_unlock(&mx_meas_dw);
-        if (cp_dw_pull_sent > 0) {
-            dw_ack_ratio = (float)cp_dw_ack_rcv / (float)cp_dw_pull_sent;
-        } else {
-            dw_ack_ratio = 0.0;
-        }
-
-        /* access GPS statistics, copy them */
-        if (gps_enabled == true) {
-            pthread_mutex_lock(&mx_meas_gps);
-            coord_ok = gps_coord_valid;
-            cp_gps_coord = meas_gps_coord;
-            pthread_mutex_unlock(&mx_meas_gps);
-        }
-
-        /* overwrite with reference coordinates if function is enabled */
-        if (gps_fake_enable == true) {
-            cp_gps_coord = reference_coord;
-        }
-
-        /* display a report */
-        printf("\n##### %s #####\n", stat_timestamp);
-        printf("### [UPSTREAM] ###\n");
-        printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
-        printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
-        printf("# RF packets forwarded: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
-        printf("# PUSH_DATA datagrams sent: %u (%u bytes)\n", cp_up_dgram_sent, cp_up_network_byte);
-        printf("# PUSH_DATA acknowledged: %.2f%%\n", 100.0 * up_ack_ratio);
-        printf("### [DOWNSTREAM] ###\n");
-        printf("# PULL_DATA sent: %u (%.2f%% acknowledged)\n", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
-        printf("# PULL_RESP(onse) datagrams received: %u (%u bytes)\n", cp_dw_dgram_rcv, cp_dw_network_byte);
-        printf("# RF packets sent to concentrator: %u (%u bytes)\n", (cp_nb_tx_ok+cp_nb_tx_fail), cp_dw_payload_byte);
-        printf("# TX errors: %u\n", cp_nb_tx_fail);
-        if (cp_nb_tx_requested != 0 ) {
-            printf("# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
-            printf("# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
-            printf("# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
-            printf("# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
-        }
-        printf("# BEACON queued: %u\n", cp_nb_beacon_queued);
-        printf("# BEACON sent so far: %u\n", cp_nb_beacon_sent);
-        printf("# BEACON rejected: %u\n", cp_nb_beacon_rejected);
-        printf("### [JIT] ###\n");
-        /* get timestamp captured on PPM pulse  */
-        pthread_mutex_lock(&mx_concent);
-        i = lgw_get_trigcnt(&trig_tstamp);
-        pthread_mutex_unlock(&mx_concent);
-        if (i != LGW_HAL_SUCCESS) {
-            printf("# SX1301 time (PPS): unknown\n");
-        } else {
-            printf("# SX1301 time (PPS): %u\n", trig_tstamp);
-        }
-        jit_print_queue (&jit_queue, false, DEBUG_LOG);
-        printf("### [GPS] ###\n");
-        if (gps_enabled == true) {
-            /* no need for mutex, display is not critical */
-            if (gps_ref_valid == true) {
-                printf("# Valid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
-            } else {
-                printf("# Invalid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
+        if (q == NULL) {
+            MSG("ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
+            i = 1;
+            for (q=result; q!=NULL; q=q->ai_next) {
+                //getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
+                MSG("INFO: [up] result %i host:%s port:%d\n", i, inet_ntoa(((struct sockaddr_in*)(q->ai_addr))->sin_addr.s_addr), 
+                                                                ntohs(((struct sockaddr_in*)(q->ai_addr))->sin_port));
+                ++i;
             }
-            if (coord_ok == true) {
-                printf("# GPS coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
-            } else {
-                printf("# no valid GPS coordinates available yet\n");
+            exit(EXIT_FAILURE);
+        }
+
+        /* connect so we can send/receive packet with the server only */
+        i = connect(sock_up, q->ai_addr, q->ai_addrlen);
+        if (i != 0) {
+            MSG("ERROR: [up] connect returned %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        freeaddrinfo(result);
+
+        /* look for server address w/ downstream port */
+        i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
+        if (i != 0) {
+            MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned error code %d\n", serv_addr, serv_port_up, i);
+            exit(EXIT_FAILURE);
+        }
+
+        /* try to open socket for downstream traffic */
+        for (q=result; q!=NULL; q=q->ai_next) {
+            sock_down = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+            if (sock_down == -1) continue; /* try next field */
+            else break; /* success, get out of loop */
+        }
+        if (q == NULL) {
+            MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
+            i = 1;
+            for (q=result; q!=NULL; q=q->ai_next) {
+                //getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
+                MSG("INFO: [down] result %i host:%s service:%d\n", i, inet_ntoa(((struct sockaddr_in*)(q->ai_addr))->sin_addr.s_addr),
+                                                                    ntohs(((struct sockaddr_in*)(q->ai_addr))->sin_port));
+                ++i;
             }
-        } else if (gps_fake_enable == true) {
-            printf("# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
-        } else {
-            printf("# GPS sync is disabled\n");
+            exit(EXIT_FAILURE);
         }
-        printf("##### END #####\n");
 
-        /* generate a JSON report (will be sent to server by upstream thread) */
-        pthread_mutex_lock(&mx_stat_rep);
-        if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
-        } else {
-            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+        /* connect so we can send/receive packet with the server only */
+        i = connect(sock_down, q->ai_addr, q->ai_addrlen);
+        if (i != 0) {
+            MSG("ERROR: [down] connect returned %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
         }
-        report_ready = true;
-        pthread_mutex_unlock(&mx_stat_rep);
-    }
+        freeaddrinfo(result);
 
-    /* wait for upstream thread to finish (1 fetch cycle max) */
-    pthread_join(thrid_up, NULL);
-    pthread_cancel(thrid_down); /* don't wait for downstream thread */
-    pthread_cancel(thrid_jit); /* don't wait for jit thread */
-    pthread_cancel(thrid_timersync); /* don't wait for timer sync thread */
-    if (gps_enabled == true) {
-        pthread_cancel(thrid_gps); /* don't wait for GPS thread */
-        pthread_cancel(thrid_valid); /* don't wait for validation thread */
-
-        i = lgw_gps_disable(gps_tty_fd);
+        /* starting the concentrator */
+        i = lgw_start(SPI_SPEED);
         if (i == LGW_HAL_SUCCESS) {
-            MSG("INFO: GPS closed successfully\n");
+            MSG("INFO: [main] concentrator started, packet can now be received\n");
         } else {
-            MSG("WARNING: failed to close GPS successfully\n");
+            MSG("ERROR: [main] failed to start the concentrator\n");
+            exit(EXIT_FAILURE);
         }
-    }
 
-    /* if an exit signal was received, try to quit properly */
-    if (exit_sig) {
-        /* shut down network sockets */
-        shutdown(sock_up, SHUT_RDWR);
-        shutdown(sock_down, SHUT_RDWR);
-        /* stop the hardware */
-        i = lgw_stop();
-        if (i == LGW_HAL_SUCCESS) {
-            MSG("INFO: concentrator stopped successfully\n");
-        } else {
-            MSG("WARNING: failed to stop concentrator successfully\n");
+        /* spawn tasks to manage upstream and downstream */
+        xTaskCreate(task_up, "task_up", 1024 * 10, NULL, 2, &xtaskhandle_up);
+        if (xtaskhandle_up == NULL) {
+            MSG("ERROR: [main] impossible to create upstream task\n");
+            exit(EXIT_FAILURE);
         }
-    }
+        xTaskCreate(task_down, "task_down", 1024 * 10, NULL, 2, &xtaskhandle_down);
+        if (xtaskhandle_down == NULL) {
+            MSG("ERROR: [main] impossible to create downstream task\n");
+            exit(EXIT_FAILURE);
+        }
+        xTaskCreate(task_jit, "task_down", 1024 * 10, NULL, 2, &xtaskhandle_jit);
+        if (xtaskhandle_jit == NULL) {
+            MSG("ERROR: [main] impossible to create JIT task\n");
+            exit(EXIT_FAILURE);
+        }
+        xTaskCreate(task_timersync, "task_timersync", 1024 * 10, NULL, 2, &xtaskhandle_timersync);
+        if (xtaskhandle_timersync == NULL) {
+            MSG("ERROR: [main] impossible to create Timer Sync task\n");
+            exit(EXIT_FAILURE);
+        }
 
-    MSG("INFO: Exiting packet forwarder program\n");
-    exit(EXIT_SUCCESS);
+        /* spawn thread to manage GPS */
+        if (gps_fake_enable == false) {
+            xTaskCreate(task_gps, "task_gps", 1024 * 10, NULL, 2, &xtaskhandle_gps);
+            if (xtaskhandle_gps == NULL) {
+                MSG("ERROR: [main] impossible to create GPS task\n");
+                exit(EXIT_FAILURE);
+            }
+            xTaskCreate(task_valid, "task_valid", 1024 * 2, NULL, 2, &xtaskhandle_valid);
+            if (xtaskhandle_valid == NULL) {
+                MSG("ERROR: [main] impossible to create validation task\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        /* main loop task : statistics collection */
+        while (1) {
+            /* wait for next reporting interval */
+            wait_ms(1000 * stat_interval);
+
+            /* get timestamp for statistics */
+            t = time(NULL);
+            strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
+
+            /* access upstream statistics, copy and reset them */
+            xSemaphoreTake(mx_meas_up, portMAX_DELAY);
+            cp_nb_rx_rcv       = meas_nb_rx_rcv;
+            cp_nb_rx_ok        = meas_nb_rx_ok;
+            cp_nb_rx_bad       = meas_nb_rx_bad;
+            cp_nb_rx_nocrc     = meas_nb_rx_nocrc;
+            cp_up_pkt_fwd      = meas_up_pkt_fwd;
+            cp_up_network_byte = meas_up_network_byte;
+            cp_up_payload_byte = meas_up_payload_byte;
+            cp_up_dgram_sent   = meas_up_dgram_sent;
+            cp_up_ack_rcv      = meas_up_ack_rcv;
+            meas_nb_rx_rcv = 0;
+            meas_nb_rx_ok = 0;
+            meas_nb_rx_bad = 0;
+            meas_nb_rx_nocrc = 0;
+            meas_up_pkt_fwd = 0;
+            meas_up_network_byte = 0;
+            meas_up_payload_byte = 0;
+            meas_up_dgram_sent = 0;
+            meas_up_ack_rcv = 0;
+            xSemaphoreGive(mx_meas_up);
+            if (cp_nb_rx_rcv > 0) {
+                rx_ok_ratio = (float)cp_nb_rx_ok / (float)cp_nb_rx_rcv;
+                rx_bad_ratio = (float)cp_nb_rx_bad / (float)cp_nb_rx_rcv;
+                rx_nocrc_ratio = (float)cp_nb_rx_nocrc / (float)cp_nb_rx_rcv;
+            } else {
+                rx_ok_ratio = 0.0;
+                rx_bad_ratio = 0.0;
+                rx_nocrc_ratio = 0.0;
+            }
+            if (cp_up_dgram_sent > 0) {
+                up_ack_ratio = (float)cp_up_ack_rcv / (float)cp_up_dgram_sent;
+            } else {
+                up_ack_ratio = 0.0;
+            }
+
+            /* access downstream statistics, copy and reset them */
+            xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
+            cp_dw_pull_sent    =  meas_dw_pull_sent;
+            cp_dw_ack_rcv      =  meas_dw_ack_rcv;
+            cp_dw_dgram_rcv    =  meas_dw_dgram_rcv;
+            cp_dw_network_byte =  meas_dw_network_byte;
+            cp_dw_payload_byte =  meas_dw_payload_byte;
+            cp_nb_tx_ok        =  meas_nb_tx_ok;
+            cp_nb_tx_fail      =  meas_nb_tx_fail;
+            cp_nb_tx_requested                 +=  meas_nb_tx_requested;
+            cp_nb_tx_rejected_collision_packet +=  meas_nb_tx_rejected_collision_packet;
+            cp_nb_tx_rejected_collision_beacon +=  meas_nb_tx_rejected_collision_beacon;
+            cp_nb_tx_rejected_too_late         +=  meas_nb_tx_rejected_too_late;
+            cp_nb_tx_rejected_too_early        +=  meas_nb_tx_rejected_too_early;
+            cp_nb_beacon_queued   +=  meas_nb_beacon_queued;
+            cp_nb_beacon_sent     +=  meas_nb_beacon_sent;
+            cp_nb_beacon_rejected +=  meas_nb_beacon_rejected;
+            meas_dw_pull_sent = 0;
+            meas_dw_ack_rcv = 0;
+            meas_dw_dgram_rcv = 0;
+            meas_dw_network_byte = 0;
+            meas_dw_payload_byte = 0;
+            meas_nb_tx_ok = 0;
+            meas_nb_tx_fail = 0;
+            meas_nb_tx_requested = 0;
+            meas_nb_tx_rejected_collision_packet = 0;
+            meas_nb_tx_rejected_collision_beacon = 0;
+            meas_nb_tx_rejected_too_late = 0;
+            meas_nb_tx_rejected_too_early = 0;
+            meas_nb_beacon_queued = 0;
+            meas_nb_beacon_sent = 0;
+            meas_nb_beacon_rejected = 0;
+            xSemaphoreGive(mx_meas_dw);
+            if (cp_dw_pull_sent > 0) {
+                dw_ack_ratio = (float)cp_dw_ack_rcv / (float)cp_dw_pull_sent;
+            } else {
+                dw_ack_ratio = 0.0;
+            }
+
+            /* access GPS statistics, copy them */
+            if (gps_enabled == true) {
+                xSemaphoreTake(mx_meas_gps, portMAX_DELAY);
+                coord_ok = gps_coord_valid;
+                cp_gps_coord = meas_gps_coord;
+                xSemaphoreGive(mx_meas_gps);
+            }
+
+            /* overwrite with reference coordinates if function is enabled */
+            if (gps_fake_enable == true) {
+                cp_gps_coord = reference_coord;
+            }
+
+            /* display a report */
+            printf("\n##### %s #####\n", stat_timestamp);
+            printf("### [UPSTREAM] ###\n");
+            printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
+            printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
+            printf("# RF packets forwarded: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
+            printf("# PUSH_DATA datagrams sent: %u (%u bytes)\n", cp_up_dgram_sent, cp_up_network_byte);
+            printf("# PUSH_DATA acknowledged: %.2f%%\n", 100.0 * up_ack_ratio);
+            printf("### [DOWNSTREAM] ###\n");
+            printf("# PULL_DATA sent: %u (%.2f%% acknowledged)\n", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
+            printf("# PULL_RESP(onse) datagrams received: %u (%u bytes)\n", cp_dw_dgram_rcv, cp_dw_network_byte);
+            printf("# RF packets sent to concentrator: %u (%u bytes)\n", (cp_nb_tx_ok+cp_nb_tx_fail), cp_dw_payload_byte);
+            printf("# TX errors: %u\n", cp_nb_tx_fail);
+            if (cp_nb_tx_requested != 0 )
+            {
+                printf("# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
+                printf("# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
+                printf("# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
+                printf("# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
+            }
+            printf("# BEACON queued: %u\n", cp_nb_beacon_queued);
+            printf("# BEACON sent so far: %u\n", cp_nb_beacon_sent);
+            printf("# BEACON rejected: %u\n", cp_nb_beacon_rejected);
+            printf("### [JIT] ###\n");
+            /* get timestamp captured on PPM pulse  */
+            xSemaphoreTake(mx_concent, portMAX_DELAY);
+            i = lgw_get_trigcnt(&trig_tstamp);
+            xSemaphoreGive(mx_concent);
+            if (i != LGW_HAL_SUCCESS) {
+                printf("# SX1301 time (PPS): unknown\n");
+            } else {
+                printf("# SX1301 time (PPS): %u\n", trig_tstamp);
+            }
+            jit_print_queue (&jit_queue, false, DEBUG_LOG);
+            printf("### [GPS] ###\n");
+            if (gps_enabled == true) {
+                /* no need for mutex, display is not critical */
+                if (gps_ref_valid == true) {
+                    printf("# Valid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
+                } else {
+                    printf("# Invalid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
+                }
+                if (coord_ok == true) {
+                    printf("# GPS coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+                } else {
+                    printf("# no valid GPS coordinates available yet\n");
+                }
+            } else if (gps_fake_enable == true) {
+                printf("# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+            } else {
+                printf("# GPS sync is disabled\n");
+            }
+            printf("##### END #####\n");
+
+            /* generate a JSON report (will be sent to server by upstream thread) */
+            xSemaphoreTake(mx_stat_rep, portMAX_DELAY);
+            if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
+                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+            } else {
+                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+            }
+            report_ready = true;
+            xSemaphoreGive(mx_stat_rep);
+        }
+
+        MSG("INFO: Exiting packet forwarder program\n");
+        exit(EXIT_SUCCESS);
+    }
+    else
+    {
+        printf("Failed to mount SPIFFS\n");
+        return (EXIT_FAILURE);
+    }
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
 
-void thread_up(void) {
+static void task_up(void *pvParameters) {
     int i, j; /* loop variables */
     unsigned pkt_in_dgram; /* nb on Lora packet in the current datagram */
 
@@ -1465,12 +1634,17 @@ void thread_up(void) {
     uint8_t token_l; /* random token for acknowledgement matching */
 
     /* ping measurement variables */
-    struct timespec send_time;
-    struct timespec recv_time;
+    //struct timespec send_time;
+    //struct timespec recv_time;
+
+    struct timeval send_time;
+    struct timeval recv_time;
 
     /* GPS synchronization variables */
     struct timespec pkt_utc_time;
+    //struct timeval pkt_utc_time;
     struct tm * x; /* broken-up UTC time */
+    //struct timeval pkt_gps_time;
     struct timespec pkt_gps_time;
     uint64_t pkt_gps_time_ms;
 
@@ -1494,12 +1668,12 @@ void thread_up(void) {
     *(uint32_t *)(buff_up + 4) = net_mac_h;
     *(uint32_t *)(buff_up + 8) = net_mac_l;
 
-    while (!exit_sig && !quit_sig) {
+    while (1) {
 
         /* fetch packets */
-        pthread_mutex_lock(&mx_concent);
+        xSemaphoreTake(mx_concent, portMAX_DELAY);
         nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);
-        pthread_mutex_unlock(&mx_concent);
+        xSemaphoreGive(mx_concent);
         if (nb_pkt == LGW_HAL_ERROR) {
             MSG("ERROR: [up] failed packet fetch, exiting\n");
             exit(EXIT_FAILURE);
@@ -1517,10 +1691,10 @@ void thread_up(void) {
 
         /* get a copy of GPS time reference (avoid 1 mutex per packet) */
         if ((nb_pkt > 0) && (gps_enabled == true)) {
-            pthread_mutex_lock(&mx_timeref);
+            xSemaphoreTake(mx_timeref, portMAX_DELAY);
             ref_ok = gps_ref_valid;
             local_ref = time_reference_gps;
-            pthread_mutex_unlock(&mx_timeref);
+            xSemaphoreGive(mx_timeref);
         } else {
             ref_ok = false;
         }
@@ -1552,40 +1726,40 @@ void thread_up(void) {
             mote_fcnt |= p->payload[7] << 8;
 
             /* basic packet filtering */
-            pthread_mutex_lock(&mx_meas_up);
+            xSemaphoreTake(mx_meas_up, portMAX_DELAY);
             meas_nb_rx_rcv += 1;
             switch(p->status) {
                 case STAT_CRC_OK:
                     meas_nb_rx_ok += 1;
                     printf( "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
                     if (!fwd_valid_pkt) {
-                        pthread_mutex_unlock(&mx_meas_up);
+                        xSemaphoreGive(mx_meas_up);
                         continue; /* skip that packet */
                     }
                     break;
                 case STAT_CRC_BAD:
                     meas_nb_rx_bad += 1;
                     if (!fwd_error_pkt) {
-                        pthread_mutex_unlock(&mx_meas_up);
+                        xSemaphoreGive(mx_meas_up);
                         continue; /* skip that packet */
                     }
                     break;
                 case STAT_NO_CRC:
                     meas_nb_rx_nocrc += 1;
                     if (!fwd_nocrc_pkt) {
-                        pthread_mutex_unlock(&mx_meas_up);
+                        xSemaphoreGive(mx_meas_up);
                         continue; /* skip that packet */
                     }
                     break;
                 default:
                     MSG("WARNING: [up] received packet with unknown status %u (size %u, modulation %u, BW %u, DR %u, RSSI %.1f)\n", p->status, p->size, p->modulation, p->bandwidth, p->datarate, p->rssi);
-                    pthread_mutex_unlock(&mx_meas_up);
+                    xSemaphoreGive(mx_meas_up);
                     continue; /* skip that packet */
                     // exit(EXIT_FAILURE);
             }
             meas_up_pkt_fwd += 1;
             meas_up_payload_byte += p->size;
-            pthread_mutex_unlock(&mx_meas_up);
+            xSemaphoreGive(mx_meas_up);
 
             /* Start of packet, add inter-packet separator if necessary */
             if (pkt_in_dgram == 0) {
@@ -1624,7 +1798,7 @@ void thread_up(void) {
                 /* convert packet timestamp to GPS absolute time */
                 j = lgw_cnt2gps(local_ref, p->count_us, &pkt_gps_time);
                 if (j == LGW_GPS_SUCCESS) {
-                    pkt_gps_time_ms = pkt_gps_time.tv_sec * 1E3 + pkt_gps_time.tv_nsec / 1E6;
+                    pkt_gps_time_ms = pkt_gps_time.tv_sec * 1E3 + pkt_gps_time.tv_nsec / 1E3;
                     j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"tmms\":%llu",
                                     pkt_gps_time_ms); /* GPS time in milliseconds since 06.Jan.1980 */
                     if (j > 0) {
@@ -1827,10 +2001,10 @@ void thread_up(void) {
 
         /* add status report if a new one is available */
         if (send_report == true) {
-            pthread_mutex_lock(&mx_stat_rep);
+            xSemaphoreTake(mx_stat_rep, portMAX_DELAY);
             report_ready = false;
             j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, "%s", status_report);
-            pthread_mutex_unlock(&mx_stat_rep);
+            xSemaphoreGive(mx_stat_rep);
             if (j > 0) {
                 buff_index += j;
             } else {
@@ -1848,15 +2022,15 @@ void thread_up(void) {
 
         /* send datagram to server */
         send(sock_up, (void *)buff_up, buff_index, 0);
-        clock_gettime(CLOCK_MONOTONIC, &send_time);
-        pthread_mutex_lock(&mx_meas_up);
+        gettimeofday(&send_time, NULL);
+        xSemaphoreTake(mx_meas_up, portMAX_DELAY);
         meas_up_dgram_sent += 1;
         meas_up_network_byte += buff_index;
 
         /* wait for acknowledge (in 2 times, to catch extra packets) */
         for (i=0; i<2; ++i) {
             j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
-            clock_gettime(CLOCK_MONOTONIC, &recv_time);
+            gettimeofday(&recv_time, NULL);
             if (j == -1) {
                 if (errno == EAGAIN) { /* timeout */
                     continue;
@@ -1870,12 +2044,12 @@ void thread_up(void) {
                 //MSG("WARNING: [up] ignored out-of sync ACK packet\n");
                 continue;
             } else {
-                MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
+                //MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
                 meas_up_ack_rcv += 1;
                 break;
             }
         }
-        pthread_mutex_unlock(&mx_meas_up);
+        xSemaphoreGive(mx_meas_up);
     }
     MSG("\nINFO: End of upstream thread\n");
 }
@@ -1883,7 +2057,7 @@ void thread_up(void) {
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 2: POLLING SERVER AND ENQUEUING PACKETS IN JIT QUEUE ---------- */
 
-void thread_down(void) {
+static void task_down(void *pvParameters) {
     int i; /* loop variables */
 
     /* configuration and metadata for an outbound packet */
@@ -1891,8 +2065,11 @@ void thread_down(void) {
     bool sent_immediate = false; /* option to sent the packet immediately */
 
     /* local timekeeping variables */
-    struct timespec send_time; /* time of the pull request */
-    struct timespec recv_time; /* time of return from recv socket call */
+    struct timeval send_time;
+    struct timeval recv_time;
+
+    //struct timespec send_time; /* time of the pull request */
+    //struct timespec recv_time; /* time of return from recv socket call */
 
     /* data buffers */
     uint8_t buff_down[1000]; /* buffer to receive downstream packets */
@@ -1915,6 +2092,7 @@ void thread_down(void) {
 
     /* variables to send on GPS timestamp */
     struct tref local_ref; /* time reference used for GPS <-> timestamp conversion */
+    //struct timeval gps_tx;
     struct timespec gps_tx; /* GPS time that needs to be converted to timestamp */
 
     /* beacon variables */
@@ -2055,11 +2233,12 @@ void thread_down(void) {
     /* JIT queue initialization */
     jit_queue_init(&jit_queue);
 
-    while (!exit_sig && !quit_sig) {
+    while (1) {
 
         /* auto-quit if the threshold is crossed */
-        if ((autoquit_threshold > 0) && (autoquit_cnt >= autoquit_threshold)) {
-            exit_sig = true;
+        if ((autoquit_threshold > 0) && (autoquit_cnt >= autoquit_threshold))
+        {
+    //Exit sig was here
             MSG("INFO: [down] the last %u PULL_DATA were not ACKed, exiting application\n", autoquit_threshold);
             break;
         }
@@ -2072,26 +2251,26 @@ void thread_down(void) {
 
         /* send PULL request and record time */
         send(sock_down, (void *)buff_req, sizeof buff_req, 0);
-        clock_gettime(CLOCK_MONOTONIC, &send_time);
-        pthread_mutex_lock(&mx_meas_dw);
+        gettimeofday(&send_time, NULL);
+        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
         meas_dw_pull_sent += 1;
-        pthread_mutex_unlock(&mx_meas_dw);
+        xSemaphoreGive(mx_meas_dw);
         req_ack = false;
         autoquit_cnt++;
 
         /* listen to packets and process them until a new PULL request must be sent */
         recv_time = send_time;
-        while ((int)difftimespec(recv_time, send_time) < keepalive_time) {
-
+        //while ((int)difftimespec(recv_time, send_time) < keepalive_time) {
+        while ((int)difftimeval(recv_time, send_time) < keepalive_time) {
             /* try to receive a datagram */
             msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down)-1, 0);
-            clock_gettime(CLOCK_MONOTONIC, &recv_time);
+            gettimeofday(&recv_time, NULL);
 
             /* Pre-allocate beacon slots in JiT queue, to check downlink collisions */
             beacon_loop = JIT_NUM_BEACON_IN_QUEUE - jit_queue.num_beacon;
             retry = 0;
             while (beacon_loop && (beacon_period != 0)) {
-                pthread_mutex_lock(&mx_timeref);
+                xSemaphoreTake(mx_timeref, portMAX_DELAY);
                 /* Wait for GPS to be ready before inserting beacons in JiT queue */
                 if ((gps_ref_valid == true) && (xtal_correct_ok == true)) {
 
@@ -2126,7 +2305,7 @@ void thread_down(void) {
 
                     /* convert GPS time to concentrator time, and set packet counter for JiT trigger */
                     lgw_gps2cnt(time_reference_gps, next_beacon_gps_time, &(beacon_pkt.count_us));
-                    pthread_mutex_unlock(&mx_timeref);
+                    xSemaphoreGive(mx_timeref);
 
                     /* apply frequency correction to beacon TX frequency */
                     if (beacon_freq_nb > 1) {
@@ -2155,9 +2334,9 @@ void thread_down(void) {
                     jit_result = jit_enqueue(&jit_queue, &current_concentrator_time, &beacon_pkt, JIT_PKT_TYPE_BEACON);
                     if (jit_result == JIT_ERROR_OK) {
                         /* update stats */
-                        pthread_mutex_lock(&mx_meas_dw);
+                        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_nb_beacon_queued += 1;
-                        pthread_mutex_unlock(&mx_meas_dw);
+                        xSemaphoreGive(mx_meas_dw);
 
                         /* One more beacon in the queue */
                         beacon_loop--;
@@ -2174,11 +2353,11 @@ void thread_down(void) {
                     } else {
                         MSG_DEBUG(DEBUG_BEACON, "--> beacon queuing failed with %d\n", jit_result);
                         /* update stats */
-                        pthread_mutex_lock(&mx_meas_dw);
+                        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         if (jit_result != JIT_ERROR_COLLISION_BEACON) {
                             meas_nb_beacon_rejected += 1;
                         }
-                        pthread_mutex_unlock(&mx_meas_dw);
+                        xSemaphoreGive(mx_meas_dw);
                         /* In case previous enqueue failed, we retry one period later until it succeeds */
                         /* Note: In case the GPS has been unlocked for a while, there can be lots of retries */
                         /*       to be done from last beacon time to a new valid one */
@@ -2186,7 +2365,7 @@ void thread_down(void) {
                         MSG_DEBUG(DEBUG_BEACON, "--> beacon queuing retry=%d\n", retry);
                     }
                 } else {
-                    pthread_mutex_unlock(&mx_timeref);
+                    xSemaphoreGive(mx_timeref);
                     break;
                 }
             }
@@ -2212,10 +2391,11 @@ void thread_down(void) {
                     } else { /* if that packet was not already acknowledged */
                         req_ack = true;
                         autoquit_cnt = 0;
-                        pthread_mutex_lock(&mx_meas_dw);
+                        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_dw_ack_rcv += 1;
-                        pthread_mutex_unlock(&mx_meas_dw);
-                        MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
+                        xSemaphoreGive(mx_meas_dw);
+                        MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * difftimeval(recv_time, send_time)));
+                        //MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
                     }
                 } else { /* out-of-sync token */
                     MSG("INFO: [down] received out-of-sync ACK\n");
@@ -2269,12 +2449,12 @@ void thread_down(void) {
                         continue;
                     }
                     if (gps_enabled == true) {
-                        pthread_mutex_lock(&mx_timeref);
+                        xSemaphoreTake(mx_timeref, portMAX_DELAY);
                         if (gps_ref_valid == true) {
                             local_ref = time_reference_gps;
-                            pthread_mutex_unlock(&mx_timeref);
+                            xSemaphoreGive(mx_timeref);
                         } else {
-                            pthread_mutex_unlock(&mx_timeref);
+                            xSemaphoreGive(mx_timeref);
                             MSG("WARNING: [down] no valid GPS time reference yet, impossible to send packet on specific GPS time, TX aborted\n");
                             json_value_free(root_val);
 
@@ -2501,11 +2681,11 @@ void thread_down(void) {
             }
 
             /* record measurement data */
-            pthread_mutex_lock(&mx_meas_dw);
+            xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
             meas_dw_dgram_rcv += 1; /* count only datagrams with no JSON errors */
             meas_dw_network_byte += msg_len; /* meas_dw_network_byte */
             meas_dw_payload_byte += txpkt.size;
-            pthread_mutex_unlock(&mx_meas_dw);
+            xSemaphoreGive(mx_meas_dw);
 
             /* check TX parameter before trying to queue packet */
             jit_result = JIT_ERROR_OK;
@@ -2535,9 +2715,9 @@ void thread_down(void) {
                 if (jit_result != JIT_ERROR_OK) {
                     printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
                 }
-                pthread_mutex_lock(&mx_meas_dw);
+                xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                 meas_nb_tx_requested += 1;
-                pthread_mutex_unlock(&mx_meas_dw);
+                xSemaphoreGive(mx_meas_dw);
             }
 
             /* Send acknoledge datagram to server */
@@ -2567,11 +2747,10 @@ void print_tx_status(uint8_t tx_status) {
     }
 }
 
-
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 3: CHECKING PACKETS TO BE SENT FROM JIT QUEUE AND SEND THEM --- */
 
-void thread_jit(void) {
+static void task_jit(void *pvParameters) {
     int result = LGW_HAL_SUCCESS;
     struct lgw_pkt_tx_s pkt;
     int pkt_index = -1;
@@ -2581,7 +2760,7 @@ void thread_jit(void) {
     enum jit_pkt_type_e pkt_type;
     uint8_t tx_status;
 
-    while (!exit_sig && !quit_sig) {
+    while (1) {
         wait_ms(10);
 
         /* transfer data and metadata to the concentrator, and schedule TX */
@@ -2595,22 +2774,22 @@ void thread_jit(void) {
                     /* update beacon stats */
                     if (pkt_type == JIT_PKT_TYPE_BEACON) {
                         /* Compensate breacon frequency with xtal error */
-                        pthread_mutex_lock(&mx_xcorr);
+                        xSemaphoreTake(mx_xcorr, portMAX_DELAY);
                         pkt.freq_hz = (uint32_t)(xtal_correct * (double)pkt.freq_hz);
                         MSG_DEBUG(DEBUG_BEACON, "beacon_pkt.freq_hz=%u (xtal_correct=%.15lf)\n", pkt.freq_hz, xtal_correct);
-                        pthread_mutex_unlock(&mx_xcorr);
+                        xSemaphoreGive(mx_xcorr);
 
                         /* Update statistics */
-                        pthread_mutex_lock(&mx_meas_dw);
+                        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_nb_beacon_sent += 1;
-                        pthread_mutex_unlock(&mx_meas_dw);
+                        xSemaphoreGive(mx_meas_dw);
                         MSG("INFO: Beacon dequeued (count_us=%u)\n", pkt.count_us);
                     }
 
                     /* check if concentrator is free for sending new packet */
-                    pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
+                    xSemaphoreTake(mx_concent, portMAX_DELAY); /* may have to wait for a fetch to finish */
                     result = lgw_status(TX_STATUS, &tx_status);
-                    pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
+                    xSemaphoreGive(mx_concent); /* free concentrator ASAP */
                     if (result == LGW_HAL_ERROR) {
                         MSG("WARNING: [jit] lgw_status failed\n");
                     } else {
@@ -2627,19 +2806,19 @@ void thread_jit(void) {
                     }
 
                     /* send packet to concentrator */
-                    pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
+                    xSemaphoreTake(mx_concent, portMAX_DELAY); /* may have to wait for a fetch to finish */
                     result = lgw_send(pkt);
-                    pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
+                    xSemaphoreGive(mx_concent); /* free concentrator ASAP */
                     if (result == LGW_HAL_ERROR) {
-                        pthread_mutex_lock(&mx_meas_dw);
+                        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_nb_tx_fail += 1;
-                        pthread_mutex_unlock(&mx_meas_dw);
+                        xSemaphoreGive(mx_meas_dw);
                         MSG("WARNING: [jit] lgw_send failed\n");
                         continue;
                     } else {
-                        pthread_mutex_lock(&mx_meas_dw);
+                        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_nb_tx_ok += 1;
-                        pthread_mutex_unlock(&mx_meas_dw);
+                        xSemaphoreGive(mx_meas_dw);
                         MSG_DEBUG(DEBUG_PKT_FWD, "lgw_send done: count_us=%u\n", pkt.count_us);
                     }
                 } else {
@@ -2660,7 +2839,7 @@ void thread_jit(void) {
 static void gps_process_sync(void) {
     struct timespec gps_time;
     struct timespec utc;
-    uint32_t trig_tstamp; /* concentrator timestamp associated with PPM pulse */
+    uint32_t trig_tstamp; /* concentrator timestamp associated with PPS pulse */
     int i = lgw_gps_get(&utc, &gps_time, NULL, NULL);
 
     /* get GPS time for synchronization */
@@ -2670,18 +2849,18 @@ static void gps_process_sync(void) {
     }
 
     /* get timestamp captured on PPM pulse  */
-    pthread_mutex_lock(&mx_concent);
+    xSemaphoreTake(mx_concent, portMAX_DELAY);
     i = lgw_get_trigcnt(&trig_tstamp);
-    pthread_mutex_unlock(&mx_concent);
+    xSemaphoreGive(mx_concent);
     if (i != LGW_HAL_SUCCESS) {
         MSG("WARNING: [gps] failed to read concentrator timestamp\n");
         return;
     }
 
     /* try to update time reference with the new GPS time & timestamp */
-    pthread_mutex_lock(&mx_timeref);
+    xSemaphoreTake(mx_timeref, portMAX_DELAY);
     i = lgw_gps_sync(&time_reference_gps, trig_tstamp, utc, gps_time);
-    pthread_mutex_unlock(&mx_timeref);
+    xSemaphoreGive(mx_timeref);
     if (i != LGW_GPS_SUCCESS) {
         MSG("WARNING: [gps] GPS out of sync, keeping previous time reference\n");
     }
@@ -2694,7 +2873,7 @@ static void gps_process_coords(void) {
     int    i = lgw_gps_get(NULL, NULL, &coord, &gpserr);
 
     /* update gateway coordinates */
-    pthread_mutex_lock(&mx_meas_gps);
+    xSemaphoreTake(mx_meas_gps, portMAX_DELAY);
     if (i == LGW_GPS_SUCCESS) {
         gps_coord_valid = true;
         meas_gps_coord = coord;
@@ -2703,10 +2882,10 @@ static void gps_process_coords(void) {
     } else {
         gps_coord_valid = false;
     }
-    pthread_mutex_unlock(&mx_meas_gps);
+    xSemaphoreGive(mx_meas_gps);
 }
 
-void thread_gps(void) {
+static void task_gps(void *pvParameters) {
     /* serial variables */
     char serial_buff[128]; /* buffer to receive GPS data */
     size_t wr_idx = 0;     /* pointer to end of chars in buffer */
@@ -2717,15 +2896,20 @@ void thread_gps(void) {
     /* initialize some variables before loop */
     memset(serial_buff, 0, sizeof serial_buff);
 
-    while (!exit_sig && !quit_sig) {
+    while (1) {
         size_t rd_idx = 0;
         size_t frame_end_idx = 0;
 
-        /* blocking non-canonical read on serial port */
-        ssize_t nb_char = read(gps_tty_fd, serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE);
-        if (nb_char <= 0) {
-            MSG("WARNING: [gps] read() returned value %d\n", nb_char);
+        /* blocking non-canonical read on serial port-1s timeout*/
+        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 200 / portTICK_RATE_MS);
+        if (nb_char == 0)
+        {
+            printf("WARNING: [gps] uart_read_bytes() returned value %d bytes\n", nb_char);
             continue;
+        }
+        else if (nb_char == -1) {
+            printf("ERROR: uart_read_bytes() returned error value %d\n", nb_char);
+            break;
         }
         wr_idx += (size_t)nb_char;
 
@@ -2733,11 +2917,11 @@ void thread_gps(void) {
          * Scan buffer for UBX/NMEA sync chars and *
          * attempt to decode frame if one is found *
          *******************************************/
-        while(rd_idx < wr_idx) {
+        while (rd_idx < wr_idx) {
             size_t frame_size = 0;
 
             /* Scan buffer for UBX sync char */
-            if(serial_buff[rd_idx] == (char)LGW_GPS_UBX_SYNC_CHAR) {
+            if (serial_buff[rd_idx] == LGW_GPS_UBX_SYNC_CHAR) {
 
                 /***********************
                  * Found UBX sync char *
@@ -2750,9 +2934,10 @@ void thread_gps(void) {
                         frame_size = 0;
                     } else if (latest_msg == INVALID) {
                         /* message header received but message appears to be corrupted */
-                        MSG("WARNING: [gps] could not get a valid message from GPS (no time)\n");
+                        printf("WARNING: [gps] could not get a valid message from GPS (no time)\n");
                         frame_size = 0;
                     } else if (latest_msg == UBX_NAV_TIMEGPS) {
+                        printf("\n~~ UBX NAV-TIMEGPS sentence, triggering synchronization attempt ~~\n");
                         gps_process_sync();
                     }
                 }
@@ -2763,7 +2948,7 @@ void thread_gps(void) {
                 /* scan for NMEA end marker (LF = 0x0a) */
                 char* nmea_end_ptr = memchr(&serial_buff[rd_idx],(int)0x0a, (wr_idx - rd_idx));
 
-                if(nmea_end_ptr) {
+                if (nmea_end_ptr) {
                     /* found end marker */
                     frame_size = nmea_end_ptr - &serial_buff[rd_idx] + 1;
                     latest_msg = lgw_parse_nmea(&serial_buff[rd_idx], frame_size);
@@ -2777,7 +2962,7 @@ void thread_gps(void) {
                 }
             }
 
-            if(frame_size > 0) {
+            if (frame_size > 0) {
                 /* At this point message is a checksum verified frame
                    we're processed or ignored. Remove frame from buffer */
                 rd_idx += frame_size;
@@ -2787,15 +2972,15 @@ void thread_gps(void) {
             }
         } /* ...for(rd_idx = 0... */
 
-        if(frame_end_idx) {
+        if (frame_end_idx) {
           /* Frames have been processed. Remove bytes to end of last processed frame */
-          memcpy(serial_buff, &serial_buff[frame_end_idx], wr_idx - frame_end_idx);
+          memcpy(serial_buff,&serial_buff[frame_end_idx],wr_idx - frame_end_idx);
           wr_idx -= frame_end_idx;
         } /* ...for(rd_idx = 0... */
 
         /* Prevent buffer overflow */
-        if((sizeof(serial_buff) - wr_idx) < LGW_GPS_MIN_MSG_SIZE) {
-            memcpy(serial_buff, &serial_buff[LGW_GPS_MIN_MSG_SIZE], wr_idx - LGW_GPS_MIN_MSG_SIZE);
+        if ((sizeof(serial_buff) - wr_idx) < LGW_GPS_MIN_MSG_SIZE) {
+            memcpy(serial_buff,&serial_buff[LGW_GPS_MIN_MSG_SIZE],wr_idx - LGW_GPS_MIN_MSG_SIZE);
             wr_idx -= LGW_GPS_MIN_MSG_SIZE;
         }
     }
@@ -2805,7 +2990,7 @@ void thread_gps(void) {
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 5: CHECK TIME REFERENCE AND CALCULATE XTAL CORRECTION --------- */
 
-void thread_valid(void) {
+static void task_valid(void *pvParameters) {
 
     /* GPS reference validation variables */
     long gps_ref_age = 0;
@@ -2830,11 +3015,11 @@ void thread_valid(void) {
     // fprintf(log_file,"\"xtal_correct\",\"XERR_INIT_AVG %u XERR_FILT_COEF %u\"\n", XERR_INIT_AVG, XERR_FILT_COEF); // DEBUG
 
     /* main loop task */
-    while (!exit_sig && !quit_sig) {
+    while (1) {
         wait_ms(1000);
 
         /* calculate when the time reference was last updated */
-        pthread_mutex_lock(&mx_timeref);
+        xSemaphoreTake(mx_timeref, portMAX_DELAY);
         gps_ref_age = (long)difftime(time(NULL), time_reference_gps.systime);
         if ((gps_ref_age >= 0) && (gps_ref_age <= GPS_REF_MAX_AGE)) {
             /* time ref is ok, validate and  */
@@ -2847,15 +3032,15 @@ void thread_valid(void) {
             gps_ref_valid = false;
             ref_valid_local = false;
         }
-        pthread_mutex_unlock(&mx_timeref);
+        xSemaphoreGive(mx_timeref);
 
         /* manage XTAL correction */
         if (ref_valid_local == false) {
             /* couldn't sync, or sync too old -> invalidate XTAL correction */
-            pthread_mutex_lock(&mx_xcorr);
+            xSemaphoreTake(mx_xcorr, portMAX_DELAY);
             xtal_correct_ok = false;
             xtal_correct = 1.0;
-            pthread_mutex_unlock(&mx_xcorr);
+            xSemaphoreGive(mx_xcorr);
             init_cpt = 0;
             init_acc = 0.0;
         } else {
@@ -2865,25 +3050,41 @@ void thread_valid(void) {
                 ++init_cpt;
             } else if (init_cpt == XERR_INIT_AVG) {
                 /* initial average calculation */
-                pthread_mutex_lock(&mx_xcorr);
+                xSemaphoreTake(mx_xcorr, portMAX_DELAY);
                 xtal_correct = (double)(XERR_INIT_AVG) / init_acc;
                 //printf("XERR_INIT_AVG=%d, init_acc=%.15lf\n", XERR_INIT_AVG, init_acc);
                 xtal_correct_ok = true;
-                pthread_mutex_unlock(&mx_xcorr);
+                xSemaphoreGive(mx_xcorr);
                 ++init_cpt;
                 // fprintf(log_file,"%.18lf,\"average\"\n", xtal_correct); // DEBUG
             } else {
                 /* tracking with low-pass filter */
                 x = 1 / xtal_err_cpy;
-                pthread_mutex_lock(&mx_xcorr);
+                xSemaphoreTake(mx_xcorr, portMAX_DELAY);
                 xtal_correct = xtal_correct - xtal_correct/XERR_FILT_COEF + x/XERR_FILT_COEF;
-                pthread_mutex_unlock(&mx_xcorr);
+                xSemaphoreGive(mx_xcorr);
                 // fprintf(log_file,"%.18lf,\"track\"\n", xtal_correct); // DEBUG
             }
         }
         // printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
     }
     MSG("\nINFO: End of validation thread\n");
+}
+
+void register_lora_pkt_fwd()
+{
+    lora_pkt_fwd_args.end = arg_end(4);
+
+    const esp_console_cmd_t lora_pkt_fwd_cmd=
+    {
+        .command = "lora_pkt_fwd",
+        .help = "Run lora packet UDP forwarder",
+        .hint = NULL,
+        .func = &lora_pkt_fwd,
+        .argtable = &lora_pkt_fwd_args
+    };
+
+    ESP_ERROR_CHECK( esp_console_cmd_register(&lora_pkt_fwd_cmd) );
 }
 
 /* --- EOF ------------------------------------------------------------------ */

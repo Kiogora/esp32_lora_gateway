@@ -74,6 +74,7 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
 
 void task_timersync(void *pvParameters)
 {
+    mx_timersync = xSemaphoreCreateMutex();
     struct timeval unix_timeval;
     struct timeval concentrator_timeval;
     uint32_t sx1301_timecount = 0;
