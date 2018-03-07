@@ -166,6 +166,7 @@ static bool fwd_error_pkt = false; /* packets with PAYLOAD CRC ERROR are NOT for
 static bool fwd_nocrc_pkt = false; /* packets with NO PAYLOAD CRC are NOT forwarded */
 
 /* network configuration variables */
+static uint8_t mac_val[8] = {0};
 static uint64_t lgwm = 0; /* Lora gateway MAC address */
 static char serv_addr[64] = STR(DEFAULT_SERVER); /* address of the server (host name or IPv4/IPv6) */
 static char serv_port_up[8] = STR(DEFAULT_PORT_UP); /* server port for upstream traffic */
@@ -712,7 +713,6 @@ static int parse_gateway_configuration(const char * conf_file) {
     JSON_Object *conf_obj = NULL;
     JSON_Value *val = NULL; /* needed to detect the absence of some fields */
     const char *str; /* pointer to sub-strings in the JSON data */
-    unsigned long long ull = 0;
 
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
@@ -731,12 +731,14 @@ static int parse_gateway_configuration(const char * conf_file) {
     }
 
     /* gateway unique identifier (aka MAC address) (optional) */
+    /*
     str = json_object_get_string(conf_obj, "gateway_ID");
     if (str != NULL) {
         sscanf(str, "%llx", &ull);
         lgwm = ull;
         MSG("INFO: gateway MAC address is configured to %016llX\n", ull);
     }
+    */
 
     /* server hostname or IP address (optional) */
     str = json_object_get_string(conf_obj, "server_address");
@@ -1032,6 +1034,31 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
     return send(sock_down, (void *)buff_ack, buff_index, 0);
 }
 
+static void get_base_mac(uint8_t* mac_buffer)
+{
+    uint64_t temp_mac = 0;
+    if(mac_buffer != NULL)
+    {
+        if(esp_efuse_mac_get_default(mac_buffer) == ESP_OK)
+        {
+
+            int bom_start_idx=2;
+            MSG("SUCCESSFULLY READ BASE_MAC FROM EFUSE!\n");
+            for(int i=0; i<8; i++)
+            {
+                temp_mac = mac_buffer[i];
+                lgwm |= (temp_mac << (7-i)*8);
+            }
+
+            MSG("INFO: Actual gateway MAC address is configured to 0x%016llX\n", lgwm);
+        }
+        else
+        {
+            MSG("UNSUCCESSFUL IN READING BASE_MAC FROM EFUSE!\n");
+        }
+    }
+}
+
 static void obtain_time(void)
 {
     ESP_ERROR_CHECK( nvs_flash_init() );
@@ -1232,6 +1259,7 @@ int lora_pkt_fwd(int argc, char **argv)
             MSG("INFO: Host endianness unknown\n");
         #endif
 
+        get_base_mac(mac_val);
         FILE* fp=fopen(debug_cfg_path, "r");
         FILE* fp1=fopen(global_cfg_path, "r");
         FILE* fp2=fopen(local_cfg_path, "r");
