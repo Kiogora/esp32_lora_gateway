@@ -1,5 +1,9 @@
 Performance comparison tests.
 =============================
+Note: For the ESP32 to become roughly comparable to the RPI3, the following was prerequisites performed in menuconfig:
+1. debug level was set to release.
+2. Log output to serial was set to None.
+3. Tests were run under the unity framework residing on the host/build machine.
 
 1. SPI tests.
 =============
