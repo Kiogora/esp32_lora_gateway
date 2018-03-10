@@ -131,6 +131,6 @@ void task_timersync(void *pvParameters)
             As here the time precision is not critical, we should be able to cope with at least 1ms drift,
             which should occur after 50s (50000µs * 1000).
             Let's set the thread sleep to 1 minute for now */
-        wait_ms(60000);
+        wait_ms(8000);
     }
 }
