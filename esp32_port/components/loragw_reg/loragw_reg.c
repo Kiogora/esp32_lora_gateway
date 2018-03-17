@@ -463,7 +463,7 @@ int reg_w_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
     else
     {
         /* register spanning multiple memory bytes but with an offset */
-        ESP_LOGE(TAG, "ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED");
+        ESP_LOGE(TAG, "REGISTER SIZE AND OFFSET ARE NOT SUPPORTED");
         return LGW_REG_ERROR;
     }
 
@@ -558,12 +558,12 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
         if (check_fpga_version(u) != true)
         {
             /* We failed to read expected FPGA version, so let's assume there is no FPGA */
-            ESP_LOGI(TAG,"INFO: no FPGA detected or version not supported (v%u)", u);
+            ESP_LOGW(TAG,"NO FPGA DETECTED OR VERSION NOT SUPPORTED (VERSION %u)", u);
             lgw_spi_mux_mode = LGW_SPI_MUX_MODE0;
         }
         else
         {
-            ESP_LOGI(TAG, "INFO: detected FPGA with SPI mux header (v%u)", u);
+            ESP_LOGV(TAG, "DETECTED FPGA WITH SPI MUX HEADER (VERSION %u)", u);
             lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
             /* FPGA Soft Reset */
             lgw_spi_w(&lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
@@ -660,7 +660,8 @@ int lgw_reg_check(void)
         return LGW_REG_ERROR;
     }
 
-    ESP_LOGI(TAG, "Start of register verification");
+    /* Logging is set to info as this function utility for direct, top level use, meaning that its info would be important*/ 
+    ESP_LOGI(TAG, "START OF REGISTER VERIFICATION");
     for (i=0; i<LGW_TOTALREGS; ++i)
     {
         r = loregs[i];
@@ -668,14 +669,14 @@ int lgw_reg_check(void)
         ptr = (read_value == r.dflt) ? ok_msg : notok_msg;
         if (r.sign == true)
         {
-            ESP_LOGI(TAG,"%s reg number %d read: %d (%x) default: %d (%x)", ptr, i, read_value, read_value, r.dflt, r.dflt);
+            ESP_LOGI(TAG,"%s REG NUMBER %d READ: %d (%x) DEFAULT: %d (%x)", ptr, i, read_value, read_value, r.dflt, r.dflt);
         }
         else
         {
-            ESP_LOGI(TAG, "%s reg number %d read: %u (%x) default: %u (%x)", ptr, i, read_value, read_value, r.dflt, r.dflt);
+            ESP_LOGI(TAG, "%s REG NUMBER %d READ: %u (%x) DEFAULT: %u (%x)", ptr, i, read_value, read_value, r.dflt, r.dflt);
         }
     }
-    ESP_LOGI(TAG,"End of register verification");
+    ESP_LOGI(TAG,"END OF REGISTER VERIFICATION");
 
     return LGW_REG_SUCCESS;
 }
@@ -801,19 +802,19 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
     CHECK_NULL(data);
     if (size == 0)
     {
-        ESP_LOGE(TAG, "ERROR: BURST OF NULL LENGTH");
+        ESP_LOGE(TAG, "BURST OF NULL LENGTH");
         return LGW_REG_ERROR;
     }
     if (register_id >= LGW_TOTALREGS)
     {
-        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE");
+        ESP_LOGE(TAG, "REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
     /* check if SPI is initialised */
     if (lgw_regpage < 0)
     {
-        ESP_LOGE(TAG, "ERROR: CONCENTRATOR UNCONNECTED");
+        ESP_LOGE(TAG, "CONCENTRATOR UNCONNECTED");
         return LGW_REG_ERROR;
     }
 
@@ -823,7 +824,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
     /* reject write to read-only registers */
     if (r.rdon == 1)
     {
-        ESP_LOGE(TAG, "ERROR: TRYING TO BURST WRITE A READ-ONLY REGISTER");
+        ESP_LOGE(TAG, "ERROR TRYING TO BURST WRITE A READ-ONLY REGISTER");
         return LGW_REG_ERROR;
     }
 
@@ -838,7 +839,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER BURST WRITE");
+        ESP_LOGE(TAG, "SPI ERROR DURING REGISTER BURST WRITE");
         return LGW_REG_ERROR;
     }
     else
