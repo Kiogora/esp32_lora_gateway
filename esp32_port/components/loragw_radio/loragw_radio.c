@@ -35,16 +35,11 @@ Maintainer: Michael Coracin
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
+static char* TAG = "[LORAGW_REG]:";
+
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_REG == 1
-    #define DEBUG_MSG(str)              fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)  fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
-#else
-    #define DEBUG_MSG(str)
-    #define DEBUG_PRINTF(fmt, args...)
-    #define CHECK_NULL(a)               if(a==NULL){return LGW_REG_ERROR;}
-#endif
+
+#define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return LGW_REG_ERROR;}
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
@@ -122,17 +117,18 @@ int reset_sx127x(enum lgw_radio_type_e radio_type);
 
 void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int reg_add, reg_dat, reg_cs;
 
     /* checking input parameters */
     if (channel >= LGW_RF_CHAIN_NB)
     {
-        DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
+        ESP_LOGE(TAG, "INVALID RF_CHAIN");
         return;
     }
     if (addr >= 0x7F)
     {
-        DEBUG_MSG("ERROR: ADDRESS OUT OF RANGE\n");
+        ESP_LOGE(TAG, "ADDRESS OUT OF RANGE");
         return;
     }
 
@@ -152,7 +148,7 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data)
             break;
 
         default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", channel);
+            ESP_LOGE(TAG, "UNEXPECTED VALUE %d IN SWITCH STATEMENT", channel);
             return;
     }
 
@@ -170,18 +166,19 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data)
 
 uint8_t sx125x_read(uint8_t channel, uint8_t addr)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int reg_add, reg_dat, reg_cs, reg_rb;
     int32_t read_value;
 
     /* checking input parameters */
     if (channel >= LGW_RF_CHAIN_NB)
     {
-        DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
+        ESP_LOGE(TAG, "INVALID RF_CHAIN");
         return 0;
     }
     if (addr >= 0x7F)
     {
-        DEBUG_MSG("ERROR: ADDRESS OUT OF RANGE\n");
+        ESP_LOGE(TAG, "ADDRESS OUT OF RANGE");
         return 0;
     }
 
@@ -203,7 +200,7 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr)
             break;
 
         default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", channel);
+            ESP_LOGE(TAG, "UNEXPECTED VALUE %d IN SWITCH STATEMENT", channel);
             return 0;
     }
 
@@ -222,6 +219,7 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr)
 
 int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     uint64_t freq_reg;
     uint8_t ModulationShaping = 0;
     uint8_t PllHop = 1;
@@ -276,7 +274,7 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t
 
     if (x != LGW_REG_SUCCESS)
     {
-        DEBUG_MSG("ERROR: Failed to configure SX1272\n");
+        ESP_LOGE(TAG, "FAILED TO CONFIGURE SX127x");
         return x;
     }
 
@@ -287,12 +285,12 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t
     /* Check if RxReady and ModeReady */
     if ((TAKE_N_BITS_FROM(reg_val, 6, 1) == 0) || (TAKE_N_BITS_FROM(reg_val, 7, 1) == 0) || (x != LGW_REG_SUCCESS))
     {
-        DEBUG_MSG("ERROR: SX1272 failed to enter RX continuous mode\n");
+        ESP_LOGE(TAG, "SX1272 FAILED TO ENTER RX CONTINUOUS MODE");
         return LGW_REG_ERROR;
     }
     wait_ms(500);
 
-    DEBUG_PRINTF("INFO: Successfully configured SX1272 for FSK modulation (rxbw=%d)\n", rxbw_khz);
+    ESP_LOGV(TAG, "SUCCESSFULLY CONFIGURED SX1272 FOR FSK MODULATION (RXBW=%d)", rxbw_khz);
 
     return LGW_REG_SUCCESS;
 }
@@ -301,6 +299,7 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t
 
 int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     uint64_t freq_reg;
     uint8_t ModulationShaping = 0;
     uint8_t PllHop = 1;
@@ -355,7 +354,7 @@ int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t
 
     if (x != LGW_REG_SUCCESS)
     {
-        DEBUG_MSG("ERROR: Failed to configure SX1276\n");
+        ESP_LOGE(TAG, "FAILED TO CONFIGURE SX127x");
         return x;
     }
 
@@ -366,12 +365,12 @@ int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t
     /* Check if RxReady and ModeReady */
     if ((TAKE_N_BITS_FROM(reg_val, 6, 1) == 0) || (TAKE_N_BITS_FROM(reg_val, 7, 1) == 0) || (x != LGW_REG_SUCCESS))
     {
-        DEBUG_MSG("ERROR: SX1276 failed to enter RX continuous mode\n");
+        ESP_LOGE(TAG, "SX1276 FAILED TO ENTER RX CONTINUOUS MODE");
         return LGW_REG_ERROR;
     }
     wait_ms(500);
 
-    DEBUG_PRINTF("INFO: Successfully configured SX1276 for FSK modulation (rxbw=%d)\n", rxbw_khz);
+    ESP_LOGV("SUCCESSFULLY CONFIGURED SX1276 FOR FSK MODULATION (RXBW=%d)", rxbw_khz);
 
     return LGW_REG_SUCCESS;
 }
@@ -380,6 +379,7 @@ int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t
 
 int reset_sx127x(enum lgw_radio_type_e radio_type)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int x;
 
     switch(radio_type)
@@ -389,7 +389,7 @@ int reset_sx127x(enum lgw_radio_type_e radio_type)
             x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 1);
             if (x != LGW_SPI_SUCCESS)
             {
-                DEBUG_MSG("ERROR: Failed to reset sx127x\n");
+                ESP_LOGE(TAG, "FAILED TO RESET SX127x RADIO");
                 return x;
             }
             break;
@@ -398,12 +398,12 @@ int reset_sx127x(enum lgw_radio_type_e radio_type)
             x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 0);
             if (x != LGW_SPI_SUCCESS)
             {
-                DEBUG_MSG("ERROR: Failed to reset sx127x\n");
+                ESP_LOGE(TAG, "FAILED TO RESET SX127x RADIO");
                 return x;
             }
             break;
         default:
-            DEBUG_PRINTF("ERROR: Failed to reset sx127x, not supported (%d)\n", radio_type);
+            ESP_LOGE(TAG, "FAILED TO RESET SX127X, UNSUPPORTED RADIO TYPE (%d) FOUND", radio_type);
             return LGW_REG_ERROR;
     }
 
@@ -415,29 +415,30 @@ int reset_sx127x(enum lgw_radio_type_e radio_type)
 
 int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     uint32_t part_int = 0;
     uint32_t part_frac = 0;
     int cpt_attempts = 0;
 
     if (rf_chain >= LGW_RF_CHAIN_NB)
     {
-        DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
+        ESP_LOGE(TAG, "INVALID RF_CHAIN");
         return -1;
     }
 
     /* Get version to identify SX1255/57 silicon revision */
-    DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, sx125x_read(rf_chain, 0x07));
+    ESP_LOGV(TAG, "NOTE: SX125x #%d VERSION REGISTER RETURNED 0x%02x", rf_chain, sx125x_read(rf_chain, 0x07));
 
     /* General radio setup */
     if (rf_clkout == rf_chain)
     {
         sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
-        DEBUG_PRINTF("Note: SX125x #%d clock output enabled\n", rf_chain);
+        ESP_LOGV(TAG, "NOTE: SX125x #%d CLOCK OUTPUT ENABLED", rf_chain);
     }
     else
     {
         sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
-        DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
+        ESP_LOGV(TAG, "NOTE: SX125x #%d CLOCK OUTPUT DISABLED", rf_chain);
     }
 
     switch (rf_radio_type)
@@ -449,7 +450,7 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
             sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
             break;
         default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type);
+            ESP_LOGE(TAG, "FAILED TO SETUP SX125x, UNSUPPORTED RADIO TYPE (%d) FOUND", rf_radio_type);
             break;
     }
 
@@ -477,7 +478,7 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
                 part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
                 break;
             default:
-                DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type);
+                ESP_LOGE(TAG, "FAILED TO SETUP SX125x PLL FREQ, UNSUPPORTED RADIO TYPE (%d) FOUND", rf_radio_type);
                 break;
         }
 
@@ -489,19 +490,19 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
         do {
             if (cpt_attempts >= PLL_LOCK_MAX_ATTEMPTS)
             {
-                DEBUG_MSG("ERROR: FAIL TO LOCK PLL\n");
+                ESP_LOGE(TAG, "ERROR: FAIL TO LOCK PLL");
                 return -1;
             }
             sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
             sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
             ++cpt_attempts;
-            DEBUG_PRINTF("Note: SX125x #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
+            ESP_LOGV(TAG, "NOTE: SX125x #%d PLL START/LOCK (ATTEMPT %d)", rf_chain, cpt_attempts);
             wait_ms(1);
         } while((sx125x_read(rf_chain, 0x11) & 0x02) == 0);
     }
     else
     {
-        DEBUG_PRINTF("Note: SX125x #%d kept in standby mode\n", rf_chain);
+        ESP_LOGV(TAG, "NOTE: SX125x #%d KEPT IN STANDBY MODE", rf_chain);
     }
 
     return 0;
@@ -511,6 +512,7 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
 
 int lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     return lgw_spi_w(&lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX127X, address, reg_value);
 }
 
@@ -518,6 +520,7 @@ int lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value)
 
 int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     return lgw_spi_r(&lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX127X, address, reg_value);
 }
 
@@ -525,6 +528,7 @@ int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value)
 
 int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int x, i;
     uint8_t version;
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
@@ -537,12 +541,12 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxb
     /* Check parameters */
     if (modulation != MOD_FSK)
     {
-        DEBUG_PRINTF("ERROR: modulation not supported for SX127x (%u)\n", modulation);
+        ESP_LOGE(TAG, "MODULATION NOT SUPPORTED FOR SX127X (%u)", modulation);
         return LGW_REG_ERROR;
     }
     if (rxbw_khz > LGW_SX127X_RXBW_250K_HZ)
     {
-        DEBUG_PRINTF("ERROR: RX bandwidth not supported for SX127x (%u)\n", rxbw_khz);
+        ESP_LOGE(TAG, "RX BANDWIDTH NOT SUPPORTED FOR SX127X (%u)", rxbw_khz);
         return LGW_REG_ERROR;
     }
 
@@ -553,32 +557,32 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxb
         x = reset_sx127x(supported_radio_type[i].type);
         if (x != LGW_SPI_SUCCESS)
         {
-            DEBUG_MSG("ERROR: Failed to reset sx127x\n");
+            ESP_LOGE(TAG, "FAILED TO RESET SX127x");
             return x;
         }
         /* Read version register */
         x = lgw_sx127x_reg_r(0x42, &version);
         if (x != LGW_SPI_SUCCESS)
         {
-            DEBUG_MSG("ERROR: Failed to read sx127x version register\n");
+            ESP_LOGE(TAG, "FAILED TO READ SX127X VERSION REGISTER");
             return x;
         }
         /* Check if we got the expected version */
         if (version != supported_radio_type[i].reg_version)
         {
-            DEBUG_PRINTF("INFO: sx127x version register - read:0x%02x, expected:0x%02x\n", version, supported_radio_type[i].reg_version);
+            ESP_LOGV(TAG, "SX127x VERSION REGISTER - READ:0x%02x, EXPECTED:0x%02x", version, supported_radio_type[i].reg_version);
             continue;
         }
         else
         {
-            DEBUG_PRINTF("INFO: sx127x radio has been found (type:%d, version:0x%02x)\n", supported_radio_type[i].type, version);
+            ESP_LOGV(TAG, "sx127x radio has been found (type:%d, version:0x%02x)", supported_radio_type[i].type, version);
             radio_type = supported_radio_type[i].type;
             break;
         }
     }
     if (radio_type == LGW_RADIO_TYPE_NONE)
     {
-        DEBUG_MSG("ERROR: sx127x radio has not been found\n");
+        ESP_LOGE(TAG, "SX127X RADIO NOT FOUND");
         return LGW_REG_ERROR;
     }
 
@@ -596,12 +600,13 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxb
             }
             break;
         default:
+            ESP_LOGE(TAG, "UNSUPPORTED MODULATION TYPE");
             /* Should not happen */
             break;
     }
     if (x != LGW_REG_SUCCESS)
     {
-        DEBUG_MSG("ERROR: failed to setup SX127x\n");
+        ESP_LOGE(TAG, "FAILED TO SETUP SX127x");
         return x;
     }
 
