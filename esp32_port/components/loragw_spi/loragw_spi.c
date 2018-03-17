@@ -31,7 +31,7 @@ Modified for ESP32 by: Alois Mbutura.
 #include "loragw_spi.h"
 #include "loragw_hal.h"
 
-static const char* TAG = "loragw_spi";
+static const char* TAG = "[LORAGW_SPI]:";
 
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80
@@ -44,6 +44,7 @@ static const char* TAG = "loragw_spi";
 
 #define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return LGW_SPI_ERROR;}
 
+/* Convert (u)int8 variable type to (u)int16 */
 static uint16_t conv_int_8_16(uint8_t msb, uint8_t lsb)
 {
     ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
@@ -55,6 +56,7 @@ static uint16_t conv_int_8_16(uint8_t msb, uint8_t lsb)
 }
 
 /* SPI initialization and configuration */
+
 int lgw_spi_open(spi_device_handle_t* spi_target_ptr, long speed)
 {
     ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
@@ -84,11 +86,11 @@ int lgw_spi_open(spi_device_handle_t* spi_target_ptr, long speed)
     ret = spi_bus_initialize(HSPI_HOST, &buscfg, 1);
     if(ret == ESP_OK)
     {
-        ESP_LOGD(TAG, "Note: SPI bus initialise success");
+        ESP_LOGV(TAG, "SPI BUS INITIALISATION SUCCESSFUL");
     }
     else
     {
-        ESP_LOGD(TAG, "ERROR: SPI BUS INITIALISE FAILURE");
+        ESP_LOGE(TAG, "SPI BUS INITIALISATION FAILURE");
         lgw_spi_close(spi_target_ptr);
         return LGW_SPI_ERROR;
     }
@@ -96,12 +98,12 @@ int lgw_spi_open(spi_device_handle_t* spi_target_ptr, long speed)
     ret = spi_bus_add_device(HSPI_HOST, &devcfg, spi_target_ptr);
     if(ret == ESP_OK)
     {
-        ESP_LOGD(TAG, "Note: SPI device add success");
+        ESP_LOGV(TAG, "SPI DEVICE ADDITION SUCCESSFUL");
         return LGW_SPI_SUCCESS;
     }
     else
     {
-        ESP_LOGD(TAG, "ERROR: SPI DEVICE ADD FAILURE");
+        ESP_LOGE(TAG, "SPI DEVICE ADDITION FAILURE");
         lgw_spi_close(spi_target_ptr);
         return LGW_SPI_ERROR;
     }
@@ -118,22 +120,22 @@ int lgw_spi_close(spi_device_handle_t *spi_target_ptr)
     ret=spi_bus_remove_device(*spi_target_ptr);
     if(ret == ESP_OK)
     {
-        ESP_LOGD(TAG, "Note: SPI Device removal success");
+        ESP_LOGV(TAG, "SPI DEVICE REMOVAL SUCCESS");
     }
     else
     {
-        ESP_LOGD(TAG, "ERROR: SPI DEVICE REMOVAL FAILURE");
+        ESP_LOGE(TAG, "SPI DEVICE REMOVAL FAILURE");
         return LGW_SPI_ERROR;
     }
     ret = spi_bus_free(HSPI_HOST);
     if(ret == ESP_OK)
     {
-        ESP_LOGD(TAG, "Note: SPI host free success");
+        ESP_LOGV(TAG, "SPI HOST FREE SUCCESS");
         return LGW_SPI_SUCCESS;
     }
     else
     {
-        ESP_LOGD(TAG, "ERROR: FAILED TO FREE SPI HOST");
+        ESP_LOGE(TAG, "FAILED TO FREE SPI HOST");
         return LGW_SPI_ERROR;
     }
 }
@@ -153,7 +155,7 @@ int lgw_spi_w(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_t
 
     if ((address & 0x80) != 0)
     {
-        ESP_LOGW(TAG,"WARNING: SPI address > 127");
+        ESP_LOGE(TAG,"WARNING: SPI ADDRESS > 127");
     }
 
     //Zero out the transaction struct first and prep flags
@@ -184,12 +186,12 @@ int lgw_spi_w(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_t
     esp_err_t ret=spi_device_transmit(*spi_target_ptr, (spi_transaction_t*)&tx); //Perform the transmit transaction!
     if(ret == ESP_OK)
     {
-        ESP_LOGD(TAG, "Note: SPI write success");
+        ESP_LOGV(TAG, "DMA SPI QUEUE AND WRITE SUCCESS");
         return LGW_SPI_SUCCESS;
     }
     else
     {
-        ESP_LOGD(TAG, "ERROR: SPI WRITE FAILURE");
+        ESP_LOGE(TAG, "SPI WRITE FAILURE");
         return LGW_SPI_ERROR;
     }
 }
@@ -211,7 +213,7 @@ int lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t
 
     if ((address & 0x80) != 0)
     {
-        ESP_LOGW(TAG,"WARNING: SPI address > 127");
+        ESP_LOGE(TAG,"WARNING: SPI address > 127");
     }
 
     // I/O transaction
@@ -234,7 +236,7 @@ int lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t
         tx.base.addr = addr_buf[0];
         size = 1;
     }
-    ESP_LOGD(TAG,"SPI address field is 0x%04X or %d dec",address, address);
+    ESP_LOGV(TAG,"SPI address field is 0x%04X or %d dec",address, address);
 
     tx.address_bits=size*8;
     tx.base.length=1*8;
@@ -246,16 +248,16 @@ int lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t
 #if CONFIG_LOG_DEFAULT_LEVEL >= 3
         for(int i=0; i<4; i++)
         {
-            ESP_LOGI(TAG, "Received data value is [%u], Value: 0x%02X", i, tx.base.rx_data[i]);
+            ESP_LOGD(TAG, "Received data value is [%u], Value: 0x%02X", i, tx.base.rx_data[i]);
         }
 #endif
         *data = tx.base.rx_data[0]; //Pointer points to transaction rx array
-        ESP_LOGD(TAG, "Note: SPI read success");
+        ESP_LOGV(TAG, "Note: SPI read success");
         return LGW_SPI_SUCCESS;
     }
     else
     {
-        ESP_LOGD(TAG, "ERROR: SPI READ FAILURE");
+        ESP_LOGE(TAG, "ERROR: SPI READ FAILURE");
         return LGW_SPI_ERROR;
     }
   
@@ -282,11 +284,11 @@ int lgw_spi_wb(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_
 
     if ((address & 0x80) != 0)
     {
-        ESP_LOGW(TAG, "WARNING: SPI address > 127");
+        ESP_LOGE(TAG, "WARNING: SPI ADDRESS > 127");
     }
     if (size == 0)
     {
-        ESP_LOGD(TAG, "ERROR: BURST OF NULL LENGTH");
+        ESP_LOGW(TAG, "WARNING: BURST WRITE OF NULL LENGTH");
         return LGW_SPI_ERROR;
     }
 
@@ -332,17 +334,17 @@ int lgw_spi_wb(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_
         {
             return LGW_SPI_ERROR;
         }
-        ESP_LOGD(TAG,"BURST WRITE:Out of total data length %d, this trans length %d bytes, # total transferred %d", size, chunk_size, (offset+chunk_size));
+        ESP_LOGV(TAG,"BURST WRITE:Out of total data length %d, this trans length %d bytes, # total transferred %d", size, chunk_size, (offset+chunk_size));
         size_to_do -= chunk_size; //Subtract the quantity of data already transferred.
     }
     if ((offset+chunk_size) != size)
     {
-        ESP_LOGD(TAG, "ERROR: SPI BURST WRITE FAILURE");
+        ESP_LOGE(TAG, "ERROR: BURST WRITE SIZE MISMATCH");
         return LGW_SPI_ERROR;
     }
     else
     {
-        ESP_LOGD(TAG, "Note: SPI burst write success");
+        ESP_LOGV(TAG, "Note: SPI burst write success");
         return LGW_SPI_SUCCESS;
     }
 }
@@ -420,18 +422,18 @@ int lgw_spi_rb(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_
         {
             return LGW_SPI_ERROR;
         }
-        ESP_LOGD(TAG,"BURST READ:Out of total data length %d, this trans length %d bytes, # total transferred %d", size, chunk_size, (offset+chunk_size));
+        ESP_LOGV(TAG,"BURST READ:OUT OF TOTAL DATA LENGTH %d, THIS TRANS LENGTH %d BYTES, # TOTAL TRANSFERRED %d", size, chunk_size, (offset+chunk_size));
         size_to_do -= chunk_size; //Subtract the quantity of data already transferred.
     }
     free(txbuf);
     if ((offset+chunk_size) != size)
     {
-        ESP_LOGD(TAG, "ERROR: SPI BURST READ FAILURE");
+        ESP_LOGE(TAG, "ERROR: SPI BURST READ FAILURE");
         return LGW_SPI_ERROR;
     }
     else
     {
-        ESP_LOGD(TAG, "Note: SPI burst read success");
+        ESP_LOGV(TAG, "Note: SPI burst read success");
         return LGW_SPI_SUCCESS;
     }
 }
