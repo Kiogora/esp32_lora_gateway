@@ -334,7 +334,7 @@ int lgw_spi_wb(spi_device_handle_t *spi_target_ptr, uint8_t spi_mux_mode, uint8_
         {
             return LGW_SPI_ERROR;
         }
-        ESP_LOGV(TAG,"BURST WRITE:Out of total data length %d, this trans length %d bytes, # total transferred %d", size, chunk_size, (offset+chunk_size));
+        ESP_LOGV(TAG,"BURST WRITE:OUT OF TOTAL DATA LENGTH %d, THIS TRANS LENGTH %d BYTES, # TOTAL TRANSFERRED %d", size, chunk_size, (offset+chunk_size));
         size_to_do -= chunk_size; //Subtract the quantity of data already transferred.
     }
     if ((offset+chunk_size) != size)
