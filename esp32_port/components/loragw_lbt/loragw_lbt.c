@@ -11,6 +11,7 @@ Description:
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Michael Coracin
+Modified for ESP32 by: Alois Mbutura.
 */
 
 /* -------------------------------------------------------------------------- */
@@ -37,13 +38,13 @@ Maintainer: Michael Coracin
 #include "loragw_lbt.h"
 #include "loragw_fpga.h"
 
-static const char* TAG = "loragw_lbt";
+static const char* TAG = "[LORAGW_LBT]:";
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-#define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return LGW_REG_ERROR;}
+#define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return LGW_LBT_ERROR;}
 
 #define LBT_TIMESTAMP_MASK  0x007FF000 /* 11-bits timestamp */
 
@@ -80,7 +81,7 @@ bool is_equal_freq(uint32_t a, uint32_t b);
 
 int lbt_setconf(struct lgw_conf_lbt_s * conf)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int i;
 
     /* Check input parameters */
@@ -90,7 +91,7 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf)
     }
     if ((conf->nb_channel < 1) || (conf->nb_channel > LBT_CHANNEL_FREQ_NB))
     {
-        ESP_LOGD(TAG, "ERROR: Number of defined LBT channels is out of range (%u)\n", conf->nb_channel);
+        ESP_LOGE(TAG, "Number of defined LBT channels is out of range (%u)", conf->nb_channel);
         return LGW_LBT_ERROR;
     }
 
@@ -109,6 +110,7 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf)
         lbt_channel_cfg[i].scan_time_us = conf->channels[i].scan_time_us;
     }
 
+    ESP_LOGV(TAG, "SUCCESSFULLY INITIALISED LBT CHANNEL CONFIGURATION");
     return LGW_LBT_SUCCESS;
 }
 
@@ -116,7 +118,7 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf)
 
 int lbt_setup(void)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int x, i;
     int32_t val;
     uint32_t freq_offset;
@@ -125,12 +127,12 @@ int lbt_setup(void)
     x = lgw_fpga_reg_r(LGW_FPGA_FEATURE, &val);
     if (x != LGW_REG_SUCCESS)
     {
-        ESP_LOGD(TAG, "ERROR: Failed to read FPGA Features register\n");
+        ESP_LOGE(TAG, "FAILED TO READ FPGA FEATURES REGISTER");
         return LGW_LBT_ERROR;
     }
     if (TAKE_N_BITS_FROM((uint8_t)val, 2, 1) != 1)
     {
-        ESP_LOGD(TAG, "ERROR: No support for LBT in FPGA\n");
+        ESP_LOGD(TAG, "NO SUPPORT FOR LBT IN FPGA");
         return LGW_LBT_ERROR;
     }
 
@@ -138,7 +140,7 @@ int lbt_setup(void)
     x = lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &val);
     if (x != LGW_REG_SUCCESS)
     {
-        ESP_LOGD(TAG, "ERROR: Failed to read LBT initial frequency from FPGA\n");
+        ESP_LOGE(TAG, "FAILED TO READ FPGA FEATURES REGISTER");
         return LGW_LBT_ERROR;
     }
     switch(val)
@@ -150,7 +152,7 @@ int lbt_setup(void)
             lbt_start_freq = 863000000;
             break;
         default:
-            ESP_LOGD(TAG,  "ERROR: LBT start frequency %d is not supported\n", val);
+            ESP_LOGE(TAG,  "LBT START FREQUENCY %d IS NOT SUPPORTED", val);
             return LGW_LBT_ERROR;
     }
 
@@ -158,7 +160,7 @@ int lbt_setup(void)
     x = lgw_setup_sx127x(lbt_start_freq, MOD_FSK, LGW_SX127X_RXBW_100K_HZ, lbt_rssi_offset_dB); /* 200KHz LBT channels */
     if (x != LGW_REG_SUCCESS)
     {
-        ESP_LOGD(TAG, "ERROR: Failed to configure SX127x for LBT\n");
+        ESP_LOGE(TAG, "FAILED TO CONFIGURE SX127X FOR LBT");
         return LGW_LBT_ERROR;
     }
 
@@ -167,7 +169,7 @@ int lbt_setup(void)
     x = lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, val);
     if (x != LGW_REG_SUCCESS)
     {
-        ESP_LOGD(TAG, "ERROR: Failed to configure FPGA for LBT\n");
+        ESP_LOGE(TAG, "FAILED TO CONFIGURE FPGA FOR LBT");
         return LGW_LBT_ERROR;
     }
     /* Set default values for non-active LBT channels */
@@ -182,12 +184,12 @@ int lbt_setup(void)
         /* Check input parameters */
         if (lbt_channel_cfg[i].freq_hz < lbt_start_freq)
         {
-            ESP_LOGD(TAG,  "ERROR: LBT channel frequency is out of range (%u)\n", lbt_channel_cfg[i].freq_hz);
+            ESP_LOGE(TAG,  "LBT CHANNEL FREQUENCY IS OUT OF RANGE (%u)", lbt_channel_cfg[i].freq_hz);
             return LGW_LBT_ERROR;
         }
         if ((lbt_channel_cfg[i].scan_time_us != 128) && (lbt_channel_cfg[i].scan_time_us != 5000))
         {
-            ESP_LOGD(TAG,  "ERROR: LBT channel scan time is not supported (%u)\n", lbt_channel_cfg[i].scan_time_us);
+            ESP_LOGE(TAG,  "LBT CHANNEL SCAN TIME IS NOT SUPPORTED (%u)", lbt_channel_cfg[i].scan_time_us);
             return LGW_LBT_ERROR;
         }
         /* Configure */
@@ -195,7 +197,7 @@ int lbt_setup(void)
         x = lgw_fpga_reg_w(LGW_FPGA_LBT_CH0_FREQ_OFFSET+i, (int32_t)freq_offset);
         if (x != LGW_REG_SUCCESS)
         {
-            ESP_LOGD(TAG,  "ERROR: Failed to configure FPGA for LBT channel %d (freq offset)\n", i);
+            ESP_LOGE(TAG,  "FAILED TO CONFIGURE FPGA FOR LBT CHANNEL %d (FREQ OFFSET), LBT CHANNEL SCAN TIME IS NOT SUPPORTED", i);
             return LGW_LBT_ERROR;
         }
         if (lbt_channel_cfg[i].scan_time_us == 5000)
@@ -203,21 +205,21 @@ int lbt_setup(void)
             x = lgw_fpga_reg_w(LGW_FPGA_LBT_SCAN_TIME_CH0+i, 1);
             if (x != LGW_REG_SUCCESS)
             {
-                ESP_LOGD(TAG,  "ERROR: Failed to configure FPGA for LBT channel %d (freq offset)\n", i);
+                ESP_LOGE(TAG,  "FAILED TO CONFIGURE FPGA FOR LBT CHANNEL %d (FREQ OFFSET)", i);
                 return LGW_LBT_ERROR;
             }
         }
     }
 
-    ESP_LOGD(TAG, "Note: LBT configuration:\n");
-    ESP_LOGD(TAG,  "\tlbt_enable: %d\n", lbt_enable );
-    ESP_LOGD(TAG,  "\tlbt_nb_active_channel: %d\n", lbt_nb_active_channel );
-    ESP_LOGD(TAG,  "\tlbt_start_freq: %d\n", lbt_start_freq);
-    ESP_LOGD(TAG,  "\tlbt_rssi_target: %d\n", lbt_rssi_target_dBm );
+    ESP_LOGD(TAG, "NOTE: LBT CONFIGURATION:");
+    ESP_LOGD(TAG,  "\tLBT_ENABLE: %d", lbt_enable );
+    ESP_LOGD(TAG,  "\tLBT_NB_ACTIVE_CHANNEL: %d", lbt_nb_active_channel );
+    ESP_LOGD(TAG,  "\tLBT_START_FREQ: %d", lbt_start_freq);
+    ESP_LOGD(TAG,  "\tLBT_RSSI_TARGET: %d", lbt_rssi_target_dBm );
     for (i=0; i<LBT_CHANNEL_FREQ_NB; i++)
     {
-        ESP_LOGD(TAG,  "\tlbt_channel_cfg[%d].freq_hz: %u\n", i, lbt_channel_cfg[i].freq_hz );
-        ESP_LOGD(TAG,  "\tlbt_channel_cfg[%d].scan_time_us: %u\n", i, lbt_channel_cfg[i].scan_time_us );
+        ESP_LOGD(TAG,  "\tLBT_CHANNEL_CFG[%d].FREQ_HZ: %u", i, lbt_channel_cfg[i].freq_hz );
+        ESP_LOGD(TAG,  "\tLBT_CHANNEL_CFG[%d].SCAN_TIME_US: %u", i, lbt_channel_cfg[i].scan_time_us );
     }
 
     return LGW_LBT_SUCCESS;
@@ -228,13 +230,13 @@ int lbt_setup(void)
 
 int lbt_start(void)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int x;
 
     x = lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
     if (x != LGW_REG_SUCCESS)
     {
-        ESP_LOGD(TAG, "ERROR: Failed to start LBT FSM\n");
+        ESP_LOGE(TAG, "FAILED TO START LBT FSM");
         return LGW_LBT_ERROR;
     }
 
@@ -245,7 +247,7 @@ int lbt_start(void)
 
 int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay, bool * tx_allowed)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int i;
     int32_t val;
     uint32_t tx_start_time = 0;
@@ -261,10 +263,8 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay,
     uint32_t packet_duration = 0;
 
     /* Check input parameters */
-    if ((pkt_data == NULL) || (tx_allowed == NULL))
-    {
-        return LGW_LBT_ERROR;
-    }
+    CHECK_NULL(pkt_data);
+    CHECK_NULL(tx_allowed);
 
     /* Check if TX is allowed */
     if (lbt_enable == true)
@@ -273,26 +273,26 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay,
         if (pkt_data->modulation != MOD_LORA)
         {
             *tx_allowed = false;
-            ESP_LOGD(TAG,  "INFO: TX is not allowed for this modulation (%x)\n", pkt_data->modulation);
+            ESP_LOGV(TAG, "TX IS NOT ALLOWED FOR THIS MODULATION (%x)", pkt_data->modulation);
             return LGW_LBT_SUCCESS;
         }
 
         /* Get SX1301 time at last PPS */
         lgw_get_trigcnt(&sx1301_time);
 
-        ESP_LOGD(TAG, "################################\n");
+        ESP_LOGV(TAG, "################################");
         switch(pkt_data->tx_mode)
         {
             case TIMESTAMPED:
-                ESP_LOGD(TAG, "tx_mode                    = TIMESTAMPED\n");
+                ESP_LOGV(TAG, "TX_MODE                    = TIMESTAMPED");
                 tx_start_time = pkt_data->count_us & LBT_TIMESTAMP_MASK;
                 break;
             case ON_GPS:
-                ESP_LOGD(TAG, "tx_mode                    = ON_GPS\n");
+                ESP_LOGV(TAG, "TX_MODE                    = ON_GPS");
                 tx_start_time = (sx1301_time + (uint32_t)tx_start_delay + 1000000) & LBT_TIMESTAMP_MASK;
                 break;
             case IMMEDIATE:
-                ESP_LOGD(TAG, "ERROR: tx_mode IMMEDIATE is not supported when LBT is enabled\n");
+                ESP_LOGE(TAG, "TX_MODE IMMEDIATE IS NOT SUPPORTED WHEN LBT IS ENABLED");
                 /* FALLTHROUGH  */
             default:
                 return LGW_LBT_ERROR;
@@ -307,7 +307,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay,
             {
                 if (is_equal_freq(pkt_data->freq_hz, lbt_channel_cfg[i].freq_hz) == true)
                 {
-                    ESP_LOGD(TAG,  "LBT: select channel %d (%u Hz)\n", i, lbt_channel_cfg[i].freq_hz);
+                    ESP_LOGV(TAG,  "LBT: SELECT CHANNEL %d (%u HZ)", i, lbt_channel_cfg[i].freq_hz);
                     lbt_channel_decod_1 = i;
                     lbt_channel_decod_2 = i;
                     if (lbt_channel_cfg[i].scan_time_us == 5000)
@@ -330,7 +330,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay,
             {
                 if ((is_equal_freq(pkt_data->freq_hz, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2) == true) && ((lbt_channel_cfg[i+1].freq_hz-lbt_channel_cfg[i].freq_hz)==200E3))
                 {
-                    ESP_LOGD(TAG, "LBT: select channels %d,%d (%u Hz)\n", i, i+1, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2);
+                    ESP_LOGV(TAG, "LBT: SELECT CHANNELS %d,%d (%u HZ)", i, i+1, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2);
                     lbt_channel_decod_1 = i;
                     lbt_channel_decod_2 = i+1;
                     if (lbt_channel_cfg[i].scan_time_us == 5000)
@@ -381,20 +381,20 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay,
         else
         {
             /* It means LBT counter has wrapped */
-            printf("LBT: lbt counter has wrapped\n");
+            ESP_LOGV(TAG, "LBT: LBT COUNTER HAS WRAPPED");
             delta_time = (LBT_TIMESTAMP_MASK - lbt_time) + tx_end_time;
         }
 
-        ESP_LOGD(TAG,  "sx1301_time                = %u\n", sx1301_time & LBT_TIMESTAMP_MASK);
-        ESP_LOGD(TAG,  "tx_freq                    = %u\n", pkt_data->freq_hz);
-        ESP_LOGD(TAG, "------------------------------------------------\n");
-        ESP_LOGD(TAG,  "packet_duration            = %u\n", packet_duration);
-        ESP_LOGD(TAG,  "tx_start_time              = %u\n", tx_start_time);
-        ESP_LOGD(TAG,  "lbt_time1                  = %u\n", lbt_time1);
-        ESP_LOGD(TAG,  "lbt_time2                  = %u\n", lbt_time2);
-        ESP_LOGD(TAG,  "lbt_time                   = %u\n", lbt_time);
-        ESP_LOGD(TAG,  "delta_time                 = %u\n", delta_time);
-        ESP_LOGD(TAG, "------------------------------------------------\n");
+        ESP_LOGD(TAG,  "sx1301_time                = %u", sx1301_time & LBT_TIMESTAMP_MASK);
+        ESP_LOGD(TAG,  "tx_freq                    = %u", pkt_data->freq_hz);
+        ESP_LOGD(TAG, "------------------------------------------------");
+        ESP_LOGD(TAG,  "packet_duration            = %u", packet_duration);
+        ESP_LOGD(TAG,  "tx_start_time              = %u", tx_start_time);
+        ESP_LOGD(TAG,  "lbt_time1                  = %u", lbt_time1);
+        ESP_LOGD(TAG,  "lbt_time2                  = %u", lbt_time2);
+        ESP_LOGD(TAG,  "lbt_time                   = %u", lbt_time);
+        ESP_LOGD(TAG,  "delta_time                 = %u", delta_time);
+        ESP_LOGD(TAG, "------------------------------------------------");
 
         /* send data if allowed */
         /* lbt_time: last time when channel was free */
@@ -406,7 +406,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay,
         }
         else
         {
-            ESP_LOGD(TAG, "ERROR: TX request rejected (LBT)\n");
+            ESP_LOGW(TAG, "TX REQUEST REJECTED (LBT)");
             *tx_allowed = false;
         }
     }
@@ -423,7 +423,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, uint16_t tx_start_delay,
 
 bool lbt_is_enabled(void)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     return lbt_enable;
 }
 
@@ -435,7 +435,7 @@ issues can appear, so we can't simply check for equality, but have to take some
 margin */
 bool is_equal_freq(uint32_t a, uint32_t b)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int64_t diff;
     int64_t a64 = (int64_t)a;
     int64_t b64 = (int64_t)b;
