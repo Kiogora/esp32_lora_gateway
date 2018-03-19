@@ -11,6 +11,7 @@ Description:
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
+Modified for ESP32 by: Alois Mbutura
 */
 
 
@@ -20,17 +21,17 @@ Maintainer: Sylvain Miermont
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include "esp_log.h"
 
 #include "base64.h"
+
+static const char* TAG = "[BASE64]:";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a)       (sizeof(a) / sizeof((a)[0]))
-#define CRIT(a)             fprintf(stderr, "\nCRITICAL file:%s line:%u msg:%s\n", __FILE__, __LINE__,a);exit(EXIT_FAILURE)
-
-//#define DEBUG(args...)    fprintf(stderr,"debug: " args) /* diagnostic message that is destined to the user */
-#define DEBUG(args...)
+#define CRIT(a)             ESP_LOGE(TAG, "\nCRITICAL file:%s line:%u msg:%s\n", __FILE__, __LINE__,a);exit(EXIT_FAILURE)
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -70,7 +71,7 @@ char code_to_char(uint8_t x) {
     } else if (x == 63) {
         return code_63;
     } else {
-        DEBUG("ERROR: %i IS OUT OF RANGE 0-63 FOR BASE64 ENCODING\n", x);
+        ESP_LOGE(TAG, "%i IS OUT OF RANGE 0-63 FOR BASE64 ENCODING\n", x);
         exit(EXIT_FAILURE);
     } //TODO: improve error management
 }
@@ -87,7 +88,7 @@ uint8_t char_to_code(char x) {
     } else if (x == code_63) {
         return 63;
     } else {
-        DEBUG("ERROR: %c (0x%x) IS INVALID CHARACTER FOR BASE64 DECODING\n", x, x);
+        ESP_LOGE(TAG, "%c (0x%x) IS INVALID CHARACTER FOR BASE64 DECODING\n", x, x);
         exit(EXIT_FAILURE);
     } //TODO: improve error management
 }
@@ -105,7 +106,7 @@ int bin_to_b64_nopad(const uint8_t * in, int size, char * out, int max_len) {
 
     /* check input values */
     if ((out == NULL) || (in == NULL)) {
-        DEBUG("ERROR: NULL POINTER AS OUTPUT IN BIN_TO_B64\n");
+        ESP_LOGE(TAG, "NULL POINTER AS OUTPUT IN BIN_TO_B64");
         return -1;
     }
     if (size == 0) {
@@ -127,13 +128,13 @@ int bin_to_b64_nopad(const uint8_t * in, int size, char * out, int max_len) {
             last_chars = 3;
             break;
         default:
-            CRIT("switch default that should not be possible");
+            CRIT("SWITCH DEFAULT THAT SHOULD NOT BE POSSIBLE");
     }
 
     /* check if output buffer is big enough */
     result_len = (4*full_blocks) + last_chars;
     if (max_len < (result_len + 1)) { /* 1 char added for string terminator */
-        DEBUG("ERROR: OUTPUT BUFFER TOO SMALL IN BIN_TO_B64\n");
+        ESP_LOGE(TAG, "OUTPUT BUFFER TOO SMALL IN BIN_TO_B64");
         return -1;
     }
 
@@ -180,7 +181,7 @@ int b64_to_bin_nopad(const char * in, int size, uint8_t * out, int max_len) {
 
     /* check input values */
     if ((out == NULL) || (in == NULL)) {
-        DEBUG("ERROR: NULL POINTER AS OUTPUT OR INPUT IN B64_TO_BIN\n");
+        ESP_LOGE(TAG, "NULL POINTER AS OUTPUT OR INPUT IN B64_TO_BIN");
         return -1;
     }
     if (size == 0) {
@@ -195,7 +196,7 @@ int b64_to_bin_nopad(const char * in, int size, uint8_t * out, int max_len) {
             last_bytes = 0;
             break;
         case 1: /* only 1 char left is an error */
-            DEBUG("ERROR: ONLY ONE CHAR LEFT IN B64_TO_BIN\n");
+            ESP_LOGE(TAG, "ONLY ONE CHAR LEFT IN B64_TO_BIN");
             return -1;
         case 2: /* 2 chars left to decode -> +1 byte */
             last_bytes = 1;
@@ -210,7 +211,7 @@ int b64_to_bin_nopad(const char * in, int size, uint8_t * out, int max_len) {
     /* check if output buffer is big enough */
     result_len = (3*full_blocks) + last_bytes;
     if (max_len < result_len) {
-        DEBUG("ERROR: OUTPUT BUFFER TOO SMALL IN B64_TO_BIN\n");
+        ESP_LOGE(TAG, "OUTPUT BUFFER TOO SMALL IN B64_TO_BIN");
         return -1;
     }
 
@@ -232,7 +233,7 @@ int b64_to_bin_nopad(const char * in, int size, uint8_t * out, int max_len) {
         b |= (0x3F & char_to_code(in[4*i + 1])) << 12;
         out[3*i + 0] = (b >> 16) & 0xFF;
         if (((b >> 12) & 0x0F) != 0) {
-            DEBUG("WARNING: last character contains unusable bits\n");
+            ESP_LOGW(TAG, "LAST CHARACTER CONTAINS UNUSABLE BITS");
         }
     } else if (last_bytes == 2) {
         b  = (0x3F & char_to_code(in[4*i]    )) << 18;
@@ -241,7 +242,7 @@ int b64_to_bin_nopad(const char * in, int size, uint8_t * out, int max_len) {
         out[3*i + 0] = (b >> 16) & 0xFF;
         out[3*i + 1] = (b >> 8 ) & 0xFF;
         if (((b >> 6) & 0x03) != 0) {
-            DEBUG("WARNING: last character contains unusable bits\n");
+            ESP_LOGW(TAG, "LAST CHARACTER CONTAINS UNUSABLE BITS");
         }
     }
 
@@ -260,7 +261,7 @@ int bin_to_b64(const uint8_t * in, int size, char * out, int max_len) {
         case 0: /* nothing to do */
             return ret;
         case 1:
-            DEBUG("ERROR: INVALID UNPADDED BASE64 STRING\n");
+            ESP_LOGE(TAG, "INVALID UNPADDED BASE64 STRING");
             return -1;
         case 2: /* 2 chars in last block, must add 2 padding char */
             if (max_len >= (ret + 2 + 1)) {
@@ -269,7 +270,7 @@ int bin_to_b64(const uint8_t * in, int size, char * out, int max_len) {
                 out[ret+2] = 0;
                 return ret+2;
             } else {
-                DEBUG("ERROR: not enough room to add padding in bin_to_b64\n");
+                ESP_LOGE(TAG, "INSUFFICIENT ROOM TO ADD PADDING IN bin_to_b64()");
                 return -1;
             }
         case 3: /* 3 chars in last block, must add 1 padding char */
@@ -278,17 +279,17 @@ int bin_to_b64(const uint8_t * in, int size, char * out, int max_len) {
                 out[ret+1] = 0;
                 return ret+1;
             } else {
-                DEBUG("ERROR: not enough room to add padding in bin_to_b64\n");
+                ESP_LOGE(TAG, "INSUFFICIENT ROOM TO ADD PADDING IN bin_to_b64()");
                 return -1;
             }
         default:
-            CRIT("switch default that should not be possible");
+            CRIT("SWITCH DEFAULT THAT SHOULD NOT BE POSSIBLE");
     }
 }
 
 int b64_to_bin(const char * in, int size, uint8_t * out, int max_len) {
     if (in == NULL) {
-        DEBUG("ERROR: NULL POINTER AS OUTPUT OR INPUT IN B64_TO_BIN\n");
+        ESP_LOGE(TAG, "NULL POINTER AS OUTPUT OR INPUT IN B64_TO_BIN");
         return -1;
     }
     if ((size%4 == 0) && (size >= 4)) { /* potentially padded Base64 */
