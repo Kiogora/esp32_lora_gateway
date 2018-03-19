@@ -7,6 +7,8 @@
 #ifndef _QUECTEL_GSM_H_
 #define _QUECTEL_GSM_H_
 
+#include "netif/ppp/ppp.h"
+
 #define GSM_STATE_DISCONNECTED	0
 #define GSM_STATE_CONNECTED		1
 #define GSM_STATE_IDLE			89
@@ -73,7 +75,7 @@ void resetRxTxCount();
  * GSM_STATE_FIRSTINIT		(98)	Task started, initializing PPPoS
  */
 //================
-int ppposStatus();
+uint8_t ppposStatus();
 
 /*
  * Turn GSM RF Off

@@ -19,14 +19,18 @@
 #include "netif/ppp/ppp.h"
 #include "lwip/pppapi.h"
 
-#include "quectel_gsm.h"
+#include "gsm.h"
 
 
 // === GSM configuration that you can set via 'make menuconfig'. ===
 #define GSM_PWR_KEY CONFIG_GSM_PWR_KEY
 #define UART_GPIO_TX CONFIG_GSM_TX
 #define UART_GPIO_RX CONFIG_GSM_RX
-#define UART_BDRATE CONFIG_GSM_BDRATE
+
+//Initial baudrate before update speed request.
+#define INIT_BDRATE 115200
+//Final baudrate after update speed request success.
+#define UART_BDRATE 6000000  //CONFIG_GSM_BDRATE
 
 #ifdef CONFIG_GSM_DEBUG
 #define GSM_DEBUG 1
@@ -37,7 +41,7 @@
 #define GSM_OK_Str "OK"
 #define PPPOSMUTEX_TIMEOUT 1000 / portTICK_RATE_MS
 
-#define PPPOS_CLIENT_STACK_SIZE 1024*3
+#define PPPOS_CLIENT_STACK_SIZE 1024*6
 
 
 // shared variables, use mutex to access them
@@ -52,9 +56,10 @@ static uint8_t gsm_rfOff = 0;
 static QueueHandle_t pppos_mutex = NULL;
 const char *PPP_User = CONFIG_GSM_INTERNET_USER;
 const char *PPP_Pass = CONFIG_GSM_INTERNET_PASSWORD;
-static int uart_num = UART_NUM_1;
+static int uart_num = UART_NUM_2;
 
 static uint8_t tcpip_adapter_initialized = 0;
+
 
 // The PPP control block
 static ppp_pcb *ppp = NULL;
@@ -166,6 +171,36 @@ static GSM_Cmd cmd_Connect =
 	.skip = 0,
 };
 
+static GSM_Cmd cmd_Update_Baudrate =
+{
+	.cmd = "AT+IPR=6000000\r\n",
+	.cmdSize = sizeof("AT+IPR=6000000\r\n"),
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 3000,
+	.delayMs = 5000,
+	.skip = 0,
+};
+
+static GSM_Cmd cmd_Query_Initbaudrate =
+{
+	.cmd = "AT+IPR=?\r\n",
+	.cmdSize = sizeof("AT+IPR=?\r\n")-1,
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 1000,
+	.delayMs = 5000,
+	.skip = 1,
+};
+
+static GSM_Cmd cmd_Query_Postbaudrate =
+{
+	.cmd = "AT+IPR?\r\n",
+	.cmdSize = sizeof("AT+IPR?\r\n")-1,
+	.cmdResponseOnOk = "+IPR: 3000000",
+	.timeoutMs = 3000,
+	.delayMs = 5000,
+	.skip = 0,
+};
+
 static GSM_Cmd *GSM_Init[] =
 {
 		&cmd_AT,
@@ -173,14 +208,17 @@ static GSM_Cmd *GSM_Init[] =
 		&cmd_EchoOff,
 		&cmd_RFOn,
 		&cmd_NoSMSInd,
+		//&cmd_Query_Initbaudrate,
+		&cmd_Update_Baudrate,
+		//&cmd_Query_Postbaudrate
 		&cmd_Pin,
 		&cmd_Reg,
 		&cmd_APN,
 		&cmd_Connect,
+		&cmd_Connect,
 };
 
 #define GSM_InitCmdsSize  (sizeof(GSM_Init)/sizeof(GSM_Cmd *))
-
 
 // PPP status callback
 //--------------------------------------------------------------
@@ -509,7 +547,7 @@ static void pppos_client_task()
 	char PPP_ApnATReq[sizeof(CONFIG_GSM_APN)+24];
 	
 	uart_config_t uart_config = {
-			.baud_rate = UART_BDRATE,
+			.baud_rate = INIT_BDRATE,
 			.data_bits = UART_DATA_8_BITS,
 			.parity = UART_PARITY_DISABLE,
 			.stop_bits = UART_STOP_BITS_1,
@@ -522,8 +560,10 @@ static void pppos_client_task()
 	if (uart_set_pin(uart_num, UART_GPIO_TX, UART_GPIO_RX, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE)) goto exit;
 	if (uart_driver_install(uart_num, BUF_SIZE * 2, BUF_SIZE * 2, 0, NULL, 0)) goto exit;
 
-        gpio_set_level(GSM_PWR_KEY, 1);
-	vTaskDelay(3000 / portTICK_PERIOD_MS);
+    gpio_set_level(GSM_PWR_KEY, 1);
+	vTaskDelay(200 / portTICK_PERIOD_MS);
+	gpio_set_level(GSM_PWR_KEY, 0);
+
 	// Set APN from config
 	sprintf(PPP_ApnATReq, "AT+CGDCONT=1,\"IP\",\"%s\"\r\n", CONFIG_GSM_APN);
 	cmd_APN.cmd = PPP_ApnATReq;
@@ -532,10 +572,11 @@ static void pppos_client_task()
 	_disconnect(1); // Disconnect if connected
 
 	xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
-        pppos_tx_count = 0;
-        pppos_rx_count = 0;
-	gsm_status = GSM_STATE_FIRSTINIT;
-	xSemaphoreGive(pppos_mutex);
+    			   pppos_tx_count = 0;
+        		   pppos_rx_count = 0;
+				   gsm_status = GSM_STATE_FIRSTINIT;
+				   xSemaphoreGive(pppos_mutex
+				   );
 
 	enableAllInitCmd();
 
@@ -545,7 +586,6 @@ static void pppos_client_task()
 		ESP_LOGI(TAG,"GSM initialization start");
 		#endif
 		vTaskDelay(500 / portTICK_PERIOD_MS);
-
 		int gsmCmdIter = 0;
 		int nfail = 0;
 		// * GSM Initialization loop
@@ -575,6 +615,21 @@ static void pppos_client_task()
 				gsmCmdIter = 0;
 				continue;
 			}
+			else{
+				if(gsmCmdIter == 5)
+				{
+					if(uart_set_baudrate(uart_num, UART_BDRATE) != ESP_OK){
+						goto exit;
+					}
+					uint32_t baud;
+					if(uart_get_baudrate(uart_num, &baud)){
+						goto exit;
+					}
+					else {
+						ESP_LOGI(TAG, "Baudrate is updated to %d baud", baud);
+					}
+				}
+			}
 
 			if (GSM_Init[gsmCmdIter]->delayMs > 0) vTaskDelay(GSM_Init[gsmCmdIter]->delayMs / portTICK_PERIOD_MS);
 			GSM_Init[gsmCmdIter]->skip = 1;
@@ -592,7 +647,7 @@ static void pppos_client_task()
 			xSemaphoreGive(pppos_mutex);
 			// ** After first successful initialization create PPP control block
 			ppp = pppapi_pppos_create(&ppp_netif,
-					ppp_output_callback, ppp_status_cb, NULL);
+						ppp_output_callback, ppp_status_cb, NULL);
 
 			if (ppp == NULL) {
 				#if GSM_DEBUG
@@ -738,7 +793,7 @@ int ppposInit()
 			tcpip_adapter_init();
 			tcpip_adapter_initialized = 1;
 		}
-		xTaskCreate(&pppos_client_task, "pppos_client_task", PPPOS_CLIENT_STACK_SIZE, NULL, 10, NULL);
+		xTaskCreate(&pppos_client_task, "pppos_client_task", PPPOS_CLIENT_STACK_SIZE, NULL, 2, NULL);
 		while (task_s == 0) {
 			vTaskDelay(10 / portTICK_RATE_MS);
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
@@ -792,10 +847,11 @@ void ppposDisconnect(uint8_t end_task, uint8_t rfoff)
 }
 
 //===================
-int ppposStatus()
+uint8_t ppposStatus()
 {
+	uint8_t gstat;
 	xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
-	int gstat = gsm_status;
+	gstat = gsm_status;
 	xSemaphoreGive(pppos_mutex);
 
 	return gstat;
