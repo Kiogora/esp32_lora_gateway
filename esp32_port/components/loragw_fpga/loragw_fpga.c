@@ -43,7 +43,7 @@ Maintainer: Michael Coracin
 #include "loragw_reg.h"
 #include "loragw_fpga.h"
 
-static const char* TAG = "loragw_fpga";
+static const char* TAG = "[LORAGW_FPGA]:";
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -124,7 +124,7 @@ static uint8_t tx_notch_offset;
 
 float lgw_fpga_get_tx_notch_delay(void)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     float tx_notch_delay;
 
     if (tx_notch_support == false)
@@ -141,7 +141,7 @@ float lgw_fpga_get_tx_notch_delay(void)
 
 int lgw_fpga_configure(uint32_t tx_notch_freq)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int x;
     int32_t val;
     bool spectral_scan_support, lbt_support;
@@ -149,36 +149,35 @@ int lgw_fpga_configure(uint32_t tx_notch_freq)
     /* Check input parameters */
     if ((tx_notch_freq < LGW_MIN_NOTCH_FREQ) || (tx_notch_freq > LGW_MAX_NOTCH_FREQ))
     {
-        ESP_LOGW(TAG, "WARNING: FPGA TX notch frequency is out of range (%u - [%u..%u]), setting it to default (%u)\n", tx_notch_freq, LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ, LGW_DEFAULT_NOTCH_FREQ);
+        ESP_LOGW(TAG, "FPGA TX NOTCH FREQUENCY IS OUT OF RANGE (%u - [%u..%u]), SETTING IT TO DEFAULT (%u)", tx_notch_freq, LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ, LGW_DEFAULT_NOTCH_FREQ);
         tx_notch_freq = LGW_DEFAULT_NOTCH_FREQ;
     }
 
     /* Get supported FPGA features */
-    printf("INFO: FPGA supported features:");
+    ESP_LOGI(TAG, "FPGA SUPPORTED FEATURES:");
     lgw_fpga_reg_r(LGW_FPGA_FEATURE, &val);
     tx_notch_support = TAKE_N_BITS_FROM((uint8_t)val, 0, 1);
     if (tx_notch_support == true)
     {
-        printf(" [TX filter] ");
+        ESP_LOGI(TAG, "             [TX FILTER] ");
     }
     spectral_scan_support = TAKE_N_BITS_FROM((uint8_t)val, 1, 1);
     if (spectral_scan_support == true)
     {
-        printf(" [Spectral Scan] ");
+        ESP_LOGI(TAG, "             [SPECTRAL SCAN] ");
     }
     lbt_support = TAKE_N_BITS_FROM((uint8_t)val, 2, 1);
     if (lbt_support == true)
     {
-        printf(" [LBT] ");
+        ESP_LOGI(TAG, "             [LBT] ");
     }
-    printf("\n");
 
     x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_INPUT_SYNC_I, 1);
     x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_INPUT_SYNC_Q, 1);
     x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_OUTPUT_SYNC, 0);
     if (x != LGW_REG_SUCCESS)
     {
-        ESP_LOGE(TAG, "ERROR: Failed to configure FPGA TX synchro\n");
+        ESP_LOGE(TAG, "FAILED TO CONFIGURE FPGA TX SYNCHRONISATION");
         return LGW_REG_ERROR;
     }
 
@@ -186,7 +185,7 @@ int lgw_fpga_configure(uint32_t tx_notch_freq)
     x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_INVERT_IQ, 1);
     if (x != LGW_REG_SUCCESS)
     {
-        ESP_LOGE(TAG, "ERROR: Failed to configure FPGA polarity\n");
+        ESP_LOGE(TAG, "FAILED TO CONFIGURE FPGA POLARITY");
         return LGW_REG_ERROR;
     }
 
@@ -197,7 +196,7 @@ int lgw_fpga_configure(uint32_t tx_notch_freq)
         x = lgw_fpga_reg_w(LGW_FPGA_NOTCH_FREQ_OFFSET, (int32_t)tx_notch_offset);
         if (x != LGW_REG_SUCCESS)
         {
-            ESP_LOGE(TAG, "ERROR: Failed to configure FPGA TX notch filter\n");
+            ESP_LOGE(TAG, "FAILED TO CONFIGURE FPGA TX NOTCH FILTER");
             return LGW_REG_ERROR;
         }
 
@@ -205,16 +204,16 @@ int lgw_fpga_configure(uint32_t tx_notch_freq)
         x = lgw_fpga_reg_r(LGW_FPGA_NOTCH_FREQ_OFFSET, &val);
         if (x != LGW_REG_SUCCESS)
         {
-            ESP_LOGE(TAG, "ERROR: Failed to read FPGA TX notch frequency\n");
+            ESP_LOGE(TAG, "FAILED TO READ FPGA TX NOTCH FREQUENCY");
             return LGW_REG_ERROR;
         }
         if (val != tx_notch_offset)
         {
-            ESP_LOGW(TAG, "WARNING: TX notch filter frequency is not programmable (check your FPGA image)\n");
+            ESP_LOGW(TAG, "TX NOTCH FILTER FREQUENCY IS NOT PROGRAMMABLE (CHECK YOUR FPGA IMAGE)FAILED TO READ FPGA TX NOTCH FREQUENCY");
         } 
         else
         {
-            ESP_LOGI(TAG, "INFO: TX notch filter frequency set to %u (%i)\n", tx_notch_freq, tx_notch_offset);
+            ESP_LOGI(TAG, "TX NOTCH FILTER FREQUENCY SET TO %u (%i)", tx_notch_freq, tx_notch_offset);
         }
     }
     return LGW_REG_SUCCESS;
@@ -225,14 +224,14 @@ int lgw_fpga_configure(uint32_t tx_notch_freq)
 /* Write to a register addressed by name */
 int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
     if (register_id >= LGW_FPGA_TOTALREGS)
     {
-        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
@@ -242,7 +241,7 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value)
     /* reject write to read-only registers */
     if (r.rdon == 1)
     {
-        ESP_LOGE(TAG, "ERROR: TRYING TO WRITE A READ-ONLY REGISTER\n");
+        ESP_LOGE(TAG, "TRYING TO WRITE A READ-ONLY REGISTER");
         return LGW_REG_ERROR;
     }
 
@@ -250,7 +249,7 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value)
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER WRITE\n");
+        ESP_LOGE(TAG, "SPI ERROR DURING REGISTER WRITE");
         return LGW_REG_ERROR;
     } 
     else
@@ -264,7 +263,7 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value)
 /* Read to a register addressed by name */
 int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
@@ -272,7 +271,7 @@ int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value)
     CHECK_NULL(reg_value);
     if (register_id >= LGW_FPGA_TOTALREGS)
     {
-        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
@@ -283,7 +282,7 @@ int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value)
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER WRITE\n");
+        ESP_LOGE(TAG, "SPI ERROR DURING REGISTER WRITE");
         return LGW_REG_ERROR;
     }
     else
@@ -297,7 +296,7 @@ int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value)
 /* Point to a register by name and do a burst write */
 int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
@@ -305,12 +304,12 @@ int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
     CHECK_NULL(data);
     if (size == 0)
     {
-        ESP_LOGE(TAG, "ERROR: BURST OF NULL LENGTH\n");
+        ESP_LOGE(TAG, "BURST OF NULL LENGTH");
         return LGW_REG_ERROR;
     }
     if (register_id >= LGW_FPGA_TOTALREGS)
     {
-        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
@@ -320,7 +319,7 @@ int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
     /* reject write to read-only registers */
     if (r.rdon == 1)
     {
-        ESP_LOGE(TAG, "ERROR: TRYING TO BURST WRITE A READ-ONLY REGISTER\n");
+        ESP_LOGE(TAG, "ERROR TRYING TO BURST WRITE A READ-ONLY REGISTER");
         return LGW_REG_ERROR;
     }
 
@@ -329,7 +328,7 @@ int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
+        ESP_LOGE(TAG, "SPI ERROR DURING REGISTER BURST WRITE");
         return LGW_REG_ERROR;
     }
     else
@@ -343,7 +342,7 @@ int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
 /* Point to a register by name and do a burst read */
 int lgw_fpga_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size)
 {
-    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __func__);
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
 
@@ -351,12 +350,12 @@ int lgw_fpga_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size)
     CHECK_NULL(data);
     if (size == 0)
     {
-        ESP_LOGE(TAG, "ERROR: BURST OF NULL LENGTH\n");
+        ESP_LOGE(TAG, "BURST OF NULL LENGTH");
         return LGW_REG_ERROR;
     }
     if (register_id >= LGW_FPGA_TOTALREGS)
     {
-        ESP_LOGE(TAG, "ERROR: REGISTER NUMBER OUT OF DEFINED RANGE\n");
+        ESP_LOGE(TAG, "REGISTER NUMBER OUT OF DEFINED RANGE");
         return LGW_REG_ERROR;
     }
 
@@ -368,7 +367,7 @@ int lgw_fpga_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size)
 
     if (spi_stat != LGW_SPI_SUCCESS)
     {
-        ESP_LOGE(TAG, "ERROR: SPI ERROR DURING REGISTER BURST READ\n");
+        ESP_LOGE(TAG, "SPI ERROR DURING REGISTER BURST READ");
         return LGW_REG_ERROR;
     }
     else 
