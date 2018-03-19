@@ -245,7 +245,7 @@ int lgw_spi_r(spi_device_handle_t* spi_target_ptr, uint8_t spi_mux_mode, uint8_t
     esp_err_t ret=spi_device_transmit(*spi_target_ptr, (spi_transaction_t*)&tx); //Perform the transmit transaction!
     if(ret == ESP_OK)
     {
-#if CONFIG_LOG_DEFAULT_LEVEL >= 3
+#if CONFIG_LOG_DEFAULT_LEVEL == 5
         for(int i=0; i<4; i++)
         {
             ESP_LOGD(TAG, "Received data value is [%u], Value: 0x%02X", i, tx.base.rx_data[i]);
