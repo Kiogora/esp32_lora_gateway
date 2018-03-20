@@ -124,6 +124,8 @@ void app_main()
     register_lora_pkt_fwd();
     //Register LoRagw_lbt functions
     register_loragw_lbt();
+    /*Register ping*/
+    register_ping();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

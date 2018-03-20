@@ -55,10 +55,9 @@ Maintainer: Sylvain Miermont
 #define RAM_SIZE                4096
 #define FREQ_SIG_NORM           0.078125
 
+#include "cal_fw.var" /* external definition of the variable */
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-#include "../components/loragw_hal/include/cal_fw.var" /* external definition of the variable */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES --------------------------------------------------------- */

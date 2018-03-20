@@ -208,7 +208,7 @@ static GSM_Cmd *GSM_Init[] =
 		&cmd_EchoOff,
 		&cmd_RFOn,
 		&cmd_NoSMSInd,
-		&cmd_Query_Initbaudrate,
+		//&cmd_Query_Initbaudrate,
 		&cmd_Update_Baudrate,
 		//&cmd_Query_Postbaudrate
 		&cmd_Pin,

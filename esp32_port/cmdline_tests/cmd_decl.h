@@ -34,3 +34,6 @@ void register_lora_pkt_fwd();
 
 //Register LoRagw_lbt functions
 void register_loragw_lbt();
+
+/*Register ping*/
+void register_ping();
