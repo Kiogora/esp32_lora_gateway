@@ -31,7 +31,7 @@ typedef struct {
 
 static bool s_iperf_is_running = false;
 static iperf_ctrl_t s_iperf_ctrl;
-static const char *TAG = "[IPERF]:";
+static const char *TAG = "[IPERF]";
 
 inline static bool iperf_is_udp_client(void)
 {
@@ -87,7 +87,7 @@ void iperf_report_task(void* arg)
     uint32_t last_len = 0;
     uint32_t cur = 0;
 
-    ESP_LOGI(TAG,"\n%16s %s\n", "Interval", "Bandwidth");
+    ESP_LOGI(TAG,"%16s %s", "Interval", "   Bandwidth");
     while (!s_iperf_ctrl.finish) {
         vTaskDelay(delay_interval);
         ESP_LOGI(TAG,"%4d-%4d sec       %.2f Mbits/sec", cur, cur+interval, (double)((s_iperf_ctrl.total_len - last_len)*8)/interval/1e6);
@@ -371,6 +371,17 @@ esp_err_t iperf_run_tcp_client(void)
 
 void iperf_task_traffic(void *arg)
 {
+    iperf_cfg_t cfg = *(iperf_cfg_t*)arg;
+
+    vTaskDelay(2000/portTICK_RATE_MS);
+
+    ESP_LOGI(TAG, "\nmode=%s-%s sip=%d.%d.%d.%d:%d, dip=%d.%d.%d.%d:%d, interval=%d, time=%d",
+        cfg.flag&IPERF_FLAG_TCP?"tcp":"udp",
+        cfg.flag&IPERF_FLAG_SERVER?"server":"client",
+        cfg.sip&0xFF, (cfg.sip>>8)&0xFF, (cfg.sip>>16)&0xFF, (cfg.sip>>24)&0xFF, cfg.sport,
+        cfg.dip&0xFF, (cfg.dip>>8)&0xFF, (cfg.dip>>16)&0xFF, (cfg.dip>>24)&0xFF, cfg.dport,
+        cfg.interval, cfg.time);
+        
     if (iperf_is_udp_client()) {
         iperf_run_udp_client();
     } else if (iperf_is_udp_server()) {
@@ -428,7 +439,7 @@ esp_err_t iperf_start(iperf_cfg_t *cfg)
         return ESP_FAIL;
     }
 
-    ret = xTaskCreate(iperf_task_traffic, IPERF_TRAFFIC_TASK_NAME, IPERF_TRAFFIC_TASK_STACK, NULL, IPERF_TRAFFIC_TASK_PRIORITY, NULL);
+    ret = xTaskCreate(iperf_task_traffic, IPERF_TRAFFIC_TASK_NAME, IPERF_TRAFFIC_TASK_STACK, (void*)cfg, IPERF_TRAFFIC_TASK_PRIORITY, NULL);
     if (ret != pdPASS)  {
         ESP_LOGE(TAG, "create task %s failed", IPERF_TRAFFIC_TASK_NAME);
         free(s_iperf_ctrl.buffer);

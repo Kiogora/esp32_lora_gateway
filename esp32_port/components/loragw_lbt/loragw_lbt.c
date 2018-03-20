@@ -38,7 +38,7 @@ Modified for ESP32 by: Alois Mbutura.
 #include "loragw_lbt.h"
 #include "loragw_fpga.h"
 
-static const char* TAG = "[LORAGW_LBT]:";
+static const char* TAG = "[LORAGW_LBT]";
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 

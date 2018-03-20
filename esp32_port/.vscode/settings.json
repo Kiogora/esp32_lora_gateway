@@ -3,7 +3,9 @@
         "mqttclient.h": "c",
         "*.ipp": "cpp",
         "array": "c",
-        "inet.h": "c"
+        "inet.h": "c",
+        "stdint.h": "c",
+        "loragw_gps.h": "c"
     },
     "C_Cpp.intelliSenseEngineFallback": "Enabled",
     "C_Cpp.errorSquiggles": "Disabled"

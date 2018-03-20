@@ -29,6 +29,9 @@ Maintainer: Michael Coracin
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+#include "esp_log.h"
+
+static const char* TAG= "[TIMERSYNC]";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
@@ -84,7 +87,7 @@ void task_timersync(void *pvParameters)
     while (1) {
         /* Regularly disable GPS mode of concentrator's counter, in order to get
             real timer value for synchronizing with host's unix timer */
-        MSG("\nINFO: Disabling GPS mode for concentrator's counter...\n");
+        ESP_LOGI(TAG, "INFO: Disabling GPS mode for concentrator's counter...");
         xSemaphoreTake(mx_concent, portMAX_DELAY);
         lgw_reg_w(LGW_GPS_EN, 0);
         xSemaphoreGive(mx_concent);
@@ -110,17 +113,17 @@ void task_timersync(void *pvParameters)
 
         timersub(&offset_unix_concent, &offset_previous, &offset_drift);
 
-        MSG_DEBUG(DEBUG_TIMERSYNC, "  sx1301    = %u (µs) - timeval (%ld,%ld)\n",
+        ESP_LOGD(TAG, "  sx1301    = %u (µs) - timeval (%ld,%ld)",
             sx1301_timecount,
             concentrator_timeval.tv_sec,
             concentrator_timeval.tv_usec);
-        MSG_DEBUG(DEBUG_TIMERSYNC, "  unix_timeval = %ld,%ld\n", unix_timeval.tv_sec, unix_timeval.tv_usec);
+        ESP_LOGD(TAG, "  unix_timeval = %ld,%ld\n", unix_timeval.tv_sec, unix_timeval.tv_usec);
 
-        MSG("INFO: host/sx1301 time offset=(%lds:%ldµs) - drift=%ldµs\n",
+        ESP_LOGI(TAG, "INFO: host/sx1301 time offset=(%lds:%ldµs) - drift=%ldµs",
             offset_unix_concent.tv_sec,
             offset_unix_concent.tv_usec,
             offset_drift.tv_sec * 1000000UL + offset_drift.tv_usec);
-        MSG("INFO: Enabling GPS mode for concentrator's counter.\n\n");
+        ESP_LOGI(TAG, "INFO: Enabling GPS mode for concentrator's counter.\n");
         xSemaphoreTake(mx_concent, portMAX_DELAY); /* TODO: Is it necessary to protect here? */
         lgw_reg_w(LGW_GPS_EN, 1);
         xSemaphoreGive(mx_concent);

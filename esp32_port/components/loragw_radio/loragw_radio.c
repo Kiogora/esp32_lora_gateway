@@ -31,11 +31,12 @@ Maintainer: Michael Coracin
 #include "loragw_hal.h"
 #include "loragw_radio.h"
 #include "loragw_fpga.h"
+#include "esp_log.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-static char* TAG = "[LORAGW_REG]:";
+static char* TAG = "[LORAGW_RADIO]";
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
@@ -370,7 +371,7 @@ int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t
     }
     wait_ms(500);
 
-    ESP_LOGV("SUCCESSFULLY CONFIGURED SX1276 FOR FSK MODULATION (RXBW=%d)", rxbw_khz);
+    //ESP_LOGV("SUCCESSFULLY CONFIGURED SX1276 FOR FSK MODULATION (RXBW=%d)", rxbw_khz);
 
     return LGW_REG_SUCCESS;
 }

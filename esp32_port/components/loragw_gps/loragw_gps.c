@@ -35,8 +35,9 @@ Maintainer: Michael Coracin
 #include <stdlib.h>
 
 #include "loragw_gps.h"
+#include "loragw_reg.h"
 
-char* TAG = "loragw_gps"
+char* TAG = "[LORAGW_GPS]:"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -45,9 +46,8 @@ char* TAG = "loragw_gps"
 
 
 #define DEBUG_MSG(args...)  ESP_LOGD(TAG, args)
-#define DEBUG_ARRAY(a,b,c)  for(a=0;a<b;++a) fprintf(stderr,"%x.",c[a]);fprintf(stderr,"end\n");
-#define CHECK_NULL(a)       if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_GPS_ERROR;}
-
+#define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return -1/*LGW_REG_ERROR*/;}
+#define DEBUG_ARRAY(a,b,c) for(a=0;a<b;++a) ESP_LOGD(TAG,"%x.",c[a]);ESP_LOGD(TAG,"end");
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -117,6 +117,7 @@ Return position of the checksum in the string
 */
 static int nmea_checksum(const char *nmea_string, int buff_size, char *checksum)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int i = 0;
     uint8_t check_num = 0;
 
@@ -154,7 +155,9 @@ static int nmea_checksum(const char *nmea_string, int buff_size, char *checksum)
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-static char nibble_to_hexchar(uint8_t a) {
+static char nibble_to_hexchar(uint8_t a)
+{
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     if (a < 10)
     {
         return '0' + a;
@@ -178,6 +181,7 @@ Return true if it matches
 */
 static bool validate_nmea_checksum(const char *serial_buff, int buff_size)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int checksum_index;
     char checksum[2]; /* 2 characters to calculate NMEA checksum */
 
@@ -217,6 +221,7 @@ the begining of the "s" string
 */
 static bool match_label(const char *s, char *label, int size, char wildcard)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int i;
     for (i=0; i < size; i++)
     {
@@ -239,6 +244,7 @@ Return the number of token found (number of idx_ary filled).
 */
 int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int i = 0; /* index in the string */
     int j = 0; /* index in the result array */
 
@@ -278,6 +284,7 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx)
 
 int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     //Applicable to Ublox 7 and 8 GNSS modules
     //Send rate on each event to serial port 1 and 2. Disable all other I/O ports,
     //Note that I/O Ports 1 and 2 correspond to serial ports 1 and 2. I/O port 0 is DDC. I/O port 3 is USB. 
@@ -379,6 +386,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
 
 int lgw_gps_disable(int fd)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     //Force flush any data in uart buffer
     uart_flush((uart_port_t)fd);
 
@@ -397,6 +405,7 @@ int lgw_gps_disable(int fd)
 
 enum gps_msg lgw_parse_ubx(const char *serial_buff, size_t buff_size, size_t *msg_size)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     bool valid = 0;    /* iTOW, fTOW and week validity */
     unsigned int payload_length;
     uint8_t ck_a, ck_b;
@@ -534,6 +543,7 @@ enum gps_msg lgw_parse_ubx(const char *serial_buff, size_t buff_size, size_t *ms
 
 enum gps_msg lgw_parse_nmea(const char *serial_buff, int buff_size)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     int i, j, k;
     int str_index[30]; /* string index from the string chopping */
     int nb_fields; /* number of strings detected by string chopping */
@@ -652,6 +662,7 @@ enum gps_msg lgw_parse_nmea(const char *serial_buff, int buff_size)
 
 int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s *loc, struct coord_s *err)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     struct tm x;
     time_t y;
     double intpart, fractpart;
@@ -727,6 +738,7 @@ int lgw_gps_get(struct timespec *utc, struct timespec *gps_time, struct coord_s 
 
 int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struct timespec gps_time)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     double cnt_diff; /* internal concentrator time difference (in seconds) */
     double utc_diff; /* UTC time difference (in seconds) */
     double slope; /* time slope between new reference and old reference (for sanity check) */
@@ -811,6 +823,7 @@ int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc, struc
 
 int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec *utc)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     double delta_sec;
     double intpart, fractpart;
     long tmp;
@@ -846,6 +859,7 @@ int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec *utc)
 
 int lgw_utc2cnt(struct tref ref, struct timespec utc, uint32_t *count_us)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     double delta_sec;
 
     CHECK_NULL(count_us);
@@ -904,6 +918,7 @@ int lgw_cnt2gps(struct tref ref, uint32_t count_us, struct timespec *gps_time)
 
 int lgw_gps2cnt(struct tref ref, struct timespec gps_time, uint32_t* count_us)
 {
+    ESP_LOGD(TAG, "ENTERED FUNCTION [%s]", __FUNCTION__);
     double delta_sec;
 
     CHECK_NULL(count_us);

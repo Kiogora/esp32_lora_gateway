@@ -64,7 +64,6 @@ Maintainer: Michael Coracin
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include "trace.h"
 #include "jitqueue.h"
 #include "timersync.h"
 #include "parson.h"
@@ -73,6 +72,8 @@ Maintainer: Michael Coracin
 #include "loragw_gps.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
+#include "gsm.h"
+#include "trace.h"
 
 #include "lwip/err.h"
 #include "apps/sntp/sntp.h"
@@ -158,7 +159,8 @@ static EventGroupHandle_t wifi_event_group;
    to the AP with an IP? */
 const static int CONNECTED_BIT = BIT0;
 
-static const char *TAG = "Time";
+static const char *TAG = "[LORA_PKT_FWD]";
+static const char *WIFI_TAG = "[WIFI_SYS]";
 
 /* packets filtering configuration variables */
 static bool fwd_valid_pkt = true; /* packets with PAYLOAD CRC OK are forwarded */
@@ -187,6 +189,9 @@ static int sock_down; /* socket for downstream traffic */
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */
 static struct timeval pull_timeout = {0, (PULL_TIMEOUT_MS * 1000)}; /* non critical for throughput */
+
+/*Jit queue access control*/
+SemaphoreHandle_t mx_jit_queue = NULL; /* control access to JIT queue */
 
 /* hardware access control and correction */
 //pthread_mutex_t mx_concent = PTHREAD_MUTEX_INITIALIZER;
@@ -301,6 +306,7 @@ static void gps_process_sync(void);
 static void gps_process_coords(void);
 
 /* tasks */
+static void task_stats(void *pvParameters);
 static void task_up(void *pvParameters);
 static void task_down(void *pvParameters);
 static void task_gps(void *pvParameters);
@@ -339,17 +345,17 @@ static int parse_SX1301_configuration(const char * conf_file) {
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
     if (root_val == NULL) {
-        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
-        exit(EXIT_FAILURE);
+        ESP_LOGI(TAG, "ERROR: %s is not a valid JSON file", conf_file);
+        return(EXIT_FAILURE);
     }
 
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        ESP_LOGI(TAG, "INFO: %s does not contain a JSON object named %s", conf_file, conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj_name);
+        ESP_LOGI(TAG, "INFO: %s does contain a JSON object named %s, parsing SX1301 parameters", conf_file, conf_obj_name);
     }
 
     /* set board configuration */
@@ -358,20 +364,20 @@ static int parse_SX1301_configuration(const char * conf_file) {
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.lorawan_public = (bool)json_value_get_boolean(val);
     } else {
-        MSG("WARNING: Data type for lorawan_public seems wrong, please check\n");
+        ESP_LOGW(TAG, "WARNING: Data type for lorawan_public seems wrong, please check");
         boardconf.lorawan_public = false;
     }
     val = json_object_get_value(conf_obj, "clksrc"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONNumber) {
         boardconf.clksrc = (uint8_t)json_value_get_number(val);
     } else {
-        MSG("WARNING: Data type for clksrc seems wrong, please check\n");
+        ESP_LOGW(TAG, "WARNING: Data type for clksrc seems wrong, please check");
         boardconf.clksrc = 0;
     }
-    MSG("INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
+    ESP_LOGI(TAG, "INFO: lorawan_public %d, clksrc %d", boardconf.lorawan_public, boardconf.clksrc);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
-        MSG("ERROR: Failed to configure board\n");
+        ESP_LOGI(TAG, "ERROR: Failed to configure board");
         return -1;
     }
 
@@ -379,13 +385,13 @@ static int parse_SX1301_configuration(const char * conf_file) {
     memset(&lbtconf, 0, sizeof lbtconf); /* initialize configuration structure */
     conf_lbt_obj = json_object_get_object(conf_obj, "lbt_cfg"); /* fetch value (if possible) */
     if (conf_lbt_obj == NULL) {
-        MSG("INFO: no configuration for LBT\n");
+        ESP_LOGI(TAG, "INFO: no configuration for LBT");
     } else {
         val = json_object_get_value(conf_lbt_obj, "enable"); /* fetch value (if possible) */
         if (json_value_get_type(val) == JSONBoolean) {
             lbtconf.enable = (bool)json_value_get_boolean(val);
         } else {
-            MSG("WARNING: Data type for lbt_cfg.enable seems wrong, please check\n");
+            ESP_LOGW(TAG, "WARNING: Data type for lbt_cfg.enable seems wrong, please check");
             lbtconf.enable = false;
         }
         if (lbtconf.enable == true) {
@@ -393,27 +399,27 @@ static int parse_SX1301_configuration(const char * conf_file) {
             if (json_value_get_type(val) == JSONNumber) {
                 lbtconf.rssi_target = (int8_t)json_value_get_number(val);
             } else {
-                MSG("WARNING: Data type for lbt_cfg.rssi_target seems wrong, please check\n");
+                ESP_LOGW(TAG, "WARNING: Data type for lbt_cfg.rssi_target seems wrong, please check");
                 lbtconf.rssi_target = 0;
             }
             val = json_object_get_value(conf_lbt_obj, "sx127x_rssi_offset"); /* fetch value (if possible) */
             if (json_value_get_type(val) == JSONNumber) {
                 lbtconf.rssi_offset = (int8_t)json_value_get_number(val);
             } else {
-                MSG("WARNING: Data type for lbt_cfg.sx127x_rssi_offset seems wrong, please check\n");
+                ESP_LOGW(TAG, "WARNING: Data type for lbt_cfg.sx127x_rssi_offset seems wrong, please check");
                 lbtconf.rssi_offset = 0;
             }
             /* set LBT channels configuration */
             conf_array = json_object_get_array(conf_lbt_obj, "chan_cfg");
             if (conf_array != NULL) {
                 lbtconf.nb_channel = json_array_get_count( conf_array );
-                MSG("INFO: %u LBT channels configured\n", lbtconf.nb_channel);
+                ESP_LOGI(TAG, "INFO: %u LBT channels configured", lbtconf.nb_channel);
             }
             for (i = 0; i < (int)lbtconf.nb_channel; i++) {
                 /* Sanity check */
                 if (i >= LBT_CHANNEL_FREQ_NB)
                 {
-                    MSG("ERROR: LBT channel %d not supported, skip it\n", i );
+                    ESP_LOGE(TAG, "ERROR: LBT channel %d not supported, skip it", i );
                     break;
                 }
                 /* Get LBT channel configuration object from array */
@@ -424,7 +430,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 if (json_value_get_type(val) == JSONNumber) {
                     lbtconf.channels[i].freq_hz = (uint32_t)json_value_get_number(val);
                 } else {
-                    MSG("WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check\n", i);
+                    ESP_LOGW(TAG, "WARNING: Data type for lbt_cfg.channels[%d].freq_hz seems wrong, please check", i);
                     lbtconf.channels[i].freq_hz = 0;
                 }
 
@@ -433,18 +439,18 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 if (json_value_get_type(val) == JSONNumber) {
                     lbtconf.channels[i].scan_time_us = (uint16_t)json_value_get_number(val);
                 } else {
-                    MSG("WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check\n", i);
+                    ESP_LOGW(TAG, "WARNING: Data type for lbt_cfg.channels[%d].scan_time_us seems wrong, please check", i);
                     lbtconf.channels[i].scan_time_us = 0;
                 }
             }
 
             /* all parameters parsed, submitting configuration to the HAL */
             if (lgw_lbt_setconf(lbtconf) != LGW_HAL_SUCCESS) {
-                MSG("ERROR: Failed to configure LBT\n");
+                ESP_LOGE(TAG, "ERROR: Failed to configure LBT");
                 return -1;
             }
         } else {
-            MSG("INFO: LBT is disabled\n");
+            ESP_LOGI(TAG, "INFO: LBT is disabled");
         }
     }
 
@@ -454,11 +460,11 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             antenna_gain = (int8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for antenna_gain seems wrong, please check\n");
+            ESP_LOGW(TAG, "WARNING: Data type for antenna_gain seems wrong, please check");
             antenna_gain = 0;
         }
     }
-    MSG("INFO: antenna_gain %d dBi\n", antenna_gain);
+    ESP_LOGI(TAG, "INFO: antenna_gain %d dBi", antenna_gain);
 
     /* set configuration for tx gains */
     memset(&txlut, 0, sizeof txlut); /* initialize configuration structure */
@@ -466,7 +472,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         snprintf(param_name, sizeof param_name, "tx_lut_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf_obj, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for tx gain lut %i\n", i);
+            ESP_LOGI(TAG, "INFO: no configuration for tx gain lut %i", i);
             continue;
         }
         txlut.size++; /* update TX LUT size based on JSON object found in configuration file */
@@ -476,7 +482,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].pa_gain = (uint8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            ESP_LOGW(TAG, "WARNING: Data type for %s[%d] seems wrong, please check", param_name, i);
             txlut.lut[i].pa_gain = 0;
         }
         snprintf(param_name, sizeof param_name, "tx_lut_%i.dac_gain", i);
@@ -491,7 +497,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].dig_gain = (uint8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            ESP_LOGW(TAG, "WARNING: Data type for %s[%d] seems wrong, please check", param_name, i);
             txlut.lut[i].dig_gain = 0;
         }
         snprintf(param_name, sizeof param_name, "tx_lut_%i.mix_gain", i);
@@ -499,7 +505,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].mix_gain = (uint8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            ESP_LOGW(TAG, "WARNING: Data type for %s[%d] seems wrong, please check", param_name, i);
             txlut.lut[i].mix_gain = 0;
         }
         snprintf(param_name, sizeof param_name, "tx_lut_%i.rf_power", i);
@@ -507,19 +513,19 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].rf_power = (int8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            ESP_LOGW(TAG, "WARNING: Data type for %s[%d] seems wrong, please check", param_name, i);
             txlut.lut[i].rf_power = 0;
         }
     }
     /* all parameters parsed, submitting configuration to the HAL */
     if (txlut.size > 0) {
-        MSG("INFO: Configuring TX LUT with %u indexes\n", txlut.size);
+        ESP_LOGI(TAG, "INFO: Configuring TX LUT with %u indexes", txlut.size);
         if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: Failed to configure concentrator TX Gain LUT\n");
+            ESP_LOGI(TAG, "ERROR: Failed to configure concentrator TX Gain LUT");
             return -1;
         }
     } else {
-        MSG("WARNING: No TX gain LUT defined\n");
+        ESP_LOGW(TAG, "WARNING: No TX gain LUT defined");
     }
 
     /* set configuration for RF chains */
@@ -528,7 +534,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         snprintf(param_name, sizeof param_name, "radio_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf_obj, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for radio %i\n", i);
+            ESP_LOGI(TAG, "INFO: no configuration for radio %i", i);
             continue;
         }
         /* there is an object to configure that radio, let's parse it */
@@ -540,7 +546,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             rfconf.enable = false;
         }
         if (rfconf.enable == false) { /* radio disabled, nothing else to parse */
-            MSG("INFO: radio %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: radio %i disabled", i);
         } else  { /* radio enabled, will parse the other parameters */
             snprintf(param_name, sizeof param_name, "radio_%i.freq", i);
             rfconf.freq_hz = (uint32_t)json_object_dotget_number(conf_obj, param_name);
@@ -553,7 +559,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             } else if (!strncmp(str, "SX1257", 6)) {
                 rfconf.type = LGW_RADIO_TYPE_SX1257;
             } else {
-                MSG("WARNING: invalid radio type: %s (should be SX1255 or SX1257)\n", str);
+                ESP_LOGW(TAG, "WARNING: invalid radio type: %s (should be SX1255 or SX1257)", str);
             }
             snprintf(param_name, sizeof param_name, "radio_%i.tx_enable", i);
             val = json_object_dotget_value(conf_obj, param_name);
@@ -566,7 +572,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
                     snprintf(param_name, sizeof param_name, "radio_%i.tx_freq_max", i);
                     tx_freq_max[i] = (uint32_t)json_object_dotget_number(conf_obj, param_name);
                     if ((tx_freq_min[i] == 0) || (tx_freq_max[i] == 0)) {
-                        MSG("WARNING: no frequency range specified for TX rf chain %d\n", i);
+                        ESP_LOGW(TAG, "WARNING: no frequency range specified for TX rf chain %d", i);
                     }
                     /* ... and the notch filter frequency to be set */
                     snprintf(param_name, sizeof param_name, "radio_%i.tx_notch_freq", i);
@@ -575,11 +581,11 @@ static int parse_SX1301_configuration(const char * conf_file) {
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, tx_notch_freq %u\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.tx_notch_freq);
+            ESP_LOGI(TAG, "INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, tx_notch_freq %u", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.tx_notch_freq);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for radio %i\n", i);
+            ESP_LOGE(TAG, "ERROR: invalid configuration for radio %i", i);
             return -1;
         }
     }
@@ -590,7 +596,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         snprintf(param_name, sizeof param_name, "chan_multiSF_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf_obj, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for Lora multi-SF channel %i\n", i);
+            ESP_LOGI(TAG, "INFO: no configuration for Lora multi-SF channel %i", i);
             continue;
         }
         /* there is an object to configure that Lora multi-SF channel, let's parse it */
@@ -602,18 +608,18 @@ static int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) { /* Lora multi-SF channel disabled, nothing else to parse */
-            MSG("INFO: Lora multi-SF channel %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: Lora multi-SF channel %i disabled", i);
         } else  { /* Lora multi-SF channel enabled, will parse the other parameters */
             snprintf(param_name, sizeof param_name, "chan_multiSF_%i.radio", i);
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, param_name);
             snprintf(param_name, sizeof param_name, "chan_multiSF_%i.if", i);
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, param_name);
             // TODO: handle individual SF enabling and disabling (spread_factor)
-            MSG("INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
+            ESP_LOGI(TAG, "INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 7 to 12", i, ifconf.rf_chain, ifconf.freq_hz);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxif_setconf(i, ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for Lora multi-SF channel %i\n", i);
+            ESP_LOGE(TAG, "ERROR: invalid configuration for Lora multi-SF channel %i", i);
             return -1;
         }
     }
@@ -622,7 +628,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     memset(&ifconf, 0, sizeof ifconf); /* initialize configuration structure */
     val = json_object_get_value(conf_obj, "chan_Lora_std"); /* fetch value (if possible) */
     if (json_value_get_type(val) != JSONObject) {
-        MSG("INFO: no configuration for Lora standard channel\n");
+        ESP_LOGI(TAG, "INFO: no configuration for Lora standard channel");
     } else {
         val = json_object_dotget_value(conf_obj, "chan_Lora_std.enable");
         if (json_value_get_type(val) == JSONBoolean) {
@@ -631,7 +637,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) {
-            MSG("INFO: Lora standard channel %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: Lora standard channel %i disabled", i);
         } else  {
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.if");
@@ -652,10 +658,10 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 case 12: ifconf.datarate = DR_LORA_SF12; break;
                 default: ifconf.datarate = DR_UNDEFINED;
             }
-            MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
+            ESP_LOGI(TAG, "INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
         }
         if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for Lora standard channel\n");
+            ESP_LOGE(TAG, "ERROR: invalid configuration for Lora standard channel");
             return -1;
         }
     }
@@ -664,7 +670,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     memset(&ifconf, 0, sizeof ifconf); /* initialize configuration structure */
     val = json_object_get_value(conf_obj, "chan_FSK"); /* fetch value (if possible) */
     if (json_value_get_type(val) != JSONObject) {
-        MSG("INFO: no configuration for FSK channel\n");
+        ESP_LOGI(TAG, "INFO: no configuration for FSK channel");
     } else {
         val = json_object_dotget_value(conf_obj, "chan_FSK.enable");
         if (json_value_get_type(val) == JSONBoolean) {
@@ -673,7 +679,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) {
-            MSG("INFO: FSK channel %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: FSK channel %i disabled", i);
         } else  {
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, "chan_FSK.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, "chan_FSK.if");
@@ -695,10 +701,10 @@ static int parse_SX1301_configuration(const char * conf_file) {
             else if (bw <= 500000) ifconf.bandwidth = BW_500KHZ;
             else ifconf.bandwidth = BW_UNDEFINED;
 
-            MSG("INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
+            ESP_LOGI(TAG, "INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
         }
         if (lgw_rxif_setconf(9, ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for FSK channel\n");
+            ESP_LOGE(TAG, "ERROR: invalid configuration for FSK channel");
             return -1;
         }
     }
@@ -717,17 +723,17 @@ static int parse_gateway_configuration(const char * conf_file) {
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
     if (root_val == NULL) {
-        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
-        exit(EXIT_FAILURE);
+        ESP_LOGE(TAG, "ERROR: %s is not a valid JSON file", conf_file);
+        return(EXIT_FAILURE);
     }
 
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        ESP_LOGI(TAG, "INFO: %s does not contain a JSON object named %s", conf_file, conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj_name);
+        ESP_LOGI(TAG, "INFO: %s does contain a JSON object named %s, parsing gateway parameters", conf_file, conf_obj_name);
     }
 
     /* gateway unique identifier (aka MAC address) (optional) */
@@ -736,7 +742,7 @@ static int parse_gateway_configuration(const char * conf_file) {
     if (str != NULL) {
         sscanf(str, "%llx", &ull);
         lgwm = ull;
-        MSG("INFO: gateway MAC address is configured to %016llX\n", ull);
+        ESP_LOGI(TAG, "INFO: gateway MAC address is configured to %016llX", ull);
     }
     */
 
@@ -744,40 +750,40 @@ static int parse_gateway_configuration(const char * conf_file) {
     str = json_object_get_string(conf_obj, "server_address");
     if (str != NULL) {
         strncpy(serv_addr, str, sizeof serv_addr);
-        MSG("INFO: server hostname or IP address is configured to \"%s\"\n", serv_addr);
+        ESP_LOGI(TAG, "INFO: server hostname or IP address is configured to \"%s\"", serv_addr);
     }
 
     /* get up and down ports (optional) */
     val = json_object_get_value(conf_obj, "serv_port_up");
     if (val != NULL) {
         snprintf(serv_port_up, sizeof serv_port_up, "%u", (uint16_t)json_value_get_number(val));
-        MSG("INFO: upstream port is configured to \"%s\"\n", serv_port_up);
+        ESP_LOGI(TAG, "INFO: upstream port is configured to \"%s\"", serv_port_up);
     }
     val = json_object_get_value(conf_obj, "serv_port_down");
     if (val != NULL) {
         snprintf(serv_port_down, sizeof serv_port_down, "%u", (uint16_t)json_value_get_number(val));
-        MSG("INFO: downstream port is configured to \"%s\"\n", serv_port_down);
+        ESP_LOGI(TAG, "INFO: downstream port is configured to \"%s\"", serv_port_down);
     }
 
     /* get keep-alive interval (in seconds) for downstream (optional) */
     val = json_object_get_value(conf_obj, "keepalive_interval");
     if (val != NULL) {
         keepalive_time = (int)json_value_get_number(val);
-        MSG("INFO: downstream keep-alive interval is configured to %u seconds\n", keepalive_time);
+        ESP_LOGI(TAG, "INFO: downstream keep-alive interval is configured to %u seconds", keepalive_time);
     }
 
     /* get interval (in seconds) for statistics display (optional) */
     val = json_object_get_value(conf_obj, "stat_interval");
     if (val != NULL) {
         stat_interval = (unsigned)json_value_get_number(val);
-        MSG("INFO: statistics display interval is configured to %u seconds\n", stat_interval);
+        ESP_LOGI(TAG, "INFO: statistics display interval is configured to %u seconds", stat_interval);
     }
 
     /* get time-out value (in ms) for upstream datagrams (optional) */
     val = json_object_get_value(conf_obj, "push_timeout_ms");
     if (val != NULL) {
         push_timeout_half.tv_usec = 500 * (long int)json_value_get_number(val);
-        MSG("INFO: upstream PUSH_DATA time-out is configured to %u ms\n", (unsigned)(push_timeout_half.tv_usec / 500));
+        ESP_LOGI(TAG, "INFO: upstream PUSH_DATA time-out is configured to %u ms", (unsigned)(push_timeout_half.tv_usec / 500));
     }
 
     /* packet filtering parameters */
@@ -785,24 +791,24 @@ static int parse_gateway_configuration(const char * conf_file) {
     if (json_value_get_type(val) == JSONBoolean) {
         fwd_valid_pkt = (bool)json_value_get_boolean(val);
     }
-    MSG("INFO: packets received with a valid CRC will%s be forwarded\n", (fwd_valid_pkt ? "" : " NOT"));
+    ESP_LOGI(TAG, "INFO: packets received with a valid CRC will%s be forwarded", (fwd_valid_pkt ? "" : " NOT"));
     val = json_object_get_value(conf_obj, "forward_crc_error");
     if (json_value_get_type(val) == JSONBoolean) {
         fwd_error_pkt = (bool)json_value_get_boolean(val);
     }
-    MSG("INFO: packets received with a CRC error will%s be forwarded\n", (fwd_error_pkt ? "" : " NOT"));
+    ESP_LOGI(TAG, "INFO: packets received with a CRC error will%s be forwarded", (fwd_error_pkt ? "" : " NOT"));
     val = json_object_get_value(conf_obj, "forward_crc_disabled");
     if (json_value_get_type(val) == JSONBoolean) {
         fwd_nocrc_pkt = (bool)json_value_get_boolean(val);
     }
-    MSG("INFO: packets received with no CRC will%s be forwarded\n", (fwd_nocrc_pkt ? "" : " NOT"));
+    ESP_LOGI(TAG, "INFO: packets received with no CRC will%s be forwarded", (fwd_nocrc_pkt ? "" : " NOT"));
 
 
 /* GPS module TTY path (optional) */
 /*    str = json_object_get_string(conf_obj, "gps_tty_path");
     if (str != NULL) {
         strncpy(gps_tty_path, str, sizeof gps_tty_path);
-        MSG("INFO: GPS serial port path is configured to \"%s\"\n", gps_tty_path);
+        ESP_LOGI(TAG, "INFO: GPS serial port path is configured to \"%s\"", gps_tty_path);
     }
 
 */
@@ -810,17 +816,17 @@ static int parse_gateway_configuration(const char * conf_file) {
     val = json_object_get_value(conf_obj, "ref_latitude");
     if (val != NULL) {
         reference_coord.lat = (double)json_value_get_number(val);
-        MSG("INFO: Reference latitude is configured to %f deg\n", reference_coord.lat);
+        ESP_LOGI(TAG, "INFO: Reference latitude is configured to %f deg", reference_coord.lat);
     }
     val = json_object_get_value(conf_obj, "ref_longitude");
     if (val != NULL) {
         reference_coord.lon = (double)json_value_get_number(val);
-        MSG("INFO: Reference longitude is configured to %f deg\n", reference_coord.lon);
+        ESP_LOGI(TAG, "INFO: Reference longitude is configured to %f deg", reference_coord.lon);
     }
     val = json_object_get_value(conf_obj, "ref_altitude");
     if (val != NULL) {
         reference_coord.alt = (short)json_value_get_number(val);
-        MSG("INFO: Reference altitude is configured to %i meters\n", reference_coord.alt);
+        ESP_LOGI(TAG, "INFO: Reference altitude is configured to %i meters", reference_coord.alt);
     }
 
     /* Gateway GPS coordinates hardcoding (aka. faking) option */
@@ -828,9 +834,9 @@ static int parse_gateway_configuration(const char * conf_file) {
     if (json_value_get_type(val) == JSONBoolean) {
         gps_fake_enable = (bool)json_value_get_boolean(val);
         if (gps_fake_enable == true) {
-            MSG("INFO: fake GPS is enabled\n");
+            ESP_LOGI(TAG, "INFO: fake GPS is enabled");
         } else {
-            MSG("INFO: fake GPS is disabled\n");
+            ESP_LOGI(TAG, "INFO: fake GPS is disabled");
         }
     }
 
@@ -839,10 +845,10 @@ static int parse_gateway_configuration(const char * conf_file) {
     if (val != NULL) {
         beacon_period = (uint32_t)json_value_get_number(val);
         if ((beacon_period > 0) && (beacon_period < 6)) {
-            MSG("ERROR: invalid configuration for Beacon period, must be >= 6s\n");
+            ESP_LOGE(TAG, "ERROR: invalid configuration for Beacon period, must be >= 6s");
             return -1;
         } else {
-            MSG("INFO: Beaconing period is configured to %u seconds\n", beacon_period);
+            ESP_LOGI(TAG, "INFO: Beaconing period is configured to %u seconds", beacon_period);
         }
     }
 
@@ -850,56 +856,56 @@ static int parse_gateway_configuration(const char * conf_file) {
     val = json_object_get_value(conf_obj, "beacon_freq_hz");
     if (val != NULL) {
         beacon_freq_hz = (uint32_t)json_value_get_number(val);
-        MSG("INFO: Beaconing signal will be emitted at %u Hz\n", beacon_freq_hz);
+        ESP_LOGI(TAG, "INFO: Beaconing signal will be emitted at %u Hz", beacon_freq_hz);
     }
 
     /* Number of beacon channels (optional) */
     val = json_object_get_value(conf_obj, "beacon_freq_nb");
     if (val != NULL) {
         beacon_freq_nb = (uint8_t)json_value_get_number(val);
-        MSG("INFO: Beaconing channel number is set to %u\n", beacon_freq_nb);
+        ESP_LOGI(TAG, "INFO: Beaconing channel number is set to %u", beacon_freq_nb);
     }
 
     /* Frequency step between beacon channels (optional) */
     val = json_object_get_value(conf_obj, "beacon_freq_step");
     if (val != NULL) {
         beacon_freq_step = (uint32_t)json_value_get_number(val);
-        MSG("INFO: Beaconing channel frequency step is set to %uHz\n", beacon_freq_step);
+        ESP_LOGI(TAG, "INFO: Beaconing channel frequency step is set to %uHz", beacon_freq_step);
     }
 
     /* Beacon datarate (optional) */
     val = json_object_get_value(conf_obj, "beacon_datarate");
     if (val != NULL) {
         beacon_datarate = (uint8_t)json_value_get_number(val);
-        MSG("INFO: Beaconing datarate is set to SF%d\n", beacon_datarate);
+        ESP_LOGI(TAG, "INFO: Beaconing datarate is set to SF%d", beacon_datarate);
     }
 
     /* Beacon modulation bandwidth (optional) */
     val = json_object_get_value(conf_obj, "beacon_bw_hz");
     if (val != NULL) {
         beacon_bw_hz = (uint32_t)json_value_get_number(val);
-        MSG("INFO: Beaconing modulation bandwidth is set to %dHz\n", beacon_bw_hz);
+        ESP_LOGI(TAG, "INFO: Beaconing modulation bandwidth is set to %dHz", beacon_bw_hz);
     }
 
     /* Beacon TX power (optional) */
     val = json_object_get_value(conf_obj, "beacon_power");
     if (val != NULL) {
         beacon_power = (int8_t)json_value_get_number(val);
-        MSG("INFO: Beaconing TX power is set to %ddBm\n", beacon_power);
+        ESP_LOGI(TAG, "INFO: Beaconing TX power is set to %ddBm", beacon_power);
     }
 
     /* Beacon information descriptor (optional) */
     val = json_object_get_value(conf_obj, "beacon_infodesc");
     if (val != NULL) {
         beacon_infodesc = (uint8_t)json_value_get_number(val);
-        MSG("INFO: Beaconing information descriptor is set to %u\n", beacon_infodesc);
+        ESP_LOGI(TAG, "INFO: Beaconing information descriptor is set to %u", beacon_infodesc);
     }
 
     /* Auto-quit threshold (optional) */
     val = json_object_get_value(conf_obj, "autoquit_threshold");
     if (val != NULL) {
         autoquit_threshold = (uint32_t)json_value_get_number(val);
-        MSG("INFO: Auto-quit after %u non-acknowledged PULL_DATA\n", autoquit_threshold);
+        ESP_LOGI(TAG, "INFO: Auto-quit after %u non-acknowledged PULL_DATA", autoquit_threshold);
     }
 
     /* free JSON parsing data structure */
@@ -1043,28 +1049,37 @@ static void get_base_mac(uint8_t* mac_buffer)
         {
 
             int bom_start_idx=2;
-            MSG("SUCCESSFULLY READ BASE_MAC FROM EFUSE!\n");
+            ESP_LOGI(TAG, "SUCCESSFULLY READ BASE_MAC FROM EFUSE!");
             for(int i=0; i<8; i++)
             {
                 temp_mac = mac_buffer[i];
                 lgwm |= (temp_mac << (7-i)*8);
             }
 
-            MSG("INFO: Actual gateway MAC address is configured to 0x%016llX\n", lgwm);
+            ESP_LOGI(TAG, "INFO: Actual gateway MAC address is configured to 0x%016llX", lgwm);
         }
         else
         {
-            MSG("UNSUCCESSFUL IN READING BASE_MAC FROM EFUSE!\n");
+            ESP_LOGE(TAG, "UNSUCCESSFUL IN READING BASE_MAC FROM EFUSE!");
         }
     }
 }
 
 static void obtain_time(void)
 {
-    ESP_ERROR_CHECK( nvs_flash_init() );
-    initialise_wifi();
+//    ESP_ERROR_CHECK( nvs_flash_init() );
+//    initialise_wifi();
+    if (ppposInit() == 0) {
+		ESP_LOGE("PPPoS EXAMPLE", "ERROR: GSM not initialized, HALTED");
+		while (1){
+			vTaskDelay(1000 / portTICK_RATE_MS);
+		}
+	}
+/*
     xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT,
                         false, true, portMAX_DELAY);
+    
+*/
     initialize_sntp();
 
     // wait for time to be set
@@ -1073,7 +1088,7 @@ static void obtain_time(void)
     int retry = 0;
     const int retry_count = 10;
     while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
-        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        ESP_LOGI(TAG,  "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
@@ -1084,7 +1099,7 @@ static void obtain_time(void)
 
 static void initialize_sntp(void)
 {
-    ESP_LOGI(TAG, "Initializing SNTP");
+    ESP_LOGI(TAG,  "Initializing SNTP");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
@@ -1104,7 +1119,7 @@ static void initialise_wifi(void)
             .password = EXAMPLE_WIFI_PASS,
         },
     };
-    ESP_LOGI(TAG, "Setting WiFi configuration SSID %s...", wifi_config.sta.ssid);
+    ESP_LOGI(TAG,  "Setting WiFi configuration SSID %s...", wifi_config.sta.ssid);
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK( esp_wifi_start() );
@@ -1114,15 +1129,15 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
 {
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
-        printf("[WIFI SYS]: STARTED STATION MODE\n");
+        ESP_LOGI(WIFI_TAG, "STARTED STATION MODE");
         esp_wifi_connect();
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
-        printf("[WIFI SYS]: OBTAINED IP, NOW CONNECTED\n");
+        ESP_LOGI(WIFI_TAG, "OBTAINED IP, NOW CONNECTED");
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
-        printf("[WIFI SYS]: LOST IP ADDRESS...RECONNECTING...\n");
+        ESP_LOGI(WIFI_TAG, "[LOST IP ADDRESS...RECONNECTING...");
         /* This is a workaround as ESP32 WiFi libs don't currently
            auto-reassociate. */
         esp_wifi_connect();
@@ -1133,6 +1148,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
     }
     return ESP_OK;
 }
+
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
@@ -1153,7 +1169,7 @@ int lora_pkt_fwd(int argc, char **argv)
     localtime_r(&now, &timeinfo);
     // Is time set? If not, tm_year will be (1970 - 1900).
     if (timeinfo.tm_year < (2018 - 1900)) {
-        MSG("Time is not set yet. Connecting to WiFi and getting time over NTP.");
+        ESP_LOGI(TAG, "Time is not set yet. Getting time over NTP.");
         obtain_time();
         // update 'now' variable with current time
         time(&now);
@@ -1165,12 +1181,12 @@ int lora_pkt_fwd(int argc, char **argv)
     tzset();
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    MSG("The current date/time in Nairobi is: %s", strftime_buf);
+    ESP_LOGI(TAG, "The current date/time in Nairobi is: %s", strftime_buf);
 
-    printf("\r\n\n");
-    printf("====MOUNTING SPIFFS====\r\n");
+    ESP_LOGI(TAG, "\r");
+    ESP_LOGI(TAG, "====MOUNTING SPIFFS====\r");
     vfs_spiffs_register();
-    printf("\r\n\n");
+    ESP_LOGI(TAG, "\r");
     if (spiffs_is_mounted)
     {
         mx_stat_rep = xSemaphoreCreateMutex();
@@ -1181,6 +1197,7 @@ int lora_pkt_fwd(int argc, char **argv)
         mx_stat_rep = xSemaphoreCreateMutex();
         mx_concent = xSemaphoreCreateMutex();
         mx_xcorr = xSemaphoreCreateMutex();
+	    mx_jit_queue = xSemaphoreCreateMutex();
 
         TaskHandle_t xtaskhandle_up = NULL;
         TaskHandle_t xtaskhandle_down = NULL;
@@ -1188,6 +1205,7 @@ int lora_pkt_fwd(int argc, char **argv)
         TaskHandle_t xtaskhandle_valid = NULL;
         TaskHandle_t xtaskhandle_jit = NULL;
         TaskHandle_t xtaskhandle_timersync = NULL;
+        TaskHandle_t xtaskhandle_stats = NULL;
 
         int i; /* loop variable and temporary variable for return value */
         int x;
@@ -1204,59 +1222,17 @@ int lora_pkt_fwd(int argc, char **argv)
         char host_name[64];
         char port_name[64];
 
-        /* variables to get local copies of measurements */
-        uint32_t cp_nb_rx_rcv;
-        uint32_t cp_nb_rx_ok;
-        uint32_t cp_nb_rx_bad;
-        uint32_t cp_nb_rx_nocrc;
-        uint32_t cp_up_pkt_fwd;
-        uint32_t cp_up_network_byte;
-        uint32_t cp_up_payload_byte;
-        uint32_t cp_up_dgram_sent;
-        uint32_t cp_up_ack_rcv;
-        uint32_t cp_dw_pull_sent;
-        uint32_t cp_dw_ack_rcv;
-        uint32_t cp_dw_dgram_rcv;
-        uint32_t cp_dw_network_byte;
-        uint32_t cp_dw_payload_byte;
-        uint32_t cp_nb_tx_ok;
-        uint32_t cp_nb_tx_fail;
-        uint32_t cp_nb_tx_requested = 0;
-        uint32_t cp_nb_tx_rejected_collision_packet = 0;
-        uint32_t cp_nb_tx_rejected_collision_beacon = 0;
-        uint32_t cp_nb_tx_rejected_too_late = 0;
-        uint32_t cp_nb_tx_rejected_too_early = 0;
-        uint32_t cp_nb_beacon_queued = 0;
-        uint32_t cp_nb_beacon_sent = 0;
-        uint32_t cp_nb_beacon_rejected = 0;
-
-        /* GPS coordinates variables */
-        bool coord_ok = false;
-        struct coord_s cp_gps_coord = {0.0, 0.0, 0};
-
-        /* SX1301 data variables */
-        uint32_t trig_tstamp;
-
-        /* statistics variable */
-        time_t t;
-        char stat_timestamp[24];
-        float rx_ok_ratio;
-        float rx_bad_ratio;
-        float rx_nocrc_ratio;
-        float up_ack_ratio;
-        float dw_ack_ratio;
-
         /* display version informations */
-        MSG("*** Beacon Packet Forwarder for Lora Gateway ***\nVersion: " VERSION_STRING "\n");
-        MSG("*** Lora concentrator HAL library version info ***\n%s\n***\n", lgw_version_info());
+        ESP_LOGI(TAG, "*** Beacon Packet Forwarder for Lora Gateway ***Version: " VERSION_STRING "");
+        ESP_LOGI(TAG, "*** Lora concentrator HAL library version info ***%s***", lgw_version_info());
 
         /* display host endianness */
         #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-            MSG("INFO: Little endian host\n");
+            ESP_LOGI(TAG, "INFO: Little endian host");
         #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-            MSG("INFO: Big endian host\n");
+            ESP_LOGI(TAG, "INFO: Big endian host");
         #else
-            MSG("INFO: Host endianness unknown\n");
+            ESP_LOGI(TAG, "INFO: Host endianness unknown");
         #endif
 
         get_base_mac(mac_val);
@@ -1270,33 +1246,33 @@ int lora_pkt_fwd(int argc, char **argv)
             fclose(fp);
             fclose(fp1);
             fclose(fp2);
-            MSG("INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
-            MSG("INFO: other configuration files will be ignored\n");
+            ESP_LOGI(TAG, "INFO: found debug configuration file %s, parsing it", debug_cfg_path);
+            ESP_LOGI(TAG, "INFO: other configuration files will be ignored");
             x = parse_SX1301_configuration(debug_cfg_path);
             if (x != 0) {
-                exit(EXIT_FAILURE);
+                return(EXIT_FAILURE);
             }
             x = parse_gateway_configuration(debug_cfg_path);
             if (x != 0) {
-                exit(EXIT_FAILURE);
+                return(EXIT_FAILURE);
             }
         } else if (fp1 != NULL) {
             /* if there is a global conf, parse it and then try to parse local conf  */
             fclose(fp);
             fclose(fp1);
-            MSG("INFO: found global configuration file %s, parsing it\n", global_cfg_path);
+            ESP_LOGI(TAG, "INFO: found global configuration file %s, parsing it", global_cfg_path);
             x = parse_SX1301_configuration(global_cfg_path);
             if (x != 0) {
-                exit(EXIT_FAILURE);
+                return(EXIT_FAILURE);
             }
             x = parse_gateway_configuration(global_cfg_path);
             if (x != 0) {
-                exit(EXIT_FAILURE);
+                return(EXIT_FAILURE);
             }
             if (fp2 != NULL) {
                 fclose(fp2);
-                MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
-                MSG("INFO: redefined parameters will overwrite global parameters\n");
+                ESP_LOGI(TAG, "INFO: found local configuration file %s, parsing it", local_cfg_path);
+                ESP_LOGI(TAG, "INFO: redefined parameters will overwrite global parameters");
                 parse_SX1301_configuration(local_cfg_path);
                 parse_gateway_configuration(local_cfg_path);
             }
@@ -1305,18 +1281,18 @@ int lora_pkt_fwd(int argc, char **argv)
             fclose(fp);
             fclose(fp1);
             fclose(fp2);
-            MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
+            ESP_LOGI(TAG, "INFO: found local configuration file %s, parsing it", local_cfg_path);
             x = parse_SX1301_configuration(local_cfg_path);
             if (x != 0) {
-                exit(EXIT_FAILURE);
+                return(EXIT_FAILURE);
             }
             x = parse_gateway_configuration(local_cfg_path);
             if (x != 0) {
-                exit(EXIT_FAILURE);
+                return(EXIT_FAILURE);
             }
         } else {
-            MSG("ERROR: [main] failed to find any configuration file named %s, %s OR %s\n", global_cfg_path, local_cfg_path, debug_cfg_path);
-            exit(EXIT_FAILURE);
+            ESP_LOGI(TAG, "ERROR: [main] failed to find any configuration file named %s, %s OR %s", global_cfg_path, local_cfg_path, debug_cfg_path);
+            return(EXIT_FAILURE);
         }
 
         /* Start GPS a.s.a.p. if gps_fake is set to false, to allow it to lock */
@@ -1326,13 +1302,13 @@ int lora_pkt_fwd(int argc, char **argv)
             i = lgw_gps_enable("ubx8", 0, &gps_tty_dev);
             if (i != LGW_GPS_SUCCESS)
             {
-                printf("WARNING: [main] impossible to open GPS for sync\n");
+                ESP_LOGW(TAG, "WARNING: [main] impossible to open GPS for sync");
                 gps_enabled = false;
                 gps_ref_valid = false;
             }
             else
             {
-                printf("INFO: [main] GPS open for synchronization\n");
+                ESP_LOGI(TAG, "INFO: [main] GPS open for synchronization");
                 gps_enabled = true;
                 gps_ref_valid = false;
             }
@@ -1356,8 +1332,8 @@ int lora_pkt_fwd(int argc, char **argv)
         /* look for server address w/ upstream port */
         i = getaddrinfo(serv_addr, serv_port_up, &hints, &result);
         if (i != 0) {
-            MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned error code %d\n", serv_addr, serv_port_up, i);
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [up] getaddrinfo on address %s (PORT %s) returned error code %d", serv_addr, serv_port_up, i);
+            return(EXIT_FAILURE);
         }
 
         /* try to open socket for upstream traffic */
@@ -1367,30 +1343,30 @@ int lora_pkt_fwd(int argc, char **argv)
             else break; /* success, get out of loop */
         }
         if (q == NULL) {
-            MSG("ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
+            ESP_LOGE(TAG, "ERROR: [up] failed to open socket to any of server %s addresses (port %s)", serv_addr, serv_port_up);
             i = 1;
             for (q=result; q!=NULL; q=q->ai_next) {
                 //getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-                MSG("INFO: [up] result %i host:%s port:%d\n", i, inet_ntoa(((struct sockaddr_in*)(q->ai_addr))->sin_addr.s_addr), 
-                                                                ntohs(((struct sockaddr_in*)(q->ai_addr))->sin_port));
+                ESP_LOGI(TAG, "INFO: [up] result %i host:%s port:%d", i, inet_ntoa(((struct sockaddr_in*)(q->ai_addr))->sin_addr.s_addr), 
+                                                                 ntohs(((struct sockaddr_in*)(q->ai_addr))->sin_port));
                 ++i;
             }
-            exit(EXIT_FAILURE);
+            return(EXIT_FAILURE);
         }
 
         /* connect so we can send/receive packet with the server only */
         i = connect(sock_up, q->ai_addr, q->ai_addrlen);
         if (i != 0) {
-            MSG("ERROR: [up] connect returned %s\n", strerror(errno));
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [up] connect returned %s", strerror(errno));
+            return(EXIT_FAILURE);
         }
         freeaddrinfo(result);
 
         /* look for server address w/ downstream port */
         i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
         if (i != 0) {
-            MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned error code %d\n", serv_addr, serv_port_up, i);
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [down] getaddrinfo on address %s (port %s) returned error code %d", serv_addr, serv_port_up, i);
+            return(EXIT_FAILURE);
         }
 
         /* try to open socket for downstream traffic */
@@ -1400,242 +1376,294 @@ int lora_pkt_fwd(int argc, char **argv)
             else break; /* success, get out of loop */
         }
         if (q == NULL) {
-            MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
+            ESP_LOGE(TAG, "ERROR: [down] failed to open socket to any of server %s addresses (port %s)", serv_addr, serv_port_up);
             i = 1;
             for (q=result; q!=NULL; q=q->ai_next) {
                 //getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-                MSG("INFO: [down] result %i host:%s service:%d\n", i, inet_ntoa(((struct sockaddr_in*)(q->ai_addr))->sin_addr.s_addr),
+                ESP_LOGI(TAG, "INFO: [down] result %i host:%s service:%d", i, inet_ntoa(((struct sockaddr_in*)(q->ai_addr))->sin_addr.s_addr),
                                                                     ntohs(((struct sockaddr_in*)(q->ai_addr))->sin_port));
                 ++i;
             }
-            exit(EXIT_FAILURE);
+            return(EXIT_FAILURE);
         }
 
         /* connect so we can send/receive packet with the server only */
         i = connect(sock_down, q->ai_addr, q->ai_addrlen);
         if (i != 0) {
-            MSG("ERROR: [down] connect returned %s\n", strerror(errno));
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [down] connect returned %s", strerror(errno));
+            return(EXIT_FAILURE);
         }
         freeaddrinfo(result);
 
         /* starting the concentrator */
         i = lgw_start(SPI_SPEED);
         if (i == LGW_HAL_SUCCESS) {
-            MSG("INFO: [main] concentrator started, packet can now be received\n");
+            ESP_LOGI(TAG, "INFO: [main] concentrator started, packet can now be received");
         } else {
-            MSG("ERROR: [main] failed to start the concentrator\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [main] failed to start the concentrator");
+            return(EXIT_FAILURE);
         }
 
         /* spawn tasks to manage upstream and downstream */
-        xTaskCreate(task_up, "task_up", 1024 * 10, NULL, 2, &xtaskhandle_up);
+        xTaskCreate(task_up, "task_up", 1024 * 10, NULL, 1, &xtaskhandle_up);
         if (xtaskhandle_up == NULL) {
-            MSG("ERROR: [main] impossible to create upstream task\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [main] impossible to create upstream task");
+            return(EXIT_FAILURE);
         }
-        xTaskCreate(task_down, "task_down", 1024 * 10, NULL, 2, &xtaskhandle_down);
+        xTaskCreate(task_down, "task_down", 1024 * 10, NULL, 1, &xtaskhandle_down);
         if (xtaskhandle_down == NULL) {
-            MSG("ERROR: [main] impossible to create downstream task\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [main] impossible to create downstream task");
+            return(EXIT_FAILURE);
         }
-        xTaskCreate(task_jit, "task_down", 1024 * 10, NULL, 2, &xtaskhandle_jit);
+        xTaskCreate(task_jit, "task_jit", 1024 * 10, NULL, 1, &xtaskhandle_jit);
         if (xtaskhandle_jit == NULL) {
-            MSG("ERROR: [main] impossible to create JIT task\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [main] impossible to create JIT task");
+            return(EXIT_FAILURE);
         }
-        xTaskCreate(task_timersync, "task_timersync", 1024 * 10, NULL, 2, &xtaskhandle_timersync);
+        xTaskCreate(task_timersync, "task_timersync", 1024 * 10, NULL, 1, &xtaskhandle_timersync);
         if (xtaskhandle_timersync == NULL) {
-            MSG("ERROR: [main] impossible to create Timer Sync task\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [main] impossible to create Timer Sync task");
+            return(EXIT_FAILURE);
         }
 
         /* spawn thread to manage GPS */
         if (gps_fake_enable == false) {
-            xTaskCreate(task_gps, "task_gps", 1024 * 10, NULL, 2, &xtaskhandle_gps);
+            xTaskCreate(task_gps, "task_gps", 1024 * 10, NULL, 1 , &xtaskhandle_gps);
             if (xtaskhandle_gps == NULL) {
-                MSG("ERROR: [main] impossible to create GPS task\n");
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [main] impossible to create GPS task");
+                return(EXIT_FAILURE);
             }
-            xTaskCreate(task_valid, "task_valid", 1024 * 2, NULL, 2, &xtaskhandle_valid);
+            xTaskCreate(task_valid, "task_valid", 1024 * 2, NULL, 1, &xtaskhandle_valid);
             if (xtaskhandle_valid == NULL) {
-                MSG("ERROR: [main] impossible to create validation task\n");
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [main] impossible to create validation task");
+                return(EXIT_FAILURE);
             }
         }
-
-        /* main loop task : statistics collection */
-        while (1) {
-            /* wait for next reporting interval */
-            wait_ms(1000 * stat_interval);
-
-            /* get timestamp for statistics */
-            t = time(NULL);
-            strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
-
-            /* access upstream statistics, copy and reset them */
-            xSemaphoreTake(mx_meas_up, portMAX_DELAY);
-            cp_nb_rx_rcv       = meas_nb_rx_rcv;
-            cp_nb_rx_ok        = meas_nb_rx_ok;
-            cp_nb_rx_bad       = meas_nb_rx_bad;
-            cp_nb_rx_nocrc     = meas_nb_rx_nocrc;
-            cp_up_pkt_fwd      = meas_up_pkt_fwd;
-            cp_up_network_byte = meas_up_network_byte;
-            cp_up_payload_byte = meas_up_payload_byte;
-            cp_up_dgram_sent   = meas_up_dgram_sent;
-            cp_up_ack_rcv      = meas_up_ack_rcv;
-            meas_nb_rx_rcv = 0;
-            meas_nb_rx_ok = 0;
-            meas_nb_rx_bad = 0;
-            meas_nb_rx_nocrc = 0;
-            meas_up_pkt_fwd = 0;
-            meas_up_network_byte = 0;
-            meas_up_payload_byte = 0;
-            meas_up_dgram_sent = 0;
-            meas_up_ack_rcv = 0;
-            xSemaphoreGive(mx_meas_up);
-            if (cp_nb_rx_rcv > 0) {
-                rx_ok_ratio = (float)cp_nb_rx_ok / (float)cp_nb_rx_rcv;
-                rx_bad_ratio = (float)cp_nb_rx_bad / (float)cp_nb_rx_rcv;
-                rx_nocrc_ratio = (float)cp_nb_rx_nocrc / (float)cp_nb_rx_rcv;
-            } else {
-                rx_ok_ratio = 0.0;
-                rx_bad_ratio = 0.0;
-                rx_nocrc_ratio = 0.0;
-            }
-            if (cp_up_dgram_sent > 0) {
-                up_ack_ratio = (float)cp_up_ack_rcv / (float)cp_up_dgram_sent;
-            } else {
-                up_ack_ratio = 0.0;
-            }
-
-            /* access downstream statistics, copy and reset them */
-            xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
-            cp_dw_pull_sent    =  meas_dw_pull_sent;
-            cp_dw_ack_rcv      =  meas_dw_ack_rcv;
-            cp_dw_dgram_rcv    =  meas_dw_dgram_rcv;
-            cp_dw_network_byte =  meas_dw_network_byte;
-            cp_dw_payload_byte =  meas_dw_payload_byte;
-            cp_nb_tx_ok        =  meas_nb_tx_ok;
-            cp_nb_tx_fail      =  meas_nb_tx_fail;
-            cp_nb_tx_requested                 +=  meas_nb_tx_requested;
-            cp_nb_tx_rejected_collision_packet +=  meas_nb_tx_rejected_collision_packet;
-            cp_nb_tx_rejected_collision_beacon +=  meas_nb_tx_rejected_collision_beacon;
-            cp_nb_tx_rejected_too_late         +=  meas_nb_tx_rejected_too_late;
-            cp_nb_tx_rejected_too_early        +=  meas_nb_tx_rejected_too_early;
-            cp_nb_beacon_queued   +=  meas_nb_beacon_queued;
-            cp_nb_beacon_sent     +=  meas_nb_beacon_sent;
-            cp_nb_beacon_rejected +=  meas_nb_beacon_rejected;
-            meas_dw_pull_sent = 0;
-            meas_dw_ack_rcv = 0;
-            meas_dw_dgram_rcv = 0;
-            meas_dw_network_byte = 0;
-            meas_dw_payload_byte = 0;
-            meas_nb_tx_ok = 0;
-            meas_nb_tx_fail = 0;
-            meas_nb_tx_requested = 0;
-            meas_nb_tx_rejected_collision_packet = 0;
-            meas_nb_tx_rejected_collision_beacon = 0;
-            meas_nb_tx_rejected_too_late = 0;
-            meas_nb_tx_rejected_too_early = 0;
-            meas_nb_beacon_queued = 0;
-            meas_nb_beacon_sent = 0;
-            meas_nb_beacon_rejected = 0;
-            xSemaphoreGive(mx_meas_dw);
-            if (cp_dw_pull_sent > 0) {
-                dw_ack_ratio = (float)cp_dw_ack_rcv / (float)cp_dw_pull_sent;
-            } else {
-                dw_ack_ratio = 0.0;
-            }
-
-            /* access GPS statistics, copy them */
-            if (gps_enabled == true) {
-                xSemaphoreTake(mx_meas_gps, portMAX_DELAY);
-                coord_ok = gps_coord_valid;
-                cp_gps_coord = meas_gps_coord;
-                xSemaphoreGive(mx_meas_gps);
-            }
-
-            /* overwrite with reference coordinates if function is enabled */
-            if (gps_fake_enable == true) {
-                cp_gps_coord = reference_coord;
-            }
-
-            /* display a report */
-            printf("\n##### %s #####\n", stat_timestamp);
-            printf("### [UPSTREAM] ###\n");
-            printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
-            printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
-            printf("# RF packets forwarded: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
-            printf("# PUSH_DATA datagrams sent: %u (%u bytes)\n", cp_up_dgram_sent, cp_up_network_byte);
-            printf("# PUSH_DATA acknowledged: %.2f%%\n", 100.0 * up_ack_ratio);
-            printf("### [DOWNSTREAM] ###\n");
-            printf("# PULL_DATA sent: %u (%.2f%% acknowledged)\n", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
-            printf("# PULL_RESP(onse) datagrams received: %u (%u bytes)\n", cp_dw_dgram_rcv, cp_dw_network_byte);
-            printf("# RF packets sent to concentrator: %u (%u bytes)\n", (cp_nb_tx_ok+cp_nb_tx_fail), cp_dw_payload_byte);
-            printf("# TX errors: %u\n", cp_nb_tx_fail);
-            if (cp_nb_tx_requested != 0 )
-            {
-                printf("# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
-                printf("# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
-                printf("# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
-                printf("# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
-            }
-            printf("# BEACON queued: %u\n", cp_nb_beacon_queued);
-            printf("# BEACON sent so far: %u\n", cp_nb_beacon_sent);
-            printf("# BEACON rejected: %u\n", cp_nb_beacon_rejected);
-            printf("### [JIT] ###\n");
-            /* get timestamp captured on PPM pulse  */
-            xSemaphoreTake(mx_concent, portMAX_DELAY);
-            i = lgw_get_trigcnt(&trig_tstamp);
-            xSemaphoreGive(mx_concent);
-            if (i != LGW_HAL_SUCCESS) {
-                printf("# SX1301 time (PPS): unknown\n");
-            } else {
-                printf("# SX1301 time (PPS): %u\n", trig_tstamp);
-            }
-            jit_print_queue (&jit_queue, false, DEBUG_LOG);
-            printf("### [GPS] ###\n");
-            if (gps_enabled == true) {
-                /* no need for mutex, display is not critical */
-                if (gps_ref_valid == true) {
-                    printf("# Valid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
-                } else {
-                    printf("# Invalid time reference (age: %li sec)\n", (long)difftime(time(NULL), time_reference_gps.systime));
-                }
-                if (coord_ok == true) {
-                    printf("# GPS coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
-                } else {
-                    printf("# no valid GPS coordinates available yet\n");
-                }
-            } else if (gps_fake_enable == true) {
-                printf("# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
-            } else {
-                printf("# GPS sync is disabled\n");
-            }
-            printf("##### END #####\n");
-
-            /* generate a JSON report (will be sent to server by upstream thread) */
-            xSemaphoreTake(mx_stat_rep, portMAX_DELAY);
-            if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
-                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
-            } else {
-                snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
-            }
-            report_ready = true;
-            xSemaphoreGive(mx_stat_rep);
+        xTaskCreate(task_stats, "task_stats", 1024 * 10, NULL, 1, &xtaskhandle_stats);
+        if (xtaskhandle_stats == NULL) {
+            ESP_LOGE(TAG, "ERROR: [main] impossible to create Statistics task");
+            return(EXIT_FAILURE);
         }
 
-        MSG("INFO: Exiting packet forwarder program\n");
-        exit(EXIT_SUCCESS);
+        ESP_LOGI(TAG, "INFO: Exiting packet forwarder program");
+        return(EXIT_SUCCESS);
     }
     else
     {
-        printf("Failed to mount SPIFFS\n");
+        ESP_LOGI(TAG, "Failed to mount SPIFFS");
         return (EXIT_FAILURE);
     }
 }
 
+static void task_stats(void* pvparameters)
+{
+    int i;
+    /* variables to get local copies of measurements */
+    uint32_t cp_nb_rx_rcv;
+    uint32_t cp_nb_rx_ok;
+    uint32_t cp_nb_rx_bad;
+    uint32_t cp_nb_rx_nocrc;
+    uint32_t cp_up_pkt_fwd;
+    uint32_t cp_up_network_byte;
+    uint32_t cp_up_payload_byte;
+    uint32_t cp_up_dgram_sent;
+    uint32_t cp_up_ack_rcv;
+    uint32_t cp_dw_pull_sent;
+    uint32_t cp_dw_ack_rcv;
+    uint32_t cp_dw_dgram_rcv;
+    uint32_t cp_dw_network_byte;
+    uint32_t cp_dw_payload_byte;
+    uint32_t cp_nb_tx_ok;
+    uint32_t cp_nb_tx_fail;
+    uint32_t cp_nb_tx_requested = 0;
+    uint32_t cp_nb_tx_rejected_collision_packet = 0;
+    uint32_t cp_nb_tx_rejected_collision_beacon = 0;
+    uint32_t cp_nb_tx_rejected_too_late = 0;
+    uint32_t cp_nb_tx_rejected_too_early = 0;
+    uint32_t cp_nb_beacon_queued = 0;
+    uint32_t cp_nb_beacon_sent = 0;
+    uint32_t cp_nb_beacon_rejected = 0;
+
+    /* GPS coordinates variables */
+    bool coord_ok = false;
+    struct coord_s cp_gps_coord = {0.0, 0.0, 0};
+
+    /* SX1301 data variables */
+    uint32_t trig_tstamp;
+
+    /* statistics variable */
+    time_t t;
+    char stat_timestamp[24];
+    float rx_ok_ratio;
+    float rx_bad_ratio;
+    float rx_nocrc_ratio;
+    float up_ack_ratio;
+    float dw_ack_ratio;
+    /* main loop task : statistics collection */
+    while (1)
+    {
+        /* wait for next reporting interval */
+        wait_ms(1000 * stat_interval);
+
+        /* get timestamp for statistics */
+        t = time(NULL);
+        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t));
+
+        /* access upstream statistics, copy and reset them */
+        xSemaphoreTake(mx_meas_up, portMAX_DELAY);
+        cp_nb_rx_rcv       = meas_nb_rx_rcv;
+        cp_nb_rx_ok        = meas_nb_rx_ok;
+        cp_nb_rx_bad       = meas_nb_rx_bad;
+        cp_nb_rx_nocrc     = meas_nb_rx_nocrc;
+        cp_up_pkt_fwd      = meas_up_pkt_fwd;
+        cp_up_network_byte = meas_up_network_byte;
+        cp_up_payload_byte = meas_up_payload_byte;
+        cp_up_dgram_sent   = meas_up_dgram_sent;
+        cp_up_ack_rcv      = meas_up_ack_rcv;
+        meas_nb_rx_rcv = 0;
+        meas_nb_rx_ok = 0;
+        meas_nb_rx_bad = 0;
+        meas_nb_rx_nocrc = 0;
+        meas_up_pkt_fwd = 0;
+        meas_up_network_byte = 0;
+        meas_up_payload_byte = 0;
+        meas_up_dgram_sent = 0;
+        meas_up_ack_rcv = 0;
+        xSemaphoreGive(mx_meas_up);
+        if (cp_nb_rx_rcv > 0) {
+            rx_ok_ratio = (float)cp_nb_rx_ok / (float)cp_nb_rx_rcv;
+            rx_bad_ratio = (float)cp_nb_rx_bad / (float)cp_nb_rx_rcv;
+            rx_nocrc_ratio = (float)cp_nb_rx_nocrc / (float)cp_nb_rx_rcv;
+        } else {
+            rx_ok_ratio = 0.0;
+            rx_bad_ratio = 0.0;
+            rx_nocrc_ratio = 0.0;
+        }
+        if (cp_up_dgram_sent > 0) {
+            up_ack_ratio = (float)cp_up_ack_rcv / (float)cp_up_dgram_sent;
+        } else {
+            up_ack_ratio = 0.0;
+        }
+
+        /* access downstream statistics, copy and reset them */
+        xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
+        cp_dw_pull_sent    =  meas_dw_pull_sent;
+        cp_dw_ack_rcv      =  meas_dw_ack_rcv;
+        cp_dw_dgram_rcv    =  meas_dw_dgram_rcv;
+        cp_dw_network_byte =  meas_dw_network_byte;
+        cp_dw_payload_byte =  meas_dw_payload_byte;
+        cp_nb_tx_ok        =  meas_nb_tx_ok;
+        cp_nb_tx_fail      =  meas_nb_tx_fail;
+        cp_nb_tx_requested                 +=  meas_nb_tx_requested;
+        cp_nb_tx_rejected_collision_packet +=  meas_nb_tx_rejected_collision_packet;
+        cp_nb_tx_rejected_collision_beacon +=  meas_nb_tx_rejected_collision_beacon;
+        cp_nb_tx_rejected_too_late         +=  meas_nb_tx_rejected_too_late;
+        cp_nb_tx_rejected_too_early        +=  meas_nb_tx_rejected_too_early;
+        cp_nb_beacon_queued   +=  meas_nb_beacon_queued;
+        cp_nb_beacon_sent     +=  meas_nb_beacon_sent;
+        cp_nb_beacon_rejected +=  meas_nb_beacon_rejected;
+        meas_dw_pull_sent = 0;
+        meas_dw_ack_rcv = 0;
+        meas_dw_dgram_rcv = 0;
+        meas_dw_network_byte = 0;
+        meas_dw_payload_byte = 0;
+        meas_nb_tx_ok = 0;
+        meas_nb_tx_fail = 0;
+        meas_nb_tx_requested = 0;
+        meas_nb_tx_rejected_collision_packet = 0;
+        meas_nb_tx_rejected_collision_beacon = 0;
+        meas_nb_tx_rejected_too_late = 0;
+        meas_nb_tx_rejected_too_early = 0;
+        meas_nb_beacon_queued = 0;
+        meas_nb_beacon_sent = 0;
+        meas_nb_beacon_rejected = 0;
+        xSemaphoreGive(mx_meas_dw);
+        if (cp_dw_pull_sent > 0) {
+            dw_ack_ratio = (float)cp_dw_ack_rcv / (float)cp_dw_pull_sent;
+        } else {
+            dw_ack_ratio = 0.0;
+        }
+
+        /* access GPS statistics, copy them */
+        if (gps_enabled == true) {
+            xSemaphoreTake(mx_meas_gps, portMAX_DELAY);
+            coord_ok = gps_coord_valid;
+            cp_gps_coord = meas_gps_coord;
+            xSemaphoreGive(mx_meas_gps);
+        }
+
+        /* overwrite with reference coordinates if function is enabled */
+        if (gps_fake_enable == true) {
+            xSemaphoreTake(mx_meas_gps, portMAX_DELAY);
+            cp_gps_coord = reference_coord;
+            xSemaphoreGive(mx_meas_gps);
+        }
+
+        /* display a report */
+        ESP_LOGI(TAG, "##### %s #####", stat_timestamp);
+        ESP_LOGI(TAG, "### [UPSTREAM] ###");
+        ESP_LOGI(TAG, "# RF packets received by concentrator: %u", cp_nb_rx_rcv);
+        ESP_LOGI(TAG, "# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
+        ESP_LOGI(TAG, "# RF packets forwarded: %u (%u bytes)", cp_up_pkt_fwd, cp_up_payload_byte);
+        ESP_LOGI(TAG, "# PUSH_DATA datagrams sent: %u (%u bytes)", cp_up_dgram_sent, cp_up_network_byte);
+        ESP_LOGI(TAG, "# PUSH_DATA acknowledged: %.2f%%", 100.0 * up_ack_ratio);
+        ESP_LOGI(TAG, "### [DOWNSTREAM] ###");
+        ESP_LOGI(TAG, "# PULL_DATA sent: %u (%.2f%% acknowledged)", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
+        ESP_LOGI(TAG, "# PULL_RESP(onse) datagrams received: %u (%u bytes)", cp_dw_dgram_rcv, cp_dw_network_byte);
+        ESP_LOGI(TAG, "# RF packets sent to concentrator: %u (%u bytes)", (cp_nb_tx_ok+cp_nb_tx_fail), cp_dw_payload_byte);
+        ESP_LOGI(TAG, "# TX errors: %u", cp_nb_tx_fail);
+        if (cp_nb_tx_requested != 0 )
+        {
+            ESP_LOGI(TAG, "# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
+            ESP_LOGI(TAG, "# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
+            ESP_LOGI(TAG, "# TX rejected (too late): %.2f%% (req:%u, rej:%u)", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
+            ESP_LOGI(TAG, "# TX rejected (too early): %.2f%% (req:%u, rej:%u)", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
+        }
+        ESP_LOGI(TAG, "# BEACON queued: %u", cp_nb_beacon_queued);
+        ESP_LOGI(TAG, "# BEACON sent so far: %u", cp_nb_beacon_sent);
+        ESP_LOGI(TAG, "# BEACON rejected: %u", cp_nb_beacon_rejected);
+        ESP_LOGI(TAG, "### [JIT] ###");
+        /* get timestamp captured on PPM pulse  */
+        xSemaphoreTake(mx_concent, portMAX_DELAY);
+        i = lgw_get_trigcnt(&trig_tstamp);
+        xSemaphoreGive(mx_concent);
+        if (i != LGW_HAL_SUCCESS) {
+            ESP_LOGI(TAG, "# SX1301 time (PPS): unknown");
+        } else {
+            ESP_LOGI(TAG, "# SX1301 time (PPS): %u", trig_tstamp);
+        }
+        jit_print_queue (&jit_queue, false, DEBUG_LOG);
+        ESP_LOGI(TAG, "### [GPS] ###");
+        if (gps_enabled == true) {
+            /* no need for mutex, display is not critical */
+            if (gps_ref_valid == true) {
+                ESP_LOGI(TAG, "# Valid time reference (age: %li sec)", (long)difftime(time(NULL), time_reference_gps.systime));
+            } else {
+                ESP_LOGI(TAG, "# Invalid time reference (age: %li sec)", (long)difftime(time(NULL), time_reference_gps.systime));
+            }
+            if (coord_ok == true) {
+                ESP_LOGI(TAG, "# GPS coordinates: latitude %.5f, longitude %.5f, altitude %i m", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+            } else {
+                ESP_LOGI(TAG, "# no valid GPS coordinates available yet");
+            }
+        } else if (gps_fake_enable == true) {
+            ESP_LOGI(TAG, "# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+        } else {
+            ESP_LOGI(TAG, "# GPS sync is disabled");
+        }
+        ESP_LOGI(TAG, "##### END #####");
+
+        /* generate a JSON report (will be sent to server by upstream thread) */
+        xSemaphoreTake(mx_stat_rep, portMAX_DELAY);
+        if (((gps_enabled == true) && (coord_ok == true)) || (gps_fake_enable == true)) {
+            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"lati\":%.5f,\"long\":%.5f,\"alti\":%i,\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+        } else {
+            snprintf(status_report, STATUS_SIZE, "\"stat\":{\"time\":\"%s\",\"rxnb\":%u,\"rxok\":%u,\"rxfw\":%u,\"ackr\":%.1f,\"dwnb\":%u,\"txnb\":%u}", stat_timestamp, cp_nb_rx_rcv, cp_nb_rx_ok, cp_up_pkt_fwd, 100.0 * up_ack_ratio, cp_dw_dgram_rcv, cp_nb_tx_ok);
+        }
+        report_ready = true;
+        xSemaphoreGive(mx_stat_rep);
+        }
+}
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 1: RECEIVING PACKETS AND FORWARDING THEM ---------------------- */
 
@@ -1686,8 +1714,8 @@ static void task_up(void *pvParameters) {
     /* set upstream socket RX timeout */
     i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO, (void *)&push_timeout_half, sizeof push_timeout_half);
     if (i != 0) {
-        MSG("ERROR: [up] setsockopt returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        ESP_LOGE(TAG, "ERROR: [up] setsockopt returned %s", strerror(errno));
+        return;
     }
 
     /* pre-fill the data buffer with fixed fields */
@@ -1703,8 +1731,8 @@ static void task_up(void *pvParameters) {
         nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);
         xSemaphoreGive(mx_concent);
         if (nb_pkt == LGW_HAL_ERROR) {
-            MSG("ERROR: [up] failed packet fetch, exiting\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: [up] failed packet fetch, exiting");
+            return;
         }
 
         /* check if there are status report to send */
@@ -1759,7 +1787,7 @@ static void task_up(void *pvParameters) {
             switch(p->status) {
                 case STAT_CRC_OK:
                     meas_nb_rx_ok += 1;
-                    printf( "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
+                    ESP_LOGI(TAG,  "INFO: Received pkt from mote: %08X (fcnt=%u)", mote_addr, mote_fcnt );
                     if (!fwd_valid_pkt) {
                         xSemaphoreGive(mx_meas_up);
                         continue; /* skip that packet */
@@ -1780,10 +1808,10 @@ static void task_up(void *pvParameters) {
                     }
                     break;
                 default:
-                    MSG("WARNING: [up] received packet with unknown status %u (size %u, modulation %u, BW %u, DR %u, RSSI %.1f)\n", p->status, p->size, p->modulation, p->bandwidth, p->datarate, p->rssi);
+                    ESP_LOGW(TAG, "WARNING: [up] received packet with unknown status %u (size %u, modulation %u, BW %u, DR %u, RSSI %.1f)", p->status, p->size, p->modulation, p->bandwidth, p->datarate, p->rssi);
                     xSemaphoreGive(mx_meas_up);
                     continue; /* skip that packet */
-                    // exit(EXIT_FAILURE);
+                    // return(EXIT_FAILURE);
             }
             meas_up_pkt_fwd += 1;
             meas_up_payload_byte += p->size;
@@ -1804,8 +1832,8 @@ static void task_up(void *pvParameters) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 4));
+                return;
             }
 
             /* Packet RX time (GPS based), 37 useful chars */
@@ -1819,8 +1847,8 @@ static void task_up(void *pvParameters) {
                     if (j > 0) {
                         buff_index += j;
                     } else {
-                        MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                        exit(EXIT_FAILURE);
+                        ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 4));
+                        return;
                     }
                 }
                 /* convert packet timestamp to GPS absolute time */
@@ -1832,8 +1860,8 @@ static void task_up(void *pvParameters) {
                     if (j > 0) {
                         buff_index += j;
                     } else {
-                        MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                        exit(EXIT_FAILURE);
+                        ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 4));
+                        return;
                     }
                 }
             }
@@ -1843,8 +1871,8 @@ static void task_up(void *pvParameters) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 4));
+                return;
             }
 
             /* Packet status, 9-10 useful chars */
@@ -1862,10 +1890,10 @@ static void task_up(void *pvParameters) {
                     buff_index += 9;
                     break;
                 default:
-                    MSG("ERROR: [up] received packet with unknown status\n");
+                    ESP_LOGI(TAG, "ERROR: [up] received packet with unknown status");
                     memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":?", 9);
                     buff_index += 9;
-                    exit(EXIT_FAILURE);
+                    return;
             }
 
             /* Packet modulation, 13-14 useful chars */
@@ -1900,10 +1928,10 @@ static void task_up(void *pvParameters) {
                         buff_index += 13;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown datarate\n");
+                        ESP_LOGE(TAG, "ERROR: [up] lora packet with unknown datarate");
                         memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
                         buff_index += 12;
-                        exit(EXIT_FAILURE);
+                        return;
                 }
                 switch (p->bandwidth) {
                     case BW_125KHZ:
@@ -1919,10 +1947,10 @@ static void task_up(void *pvParameters) {
                         buff_index += 6;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown bandwidth\n");
+                        ESP_LOGE(TAG, "ERROR: [up] lora packet with unknown bandwidth");
                         memcpy((void *)(buff_up + buff_index), (void *)"BW?\"", 4);
                         buff_index += 4;
-                        exit(EXIT_FAILURE);
+                        return;
                 }
 
                 /* Packet ECC coding rate, 11-13 useful chars */
@@ -1948,10 +1976,10 @@ static void task_up(void *pvParameters) {
                         buff_index += 13;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown coderate\n");
+                        ESP_LOGE(TAG, "ERROR: [up] lora packet with unknown coderate");
                         memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"?\"", 11);
                         buff_index += 11;
-                        exit(EXIT_FAILURE);
+                        return;
                 }
 
                 /* Lora SNR, 11-13 useful chars */
@@ -1959,8 +1987,8 @@ static void task_up(void *pvParameters) {
                 if (j > 0) {
                     buff_index += j;
                 } else {
-                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                    exit(EXIT_FAILURE);
+                    ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 4));
+                    return;
                 }
             } else if (p->modulation == MOD_FSK) {
                 memcpy((void *)(buff_up + buff_index), (void *)",\"modu\":\"FSK\"", 13);
@@ -1971,12 +1999,12 @@ static void task_up(void *pvParameters) {
                 if (j > 0) {
                     buff_index += j;
                 } else {
-                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                    exit(EXIT_FAILURE);
+                    ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 4));
+                    return;
                 }
             } else {
-                MSG("ERROR: [up] received packet with unknown modulation\n");
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [up] received packet with unknown modulation");
+                return;
             }
 
             /* Packet RSSI, payload size, 18-23 useful chars */
@@ -1984,8 +2012,8 @@ static void task_up(void *pvParameters) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 4));
+                return;
             }
 
             /* Packet base64-encoded payload, 14-350 useful chars */
@@ -1995,8 +2023,8 @@ static void task_up(void *pvParameters) {
             if (j>=0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] bin_to_b64 failed line %u\n", (__LINE__ - 5));
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [up] bin_to_b64 failed line %u", (__LINE__ - 5));
+                return;
             }
             buff_up[buff_index] = '"';
             ++buff_index;
@@ -2036,8 +2064,8 @@ static void task_up(void *pvParameters) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 5));
-                exit(EXIT_FAILURE);
+                ESP_LOGE(TAG, "ERROR: [up] snprintf failed line %u", (__LINE__ - 5));
+                return;
             }
         }
 
@@ -2046,7 +2074,7 @@ static void task_up(void *pvParameters) {
         ++buff_index;
         buff_up[buff_index] = 0; /* add string terminator, for safety */
 
-        printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
+        ESP_LOGI(TAG, "JSON up: %s", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
         /* send datagram to server */
         send(sock_up, (void *)buff_up, buff_index, 0);
@@ -2066,20 +2094,20 @@ static void task_up(void *pvParameters) {
                     break;
                 }
             } else if ((j < 4) || (buff_ack[0] != PROTOCOL_VERSION) || (buff_ack[3] != PKT_PUSH_ACK)) {
-                //MSG("WARNING: [up] ignored invalid non-ACL packet\n");
+                //ESP_LOGI(TAG, "WARNING: [up] ignored invalid non-ACL packet");
                 continue;
             } else if ((buff_ack[1] != token_h) || (buff_ack[2] != token_l)) {
-                //MSG("WARNING: [up] ignored out-of sync ACK packet\n");
+                //ESP_LOGI(TAG, "WARNING: [up] ignored out-of sync ACK packet");
                 continue;
             } else {
-                //MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
+                //ESP_LOGI(TAG, "INFO: [up] PUSH_ACK received in %i ms", (int)(1000 * difftimespec(recv_time, send_time)));
                 meas_up_ack_rcv += 1;
                 break;
             }
         }
         xSemaphoreGive(mx_meas_up);
     }
-    MSG("\nINFO: End of upstream thread\n");
+    ESP_LOGI(TAG, "INFO: End of upstream thread");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2152,8 +2180,8 @@ static void task_down(void *pvParameters) {
     /* set downstream socket RX timeout */
     i = setsockopt(sock_down, SOL_SOCKET, SO_RCVTIMEO, (void *)&pull_timeout, sizeof pull_timeout);
     if (i != 0) {
-        MSG("ERROR: [down] setsockopt returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        ESP_LOGE(TAG, "ERROR: [down] setsockopt returned %s", strerror(errno));
+        return;
     }
 
     /* pre-fill the pull request buffer with fixed fields */
@@ -2180,8 +2208,8 @@ static void task_down(void *pvParameters) {
             break;
         default:
             /* should not happen */
-            MSG("ERROR: unsupported bandwidth for beacon\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: unsupported bandwidth for beacon");
+            return;
     }
     switch (beacon_datarate) {
         case 8:
@@ -2206,8 +2234,8 @@ static void task_down(void *pvParameters) {
             break;
         default:
             /* should not happen */
-            MSG("ERROR: unsupported datarate for beacon\n");
-            exit(EXIT_FAILURE);
+            ESP_LOGE(TAG, "ERROR: unsupported datarate for beacon");
+            return;
     }
     beacon_pkt.size = beacon_RFU1_size + 4 + 2 + 7 + beacon_RFU2_size + 2;
     beacon_pkt.coderate = CR_LORA_4_5;
@@ -2267,7 +2295,7 @@ static void task_down(void *pvParameters) {
         if ((autoquit_threshold > 0) && (autoquit_cnt >= autoquit_threshold))
         {
     //Exit sig was here
-            MSG("INFO: [down] the last %u PULL_DATA were not ACKed, exiting application\n", autoquit_threshold);
+            ESP_LOGI(TAG, "INFO: [down] the last %u PULL_DATA were not ACKed, exiting application", autoquit_threshold);
             break;
         }
 
@@ -2317,19 +2345,16 @@ static void task_down(void *pvParameters) {
                     /* now we can add a beacon_period to the reference to get next beacon GPS time */
                     next_beacon_gps_time.tv_sec += (retry * beacon_period);
                     next_beacon_gps_time.tv_nsec = 0;
-
-#if DEBUG_BEACON
                     {
                     time_t time_unix;
 
                     time_unix = time_reference_gps.gps.tv_sec + UNIX_GPS_EPOCH_OFFSET;
-                    MSG_DEBUG(DEBUG_BEACON, "GPS-now : %s", ctime(&time_unix));
+                    ESP_LOGD(TAG, "GPS-now : %s", ctime(&time_unix));
                     time_unix = last_beacon_gps_time.tv_sec + UNIX_GPS_EPOCH_OFFSET;
-                    MSG_DEBUG(DEBUG_BEACON, "GPS-last: %s", ctime(&time_unix));
+                    ESP_LOGD(TAG, "GPS-last: %s", ctime(&time_unix));
                     time_unix = next_beacon_gps_time.tv_sec + UNIX_GPS_EPOCH_OFFSET;
-                    MSG_DEBUG(DEBUG_BEACON, "GPS-next: %s", ctime(&time_unix));
+                    ESP_LOGD(TAG, "GPS-next: %s", ctime(&time_unix));
                     }
-#endif
 
                     /* convert GPS time to concentrator time, and set packet counter for JiT trigger */
                     lgw_gps2cnt(time_reference_gps, next_beacon_gps_time, &(beacon_pkt.count_us));
@@ -2372,14 +2397,14 @@ static void task_down(void *pvParameters) {
                         last_beacon_gps_time.tv_sec = next_beacon_gps_time.tv_sec; /* keep this beacon time as reference for next one to be programmed */
 
                         /* display beacon payload */
-                        MSG("INFO: Beacon queued (count_us=%u, freq_hz=%u, size=%u):\n", beacon_pkt.count_us, beacon_pkt.freq_hz, beacon_pkt.size);
-                        printf( "   => " );
+                        ESP_LOGI(TAG, "INFO: Beacon queued (count_us=%u, freq_hz=%u, size=%u):", beacon_pkt.count_us, beacon_pkt.freq_hz, beacon_pkt.size);
+                        ESP_LOGI(TAG,  "   => " );
                         for (i = 0; i < beacon_pkt.size; ++i) {
-                            MSG("%02X ", beacon_pkt.payload[i]);
+                            ESP_LOGI(TAG, "%02X ", beacon_pkt.payload[i]);
                         }
-                        MSG("\n");
+                        ESP_LOGI(TAG, "");
                     } else {
-                        MSG_DEBUG(DEBUG_BEACON, "--> beacon queuing failed with %d\n", jit_result);
+                        ESP_LOGD(TAG, "--> beacon queuing failed with %d", jit_result);
                         /* update stats */
                         xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         if (jit_result != JIT_ERROR_COLLISION_BEACON) {
@@ -2390,7 +2415,7 @@ static void task_down(void *pvParameters) {
                         /* Note: In case the GPS has been unlocked for a while, there can be lots of retries */
                         /*       to be done from last beacon time to a new valid one */
                         retry++;
-                        MSG_DEBUG(DEBUG_BEACON, "--> beacon queuing retry=%d\n", retry);
+                        ESP_LOGD(TAG, "--> beacon queuing retry=%d", retry);
                     }
                 } else {
                     xSemaphoreGive(mx_timeref);
@@ -2400,13 +2425,13 @@ static void task_down(void *pvParameters) {
 
             /* if no network message was received, got back to listening sock_down socket */
             if (msg_len == -1) {
-                //MSG("WARNING: [down] recv returned %s\n", strerror(errno)); /* too verbose */
+                //ESP_LOGI(TAG, "WARNING: [down] recv returned %s", strerror(errno)); /* too verbose */
                 continue;
             }
 
             /* if the datagram does not respect protocol, just ignore it */
             if ((msg_len < 4) || (buff_down[0] != PROTOCOL_VERSION) || ((buff_down[3] != PKT_PULL_RESP) && (buff_down[3] != PKT_PULL_ACK))) {
-                MSG("WARNING: [down] ignoring invalid packet len=%d, protocol_version=%d, id=%d\n",
+                ESP_LOGI(TAG, "WARNING: [down] ignoring invalid packet len=%d, protocol_version=%d, id=%d",
                         msg_len, buff_down[0], buff_down[3]);
                 continue;
             }
@@ -2415,39 +2440,39 @@ static void task_down(void *pvParameters) {
             if (buff_down[3] == PKT_PULL_ACK) {
                 if ((buff_down[1] == token_h) && (buff_down[2] == token_l)) {
                     if (req_ack) {
-                        MSG("INFO: [down] duplicate ACK received :)\n");
+                        ESP_LOGI(TAG, "INFO: [down] duplicate ACK received :)");
                     } else { /* if that packet was not already acknowledged */
                         req_ack = true;
                         autoquit_cnt = 0;
                         xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_dw_ack_rcv += 1;
                         xSemaphoreGive(mx_meas_dw);
-                        MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * difftimeval(recv_time, send_time)));
-                        //MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
+                        ESP_LOGI(TAG, "INFO: [down] PULL_ACK received in %i ms", (int)(1000 * difftimeval(recv_time, send_time)));
+                        //ESP_LOGI(TAG, "INFO: [down] PULL_ACK received in %i ms", (int)(1000 * difftimespec(recv_time, send_time)));
                     }
                 } else { /* out-of-sync token */
-                    MSG("INFO: [down] received out-of-sync ACK\n");
+                    ESP_LOGI(TAG, "INFO: [down] received out-of-sync ACK");
                 }
                 continue;
             }
 
             /* the datagram is a PULL_RESP */
             buff_down[msg_len] = 0; /* add string terminator, just to be safe */
-            MSG("INFO: [down] PULL_RESP received  - token[%d:%d] :)\n", buff_down[1], buff_down[2]); /* very verbose */
-            printf("\nJSON down: %s\n", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
+            ESP_LOGI(TAG, "INFO: [down] PULL_RESP received  - token[%d:%d] :)", buff_down[1], buff_down[2]); /* very verbose */
+            ESP_LOGI(TAG, "JSON down: %s", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
 
             /* initialize TX struct and try to parse JSON */
             memset(&txpkt, 0, sizeof txpkt);
             root_val = json_parse_string_with_comments((const char *)(buff_down + 4)); /* JSON offset */
             if (root_val == NULL) {
-                MSG("WARNING: [down] invalid JSON, TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] invalid JSON, TX aborted");
                 continue;
             }
 
             /* look for JSON sub-object 'txpk' */
             txpk_obj = json_object_get_object(json_value_get_object(root_val), "txpk");
             if (txpk_obj == NULL) {
-                MSG("WARNING: [down] no \"txpk\" object in JSON, TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] no \"txpk\" object in JSON, TX aborted");
                 json_value_free(root_val);
                 continue;
             }
@@ -2458,7 +2483,7 @@ static void task_down(void *pvParameters) {
                 /* TX procedure: send immediately */
                 sent_immediate = true;
                 downlink_type = JIT_PKT_TYPE_DOWNLINK_CLASS_C;
-                MSG("INFO: [down] a packet will be sent in \"immediate\" mode\n");
+                ESP_LOGI(TAG, "INFO: [down] a packet will be sent in \"immediate\" mode");
             } else {
                 sent_immediate = false;
                 val = json_object_get_value(txpk_obj,"tmst");
@@ -2472,7 +2497,7 @@ static void task_down(void *pvParameters) {
                     /* TX procedure: send on GPS time (converted to timestamp value) */
                     val = json_object_get_value(txpk_obj, "tmms");
                     if (val == NULL) {
-                        MSG("WARNING: [down] no mandatory \"txpk.tmst\" or \"txpk.tmms\" objects in JSON, TX aborted\n");
+                        ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.tmst\" or \"txpk.tmms\" objects in JSON, TX aborted");
                         json_value_free(root_val);
                         continue;
                     }
@@ -2483,7 +2508,7 @@ static void task_down(void *pvParameters) {
                             xSemaphoreGive(mx_timeref);
                         } else {
                             xSemaphoreGive(mx_timeref);
-                            MSG("WARNING: [down] no valid GPS time reference yet, impossible to send packet on specific GPS time, TX aborted\n");
+                            ESP_LOGW(TAG, "WARNING: [down] no valid GPS time reference yet, impossible to send packet on specific GPS time, TX aborted");
                             json_value_free(root_val);
 
                             /* send acknoledge datagram to server */
@@ -2491,7 +2516,7 @@ static void task_down(void *pvParameters) {
                             continue;
                         }
                     } else {
-                        MSG("WARNING: [down] GPS disabled, impossible to send packet on specific GPS time, TX aborted\n");
+                        ESP_LOGW(TAG, "WARNING: [down] GPS disabled, impossible to send packet on specific GPS time, TX aborted");
                         json_value_free(root_val);
 
                         /* send acknoledge datagram to server */
@@ -2510,11 +2535,11 @@ static void task_down(void *pvParameters) {
                     /* transform GPS time to timestamp */
                     i = lgw_gps2cnt(local_ref, gps_tx, &(txpkt.count_us));
                     if (i != LGW_GPS_SUCCESS) {
-                        MSG("WARNING: [down] could not convert GPS time to timestamp, TX aborted\n");
+                        ESP_LOGW(TAG, "WARNING: [down] could not convert GPS time to timestamp, TX aborted");
                         json_value_free(root_val);
                         continue;
                     } else {
-                        MSG("INFO: [down] a packet will be sent on timestamp value %u (calculated from GPS time)\n", txpkt.count_us);
+                        ESP_LOGI(TAG, "INFO: [down] a packet will be sent on timestamp value %u (calculated from GPS time)", txpkt.count_us);
                     }
 
                     /* GPS timestamp is given, we consider it is a Class B downlink */
@@ -2531,7 +2556,7 @@ static void task_down(void *pvParameters) {
             /* parse target frequency (mandatory) */
             val = json_object_get_value(txpk_obj,"freq");
             if (val == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.freq\" object in JSON, TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.freq\" object in JSON, TX aborted");
                 json_value_free(root_val);
                 continue;
             }
@@ -2540,7 +2565,7 @@ static void task_down(void *pvParameters) {
             /* parse RF chain used for TX (mandatory) */
             val = json_object_get_value(txpk_obj,"rfch");
             if (val == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.rfch\" object in JSON, TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.rfch\" object in JSON, TX aborted");
                 json_value_free(root_val);
                 continue;
             }
@@ -2555,7 +2580,7 @@ static void task_down(void *pvParameters) {
             /* Parse modulation (mandatory) */
             str = json_object_get_string(txpk_obj, "modu");
             if (str == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.modu\" object in JSON, TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.modu\" object in JSON, TX aborted");
                 json_value_free(root_val);
                 continue;
             }
@@ -2566,13 +2591,13 @@ static void task_down(void *pvParameters) {
                 /* Parse Lora spreading-factor and modulation bandwidth (mandatory) */
                 str = json_object_get_string(txpk_obj, "datr");
                 if (str == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted\n");
+                    ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted");
                     json_value_free(root_val);
                     continue;
                 }
                 i = sscanf(str, "SF%2hdBW%3hd", &x0, &x1);
                 if (i != 2) {
-                    MSG("WARNING: [down] format error in \"txpk.datr\", TX aborted\n");
+                    ESP_LOGW(TAG, "WARNING: [down] format error in \"txpk.datr\", TX aborted");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2584,7 +2609,7 @@ static void task_down(void *pvParameters) {
                     case 11: txpkt.datarate = DR_LORA_SF11; break;
                     case 12: txpkt.datarate = DR_LORA_SF12; break;
                     default:
-                        MSG("WARNING: [down] format error in \"txpk.datr\", invalid SF, TX aborted\n");
+                        ESP_LOGW(TAG, "WARNING: [down] format error in \"txpk.datr\", invalid SF, TX aborted");
                         json_value_free(root_val);
                         continue;
                 }
@@ -2593,7 +2618,7 @@ static void task_down(void *pvParameters) {
                     case 250: txpkt.bandwidth = BW_250KHZ; break;
                     case 500: txpkt.bandwidth = BW_500KHZ; break;
                     default:
-                        MSG("WARNING: [down] format error in \"txpk.datr\", invalid BW, TX aborted\n");
+                        ESP_LOGW(TAG, "WARNING: [down] format error in \"txpk.datr\", invalid BW, TX aborted");
                         json_value_free(root_val);
                         continue;
                 }
@@ -2601,7 +2626,7 @@ static void task_down(void *pvParameters) {
                 /* Parse ECC coding rate (optional field) */
                 str = json_object_get_string(txpk_obj, "codr");
                 if (str == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.codr\" object in json, TX aborted\n");
+                    ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.codr\" object in json, TX aborted");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2612,7 +2637,7 @@ static void task_down(void *pvParameters) {
                 else if (strcmp(str, "4/8") == 0) txpkt.coderate = CR_LORA_4_8;
                 else if (strcmp(str, "1/2") == 0) txpkt.coderate = CR_LORA_4_8;
                 else {
-                    MSG("WARNING: [down] format error in \"txpk.codr\", TX aborted\n");
+                    ESP_LOGW(TAG, "WARNING: [down] format error in \"txpk.codr\", TX aborted");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2643,7 +2668,7 @@ static void task_down(void *pvParameters) {
                 /* parse FSK bitrate (mandatory) */
                 val = json_object_get_value(txpk_obj,"datr");
                 if (val == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted\n");
+                    ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2652,7 +2677,7 @@ static void task_down(void *pvParameters) {
                 /* parse frequency deviation (mandatory) */
                 val = json_object_get_value(txpk_obj,"fdev");
                 if (val == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.fdev\" object in JSON, TX aborted\n");
+                    ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.fdev\" object in JSON, TX aborted");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2672,7 +2697,7 @@ static void task_down(void *pvParameters) {
                 }
 
             } else {
-                MSG("WARNING: [down] invalid modulation in \"txpk.modu\", TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] invalid modulation in \"txpk.modu\", TX aborted");
                 json_value_free(root_val);
                 continue;
             }
@@ -2680,7 +2705,7 @@ static void task_down(void *pvParameters) {
             /* Parse payload length (mandatory) */
             val = json_object_get_value(txpk_obj,"size");
             if (val == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.size\" object in JSON, TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.size\" object in JSON, TX aborted");
                 json_value_free(root_val);
                 continue;
             }
@@ -2689,13 +2714,13 @@ static void task_down(void *pvParameters) {
             /* Parse payload data (mandatory) */
             str = json_object_get_string(txpk_obj, "data");
             if (str == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.data\" object in JSON, TX aborted\n");
+                ESP_LOGW(TAG, "WARNING: [down] no mandatory \"txpk.data\" object in JSON, TX aborted");
                 json_value_free(root_val);
                 continue;
             }
             i = b64_to_bin(str, strlen(str), txpkt.payload, sizeof txpkt.payload);
             if (i != txpkt.size) {
-                MSG("WARNING: [down] mismatch between .size and .data size once converter to binary\n");
+                ESP_LOGW(TAG, "WARNING: [down] mismatch between .size and .data size once converter to binary");
             }
 
             /* free the JSON parse tree from memory */
@@ -2719,7 +2744,7 @@ static void task_down(void *pvParameters) {
             jit_result = JIT_ERROR_OK;
             if ((txpkt.freq_hz < tx_freq_min[txpkt.rf_chain]) || (txpkt.freq_hz > tx_freq_max[txpkt.rf_chain])) {
                 jit_result = JIT_ERROR_TX_FREQ;
-                MSG("ERROR: Packet REJECTED, unsupported frequency - %u (min:%u,max:%u)\n", txpkt.freq_hz, tx_freq_min[txpkt.rf_chain], tx_freq_max[txpkt.rf_chain]);
+                ESP_LOGE(TAG, "ERROR: Packet REJECTED, unsupported frequency - %u (min:%u,max:%u)", txpkt.freq_hz, tx_freq_min[txpkt.rf_chain], tx_freq_max[txpkt.rf_chain]);
             }
             if (jit_result == JIT_ERROR_OK) {
                 for (i=0; i<txlut.size; i++) {
@@ -2731,7 +2756,7 @@ static void task_down(void *pvParameters) {
                 if (i == txlut.size) {
                     /* this RF power is not supported */
                     jit_result = JIT_ERROR_TX_POWER;
-                    MSG("ERROR: Packet REJECTED, unsupported RF power for TX - %d\n", txpkt.rf_power);
+                    ESP_LOGE(TAG, "ERROR: Packet REJECTED, unsupported RF power for TX - %d", txpkt.rf_power);
                 }
             }
 
@@ -2741,7 +2766,7 @@ static void task_down(void *pvParameters) {
                 get_concentrator_time(&current_concentrator_time, current_unix_time);
                 jit_result = jit_enqueue(&jit_queue, &current_concentrator_time, &txpkt, downlink_type);
                 if (jit_result != JIT_ERROR_OK) {
-                    printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
+                    ESP_LOGE(TAG, "ERROR: Packet REJECTED (jit error=%d)", jit_result);
                 }
                 xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                 meas_nb_tx_requested += 1;
@@ -2752,25 +2777,25 @@ static void task_down(void *pvParameters) {
             send_tx_ack(buff_down[1], buff_down[2], jit_result);
         }
     }
-    MSG("\nINFO: End of downstream thread\n");
+    ESP_LOGI(TAG, "INFO: End of downstream thread");
 }
 
 void print_tx_status(uint8_t tx_status) {
     switch (tx_status) {
         case TX_OFF:
-            MSG("INFO: [jit] lgw_status returned TX_OFF\n");
+            ESP_LOGI(TAG, "INFO: [jit] lgw_status returned TX_OFF");
             break;
         case TX_FREE:
-            MSG("INFO: [jit] lgw_status returned TX_FREE\n");
+            ESP_LOGI(TAG, "INFO: [jit] lgw_status returned TX_FREE");
             break;
         case TX_EMITTING:
-            MSG("INFO: [jit] lgw_status returned TX_EMITTING\n");
+            ESP_LOGI(TAG, "INFO: [jit] lgw_status returned TX_EMITTING");
             break;
         case TX_SCHEDULED:
-            MSG("INFO: [jit] lgw_status returned TX_SCHEDULED\n");
+            ESP_LOGI(TAG, "INFO: [jit] lgw_status returned TX_SCHEDULED");
             break;
         default:
-            MSG("INFO: [jit] lgw_status returned UNKNOWN (%d)\n", tx_status);
+            ESP_LOGI(TAG, "INFO: [jit] lgw_status returned UNKNOWN (%d)", tx_status);
             break;
     }
 }
@@ -2804,14 +2829,14 @@ static void task_jit(void *pvParameters) {
                         /* Compensate breacon frequency with xtal error */
                         xSemaphoreTake(mx_xcorr, portMAX_DELAY);
                         pkt.freq_hz = (uint32_t)(xtal_correct * (double)pkt.freq_hz);
-                        MSG_DEBUG(DEBUG_BEACON, "beacon_pkt.freq_hz=%u (xtal_correct=%.15lf)\n", pkt.freq_hz, xtal_correct);
+                        ESP_LOGD(TAG, "beacon_pkt.freq_hz=%u (xtal_correct=%.15lf)", pkt.freq_hz, xtal_correct);
                         xSemaphoreGive(mx_xcorr);
 
                         /* Update statistics */
                         xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_nb_beacon_sent += 1;
                         xSemaphoreGive(mx_meas_dw);
-                        MSG("INFO: Beacon dequeued (count_us=%u)\n", pkt.count_us);
+                        ESP_LOGI(TAG, "INFO: Beacon dequeued (count_us=%u)", pkt.count_us);
                     }
 
                     /* check if concentrator is free for sending new packet */
@@ -2819,14 +2844,14 @@ static void task_jit(void *pvParameters) {
                     result = lgw_status(TX_STATUS, &tx_status);
                     xSemaphoreGive(mx_concent); /* free concentrator ASAP */
                     if (result == LGW_HAL_ERROR) {
-                        MSG("WARNING: [jit] lgw_status failed\n");
+                        ESP_LOGW(TAG, "WARNING: [jit] lgw_status failed");
                     } else {
                         if (tx_status == TX_EMITTING) {
-                            MSG("ERROR: concentrator is currently emitting\n");
+                            ESP_LOGE(TAG, "ERROR: concentrator is currently emitting");
                             print_tx_status(tx_status);
                             continue;
                         } else if (tx_status == TX_SCHEDULED) {
-                            MSG("WARNING: a downlink was already scheduled, overwritting it...\n");
+                            ESP_LOGW(TAG, "WARNING: a downlink was already scheduled, overwritting it...");
                             print_tx_status(tx_status);
                         } else {
                             /* Nothing to do */
@@ -2841,22 +2866,22 @@ static void task_jit(void *pvParameters) {
                         xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_nb_tx_fail += 1;
                         xSemaphoreGive(mx_meas_dw);
-                        MSG("WARNING: [jit] lgw_send failed\n");
+                        ESP_LOGW(TAG, "WARNING: [jit] lgw_send failed");
                         continue;
                     } else {
                         xSemaphoreTake(mx_meas_dw, portMAX_DELAY);
                         meas_nb_tx_ok += 1;
                         xSemaphoreGive(mx_meas_dw);
-                        MSG_DEBUG(DEBUG_PKT_FWD, "lgw_send done: count_us=%u\n", pkt.count_us);
+                        ESP_LOGD(TAG, "lgw_send done: count_us=%u", pkt.count_us);
                     }
                 } else {
-                    MSG("ERROR: jit_dequeue failed with %d\n", jit_result);
+                    ESP_LOGE(TAG, "ERROR: jit_dequeue failed with %d", jit_result);
                 }
             }
         } else if (jit_result == JIT_ERROR_EMPTY) {
             /* Do nothing, it can happen */
         } else {
-            MSG("ERROR: jit_peek failed with %d\n", jit_result);
+            ESP_LOGE(TAG, "ERROR: jit_peek failed with %d", jit_result);
         }
     }
 }
@@ -2872,7 +2897,7 @@ static void gps_process_sync(void) {
 
     /* get GPS time for synchronization */
     if (i != LGW_GPS_SUCCESS) {
-        MSG("WARNING: [gps] could not get GPS time from GPS\n");
+        ESP_LOGW(TAG, "WARNING: [gps] could not get GPS time from GPS");
         return;
     }
 
@@ -2881,7 +2906,7 @@ static void gps_process_sync(void) {
     i = lgw_get_trigcnt(&trig_tstamp);
     xSemaphoreGive(mx_concent);
     if (i != LGW_HAL_SUCCESS) {
-        MSG("WARNING: [gps] failed to read concentrator timestamp\n");
+        ESP_LOGW(TAG, "WARNING: [gps] failed to read concentrator timestamp");
         return;
     }
 
@@ -2890,7 +2915,7 @@ static void gps_process_sync(void) {
     i = lgw_gps_sync(&time_reference_gps, trig_tstamp, utc, gps_time);
     xSemaphoreGive(mx_timeref);
     if (i != LGW_GPS_SUCCESS) {
-        MSG("WARNING: [gps] GPS out of sync, keeping previous time reference\n");
+        ESP_LOGW(TAG, "WARNING: [gps] GPS out of sync, keeping previous time reference");
     }
 }
 
@@ -2932,11 +2957,11 @@ static void task_gps(void *pvParameters) {
         size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 200 / portTICK_RATE_MS);
         if (nb_char == 0)
         {
-            printf("WARNING: [gps] uart_read_bytes() returned value %d bytes\n", nb_char);
+            ESP_LOGW(TAG, "WARNING: [gps] uart_read_bytes() returned value %d bytes", nb_char);
             continue;
         }
         else if (nb_char == -1) {
-            printf("ERROR: uart_read_bytes() returned error value %d\n", nb_char);
+            ESP_LOGE(TAG, "ERROR: uart_read_bytes() returned error value %d", nb_char);
             break;
         }
         wr_idx += (size_t)nb_char;
@@ -2962,10 +2987,10 @@ static void task_gps(void *pvParameters) {
                         frame_size = 0;
                     } else if (latest_msg == INVALID) {
                         /* message header received but message appears to be corrupted */
-                        printf("WARNING: [gps] could not get a valid message from GPS (no time)\n");
+                        ESP_LOGW(TAG, "WARNING: [gps] could not get a valid message from GPS (no time)");
                         frame_size = 0;
                     } else if (latest_msg == UBX_NAV_TIMEGPS) {
-                        printf("\n~~ UBX NAV-TIMEGPS sentence, triggering synchronization attempt ~~\n");
+                        ESP_LOGI(TAG, "~~ UBX NAV-TIMEGPS sentence, triggering synchronization attempt ~~");
                         gps_process_sync();
                     }
                 }
@@ -3012,7 +3037,7 @@ static void task_gps(void *pvParameters) {
             wr_idx -= LGW_GPS_MIN_MSG_SIZE;
         }
     }
-    MSG("\nINFO: End of GPS thread\n");
+    ESP_LOGI(TAG, "INFO: End of GPS thread");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -3040,7 +3065,7 @@ static void task_valid(void *pvParameters) {
     // strftime(log_name,sizeof log_name,"xtal_err_%Y%m%dT%H%M%SZ.csv",localtime(&now_time));
     // log_file = fopen(log_name, "w");
     // setbuf(log_file, NULL);
-    // fprintf(log_file,"\"xtal_correct\",\"XERR_INIT_AVG %u XERR_FILT_COEF %u\"\n", XERR_INIT_AVG, XERR_FILT_COEF); // DEBUG
+    // fESP_LOGI(TAG, log_file,"\"xtal_correct\",\"XERR_INIT_AVG %u XERR_FILT_COEF %u\"", XERR_INIT_AVG, XERR_FILT_COEF); // DEBUG
 
     /* main loop task */
     while (1) {
@@ -3054,7 +3079,7 @@ static void task_valid(void *pvParameters) {
             gps_ref_valid = true;
             ref_valid_local = true;
             xtal_err_cpy = time_reference_gps.xtal_err;
-            //printf("XTAL err: %.15lf (1/XTAL_err:%.15lf)\n", xtal_err_cpy, 1/xtal_err_cpy); // DEBUG
+            //ESP_LOGI(TAG, "XTAL err: %.15lf (1/XTAL_err:%.15lf)", xtal_err_cpy, 1/xtal_err_cpy); // DEBUG
         } else {
             /* time ref is too old, invalidate */
             gps_ref_valid = false;
@@ -3080,23 +3105,23 @@ static void task_valid(void *pvParameters) {
                 /* initial average calculation */
                 xSemaphoreTake(mx_xcorr, portMAX_DELAY);
                 xtal_correct = (double)(XERR_INIT_AVG) / init_acc;
-                //printf("XERR_INIT_AVG=%d, init_acc=%.15lf\n", XERR_INIT_AVG, init_acc);
+                //ESP_LOGI(TAG, "XERR_INIT_AVG=%d, init_acc=%.15lf", XERR_INIT_AVG, init_acc);
                 xtal_correct_ok = true;
                 xSemaphoreGive(mx_xcorr);
                 ++init_cpt;
-                // fprintf(log_file,"%.18lf,\"average\"\n", xtal_correct); // DEBUG
+                // fESP_LOGI(TAG, log_file,"%.18lf,\"average\"", xtal_correct); // DEBUG
             } else {
                 /* tracking with low-pass filter */
                 x = 1 / xtal_err_cpy;
                 xSemaphoreTake(mx_xcorr, portMAX_DELAY);
                 xtal_correct = xtal_correct - xtal_correct/XERR_FILT_COEF + x/XERR_FILT_COEF;
                 xSemaphoreGive(mx_xcorr);
-                // fprintf(log_file,"%.18lf,\"track\"\n", xtal_correct); // DEBUG
+                // fESP_LOGI(TAG, log_file,"%.18lf,\"track\"", xtal_correct); // DEBUG
             }
         }
-        // printf("Time ref: %s, XTAL correct: %s (%.15lf)\n", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
+        // ESP_LOGI(TAG, "Time ref: %s, XTAL correct: %s (%.15lf)", ref_valid_local?"valid":"invalid", xtal_correct_ok?"valid":"invalid", xtal_correct); // DEBUG
     }
-    MSG("\nINFO: End of validation thread\n");
+    ESP_LOGI(TAG, "INFO: End of validation thread");
 }
 
 void register_lora_pkt_fwd()

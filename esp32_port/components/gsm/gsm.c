@@ -183,8 +183,8 @@ static GSM_Cmd cmd_Update_Baudrate =
 
 static GSM_Cmd cmd_Query_Initbaudrate =
 {
-	.cmd = "AT+IPR=?\r\n",
-	.cmdSize = sizeof("AT+IPR=?\r\n")-1,
+	.cmd = "AT+IPR?\r\n",
+	.cmdSize = sizeof("AT+IPR?\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 1000,
 	.delayMs = 5000,
@@ -208,7 +208,7 @@ static GSM_Cmd *GSM_Init[] =
 		&cmd_EchoOff,
 		&cmd_RFOn,
 		&cmd_NoSMSInd,
-		//&cmd_Query_Initbaudrate,
+		&cmd_Query_Initbaudrate,
 		&cmd_Update_Baudrate,
 		//&cmd_Query_Postbaudrate
 		&cmd_Pin,

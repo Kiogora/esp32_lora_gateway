@@ -34,6 +34,7 @@
                 "/home/alois/Documents/esp-idf/esp-idf/components/esp32/include",
                 "/home/alois/Documents/esp-idf/esp-idf/components/soc/esp32/include",
                 "/home/alois/Documents/esp-idf/esp-idf/components/freertos/include",
+                "${workspaceRoot}/components/quectel_pppos/include",
                 "${workspaceRoot}/components/jitqueue/include",
                 "${workspaceRoot}/components/loragw_hal/include",
                 "${workspaceRoot}/components/loragw_reg/include",
@@ -63,7 +64,13 @@
                 "${workspaceRoot}/components/trace/include",
                 "/home/alois/Documents/esp-idf/esp-idf/components/spiffs/include",
                 "${workspaceRoot}/components/loragw_gps/include",
-                "${workspaceRoot}/components/loboris_spiffs"
+                "${workspaceRoot}/components/loboris_spiffs",
+                "/home/alois/Documents/esp-idf/esp-idf/components/tcpip_adapter/include",
+                "${workspaceRoot}/components/pppos",
+                "${workspaceRoot}/components/quectel_gsm",
+                "${workspaceRoot}/components/gsm/include",
+                "${workspaceRoot}/components/iperf",
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip/posix"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -72,7 +79,8 @@
                     "${workspaceRoot}",
                     "/home/alois/Documents/esp-idf/esp-idf/components",
                     "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/build",
-                    "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/components"
+                    "/home/alois/Documents/esp-idf/esp-idf/tools/unit-test-app/components",
+                    "{workspaceRoot}/esp32_port/components"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""

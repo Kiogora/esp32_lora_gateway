@@ -8,7 +8,7 @@ EXTRA_COMPONENT_DIRS := $(abspath main)
 endif
 
 #Override component_dirs in project.mk
-COMPONENT_DIRS := $(abspath components) $(EXTRA_COMPONENT_DIRS) $(IDF_PATH)/components
+COMPONENT_DIRS := $(abspath components) $(EXTRA_COMPONENT_DIRS) $(IDF_PATH)/components $(IDF_PATH)/components/quectel_gsm
 
 include $(IDF_PATH)/make/project.mk
 

@@ -8,8 +8,8 @@
 */
 #pragma once
 
-//Register util pkt logger test
-void register_util_pkt_logger();
+//Register spi stress functions
+void register_spi_stress();
 
 //Register LoRagw_cal functions
 void register_loragw_cal();
@@ -17,17 +17,20 @@ void register_loragw_cal();
 //Register LoRagw_hal functions
 void register_loragw_hal();
 
-//Register spi stress functions
-void register_spi_stress();
-
-//Register LoRagw_lbt functions
-void register_loragw_lbt();
-
 //Register LoRagw_tx continuous functions
 void register_tx_continuous();
 
 //Register parson Json parser test
 void register_parson_test();
 
+//Register util pkt logger test
+void register_util_pkt_logger();
+
+//Register network tests
+void register_network_tests();
+
 //Register parson Json parser test
 void register_lora_pkt_fwd();
+
+//Register LoRagw_lbt functions
+void register_loragw_lbt();

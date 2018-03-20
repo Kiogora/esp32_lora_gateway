@@ -17,6 +17,8 @@ Maintainer: Michael Coracin
 #ifndef _LORA_PKTFWD_TRACE_H
 #define _LORA_PKTFWD_TRACE_H
 
+#include "esp_log.h"
+
 #define DEBUG_PKT_FWD   0
 #define DEBUG_JIT       0
 #define DEBUG_JIT_ERROR 1
@@ -28,7 +30,7 @@ Maintainer: Michael Coracin
 #define MSG_DEBUG(FLAG, fmt, ...)                                                                         \
             do  {                                                                                         \
                 if (FLAG)                                                                                 \
-                    fprintf(stdout, "%s:%d:%s(): " fmt, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+                    printf("%s:%d:%s(): " fmt, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
             } while (0)
 
 

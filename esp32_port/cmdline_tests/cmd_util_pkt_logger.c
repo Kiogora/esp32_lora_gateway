@@ -107,7 +107,10 @@ without any consequence for the program execution.
 
 #include "parson.h"
 #include "loragw_hal.h"
+#include "unity.h"
 #include "loragw_aux.h"
+#include "gsm.h"
+
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

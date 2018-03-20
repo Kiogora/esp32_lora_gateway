@@ -43,7 +43,7 @@ Maintainer: Sylvain Miermont
 #include "common.h"
 
 
-static const char* TAG = "[LORAGW_HAL]:";
+static const char* TAG = "[LORAGW_HAL]";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -535,7 +535,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf)
     rf_tx_enable[rf_chain] = conf.tx_enable;
     rf_tx_notch_freq[rf_chain] = conf.tx_notch_freq;
 
-    ESP_LOGD(TAG, "NOTE: RF_CHAIN %D CONFIGURATION; EN:%d FREQ:%d RSSI_OFFSET:%f RADIO_TYPE:%d TX_ENABLE:%d TX_NOTCH_FREQ:%u", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
+    //ESP_LOGD(TAG, "NOTE: RF_CHAIN %D CONFIGURATION; EN:%d FREQ:%d RSSI_OFFSET:%f RADIO_TYPE:%d TX_ENABLE:%d TX_NOTCH_FREQ:%u", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
 
     return LGW_HAL_SUCCESS;
 }

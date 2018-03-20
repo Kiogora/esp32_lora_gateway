@@ -25,7 +25,7 @@ Modified for ESP32 by: Alois Mbutura
 
 #include "base64.h"
 
-static const char* TAG = "[BASE64]:";
+static const char* TAG = "[BASE64]";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */

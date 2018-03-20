@@ -42,7 +42,7 @@ Modified for ESP32 by: Alois Mbutura.
 #include "loragw_reg.h"
 #include "loragw_fpga.h"
 
-static const char* TAG = "[LORAGW_REG]:";
+static const char* TAG = "[LORAGW_REG]";
 
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))

@@ -106,14 +106,24 @@ void app_main()
 
     /* Register commands */
     esp_console_register_help_command();
-    register_util_pkt_logger();
-    register_loragw_hal();
-    register_loragw_cal();
+    //Register spi stress functions
     register_spi_stress();
-    register_loragw_lbt();
+    //Register LoRagw_cal functions
+    register_loragw_cal();
+    //Register LoRagw_hal functions
+    register_loragw_hal();
+    //Register LoRagw_tx continuous functions
     register_tx_continuous();
+    //Register parson Json parser test
     register_parson_test();
+    //Register util pkt logger test
+    register_util_pkt_logger();
+    //Register network tests
+    register_network_tests();
+    //Register parson Json parser test
     register_lora_pkt_fwd();
+    //Register LoRagw_lbt functions
+    register_loragw_lbt();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

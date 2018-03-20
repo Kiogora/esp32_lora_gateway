@@ -31,7 +31,7 @@ Modified for ESP32 by: Alois Mbutura.
 #include "loragw_spi.h"
 #include "loragw_hal.h"
 
-static const char* TAG = "[LORAGW_SPI]:";
+static const char* TAG = "[LORAGW_SPI]";
 
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80

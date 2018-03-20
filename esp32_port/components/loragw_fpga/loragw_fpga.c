@@ -14,6 +14,7 @@ Description:
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Michael Coracin
+Modified for ESP32 by: Alois Mbutura
 */
 
 /* -------------------------------------------------------------------------- */
@@ -43,7 +44,7 @@ Maintainer: Michael Coracin
 #include "loragw_reg.h"
 #include "loragw_fpga.h"
 
-static const char* TAG = "[LORAGW_FPGA]:";
+static const char* TAG = "[LORAGW_FPGA]";
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
