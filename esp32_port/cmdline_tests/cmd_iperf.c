@@ -9,6 +9,7 @@
 
 /*Remove AP mode and leave station mode and GSM connection only*/
 
+#include <sdkconfig.h>
 #include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
@@ -28,6 +29,9 @@
 #include "lwip/pppapi.h"
 
 #include "iperf.h"
+
+#define WIFI_AP_SSID CONFIG_AP_SSID
+#define WIFI_AP_PASSPHRASE CONFIG_AP_PASSPHRASE
 
 typedef struct {
     struct arg_str *ip;
@@ -276,6 +280,8 @@ static int network_cmd_iperf(int argc, char** argv)
     }
 
     iperf_start(&cfg);
+
+    
     
     return 0;
 }
@@ -288,8 +294,8 @@ static int restart(int argc, char** argv)
  
 void register_network_tests()
 {
-    sta_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
-    sta_args.password = arg_str0(NULL, NULL, "<pass>", "password of AP");
+    sta_args.ssid = arg_str1(NULL, NULL, WIFI_AP_SSID, "SSID of AP");
+    sta_args.password = arg_str0(NULL, NULL, WIFI_AP_PASSPHRASE, "password of AP");
     sta_args.end = arg_end(2);
 
     const esp_console_cmd_t sta_cmd = {
@@ -301,10 +307,6 @@ void register_network_tests()
     };
 
     ESP_ERROR_CHECK( esp_console_cmd_register(&sta_cmd) );
-
-    ap_args.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
-    ap_args.password = arg_str0(NULL, NULL, "<pass>", "password of AP");
-    ap_args.end = arg_end(2);
 
     const esp_console_cmd_t query_cmd = {
         .command = "query",
