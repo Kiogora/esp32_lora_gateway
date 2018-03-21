@@ -4,7 +4,7 @@
 #include "lwip/inet.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/dns.h"
-#include "lwipopts.h"
+#include "lwip/opt.h"
 #include "ping.h"
 #include "esp_err.h"
 #include "esp_ping.h"
@@ -41,7 +41,7 @@ void register_ping();
 
 esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pf){
     if (total_counts <= ping_count) {
-        ESP_LOGI(TAG, "%d bytes from %s: icmp_seq=%d ttl=254 time=%d ms", pf->bytes, addr, pf->send_count, pf->resp_time);
+        ESP_LOGI(TAG, "%d bytes from %s: icmp_seq=%d ttl=%d time=%d ms", pf->bytes, addr, pf->send_count, IP_DEFAULT_TTL, pf->resp_time);
         waiting_results = 0;
         total_counts += 1;
         /*Calculate running square*/
@@ -120,7 +120,6 @@ int ping_test(int argc, char **argv)
 
     while(total_counts <= ping_count)
     {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
         if(!waiting_results)
         {
             esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
