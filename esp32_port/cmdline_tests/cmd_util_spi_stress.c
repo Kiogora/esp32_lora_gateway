@@ -31,14 +31,14 @@ Maintainer: Sylvain Miermont
 
 #include "loragw_reg.h"
 
+static const char* TAG = "[UTIL_SPI_STRESS]";
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define NB_STRESS_MAX 3000
 
 #define ARRAY_SIZE(a)    (sizeof(a) / sizeof((a)[0]))
-
-#define MSG(args...)    fprintf(stderr, args) /* message that is destined to the user */
 
 #define SPI_SPEED 10000000
 /* -------------------------------------------------------------------------- */
@@ -61,7 +61,6 @@ static struct
 int util_spi_stress(int argc, char **argv)
 {
     int i;
-    int xi = 0;
 
     /* application option */
     int test_number = 1;
@@ -88,7 +87,7 @@ int util_spi_stress(int argc, char **argv)
 
     if ((spi_stress_args.t->count != 1) || (spi_stress_args.t->ival[0] < 1) || (spi_stress_args.t->ival[0] > 4))
     {
-        MSG("ERROR: invalid test number\n");
+        ESP_LOGE(TAG, "ERROR: invalid test number\n");
         return EXIT_FAILURE;
     }
     else
@@ -98,7 +97,7 @@ int util_spi_stress(int argc, char **argv)
     
     if(spi_stress_args.n->count != 1 ||((unsigned int)(spi_stress_args.n->ival[0]) < 1))
     {
-        printf("ERROR: invalid number of R/W cycles (MIN 1)\n");
+        ESP_LOGE(TAG, "ERROR: invalid number of R/W cycles (MIN 1)");
         return 1;
     }
     else
@@ -107,21 +106,21 @@ int util_spi_stress(int argc, char **argv)
 
         if(target_cycles>NB_STRESS_MAX)
         {
-            printf("Setting up infinite R/W test for long operation tests, usually ~24hrs");
+            ESP_LOGI(TAG, "Setting up infinite R/W test for long operation tests, usually ~24hrs");
         }
         else
         {
-            printf("Setting up a test to run for %d R/W cycles", target_cycles);
+            ESP_LOGI(TAG, "Setting up a test to run for %d R/W cycles", target_cycles);
         }
     }
 
-    MSG("INFO: Starting LoRa concentrator SPI stress-test number %i\n", test_number);
+    ESP_LOGI(TAG, "INFO: Starting LoRa concentrator SPI stress-test number %i", test_number);
 
     /* start SPI link */
     i = lgw_connect(false, DEFAULT_TX_NOTCH_FREQ, SPI_SPEED);
     if (i != LGW_REG_SUCCESS)
     {
-        MSG("ERROR: lgw_connect() did not return SUCCESS");
+        ESP_LOGE(TAG, "ERROR: lgw_connect() did not return SUCCESS");
         return EXIT_FAILURE;
     }
 
@@ -130,7 +129,7 @@ int util_spi_stress(int argc, char **argv)
         /* single 8b register R/W stress test */
         while (target_cycles>NB_STRESS_MAX ? 1:(cycle_number<target_cycles))
         {
-            printf("Cycle %i > ", cycle_number);
+            ESP_LOGI(TAG, "Cycle %i > ", cycle_number);
             for (i=0; i<repeats_per_cycle; ++i) 
             {
                 test_value = (rand() % 256);
@@ -144,20 +143,19 @@ int util_spi_stress(int argc, char **argv)
             }
             if (error)
             {
-                printf("error during the %ith iteration: write 0x%02X, read 0x%02X\n", i+1, test_value, read_value);
-                printf("Repeat read of target register:");
+                ESP_LOGE(TAG, "error during the %ith iteration: write 0x%02X, read 0x%02X\n", i+1, test_value, read_value);
+                ESP_LOGE(TAG, "Repeat read of target register:");
                 for (i=0; i<READS_WHEN_ERROR; ++i)
                 {
                     lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
-                    printf(" 0x%02X", read_value);
+                    ESP_LOGE(TAG, " 0x%02X", read_value);
                 }
-                printf("\n");
                 lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
             {
-                printf("did %i R/W on an 8 bits reg with no error\n", repeats_per_cycle);
+                ESP_LOGI(TAG, "Did %i R/W on an 8 bits reg with no error", repeats_per_cycle);
                 ++cycle_number;
             }
         }
@@ -167,7 +165,7 @@ int util_spi_stress(int argc, char **argv)
         /* single 8b register R/W with interstitial VERSION check stress test */
         while (target_cycles>NB_STRESS_MAX ? 1:(cycle_number<target_cycles))
         {
-            printf("Cycle %i > ", cycle_number);
+            ESP_LOGI(TAG, "Cycle %i > ", cycle_number);
             for (i=0; i<repeats_per_cycle; ++i)
             {
                 test_value = (rand() % 256);
@@ -184,20 +182,19 @@ int util_spi_stress(int argc, char **argv)
             }
             if (error)
             {
-                printf("error during the %ith iteration: write %02X, read %02X, version (%i, %i, %i)\n", i+1, test_value, read_value, rb1, rb2, rb3);
-                printf("Repeat read of target register:");
+                ESP_LOGE(TAG, "error during the %ith iteration: write %02X, read %02X, version (%i, %i, %i)\n", i+1, test_value, read_value, rb1, rb2, rb3);
+                ESP_LOGE(TAG, "Repeat read of target register:");
                 for (i=0; i<READS_WHEN_ERROR; ++i)
                 {
                     lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
-                    printf(" 0x%02X", read_value);
+                    ESP_LOGE(TAG, " 0x%02X", read_value);
                 }
-                printf("\n");
                 lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
             {
-                printf("did %i R/W on an 8 bits reg with no error\n", repeats_per_cycle);
+                ESP_LOGI(TAG, "Did %i R/W on an 8 bits reg with no error", repeats_per_cycle);
                 ++cycle_number;
             }
         }
@@ -207,7 +204,7 @@ int util_spi_stress(int argc, char **argv)
         /* 32b register R/W stress test */
         while (target_cycles>NB_STRESS_MAX ? 1:(cycle_number<target_cycles))
         {
-            printf("Cycle %i > ", cycle_number);
+            ESP_LOGI(TAG, "Cycle %i > ", cycle_number);
             for (i=0; i<repeats_per_cycle; ++i)
             {
                 test_value = (rand() & 0x0000FFFF);
@@ -222,20 +219,19 @@ int util_spi_stress(int argc, char **argv)
             }
             if (error)
             {
-                printf("error during the %ith iteration: write 0x%08X, read 0x%08X\n", i+1, test_value, read_value);
-                printf("Repeat read of target register:");
+                ESP_LOGE(TAG, "error during the %ith iteration: write 0x%08X, read 0x%08X", i+1, test_value, read_value);
+                ESP_LOGE(TAG, "Repeat read of target register:");
                 for (i=0; i<READS_WHEN_ERROR; ++i)
                 {
                     lgw_reg_r(LGW_FSK_REF_PATTERN_LSB, &read_value);
-                    printf(" 0x%08X", read_value);
+                    ESP_LOGE(TAG, " 0x%08X", read_value);
                 }
-                printf("\n");
                 lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
             {
-                printf("did %i R/W on a 32 bits reg with no error\n", repeats_per_cycle);
+                ESP_LOGI(TAG,"Did %i R/W on a 32 bits reg with no error", repeats_per_cycle);
                 ++cycle_number;
             }
         }
@@ -249,7 +245,7 @@ int util_spi_stress(int argc, char **argv)
             {
                 test_buff[i] = rand() & 0xFF;
             }
-            printf("Cycle %i > ", cycle_number);
+            ESP_LOGI(TAG, "Cycle %i > ", cycle_number);
             test_addr = rand() & 0xFFFF;
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* write at random offset in memory */
             lgw_reg_wb(LGW_RX_DATA_BUF_DATA, test_buff, BUFF_SIZE);
@@ -258,43 +254,51 @@ int util_spi_stress(int argc, char **argv)
             for (i=0; ((i<BUFF_SIZE) && (test_buff[i] == read_buff[i])); ++i);
             if (i != BUFF_SIZE)
             {
-                printf("error during the buffer comparison\n");
-                printf("Written values:\n");
+                ESP_LOGI(TAG, "error during the buffer comparison\n");
+                ESP_LOGI(TAG, "Written values:\n");
+                ESP_LOG_BUFFER_HEX(TAG, test_buff, BUFF_SIZE);
+                /*
                 for (i=0; i<BUFF_SIZE; ++i)
                 {
-                    printf(" %02X ", test_buff[i]);
-                    if (i%16 == 15) printf("\n");
+                    print(TAG, " %02X ", test_buff[i]);
+                    if (i%16 == 15) ESP_LOGI(TAG"\n");
                 }
-                printf("\n");
-                printf("Read values:\n");
+                */
+                ESP_LOGI(TAG, "Read values:");
+                ESP_LOG_BUFFER_HEX(TAG, read_buff, BUFF_SIZE);
+                /*
                 for (i=0; i<BUFF_SIZE; ++i)
                 {
-                    printf(" %02X ", read_buff[i]);
-                    if (i%16 == 15) printf("\n");
+                    ESP_LOGI(TAG" %02X ", read_buff[i]);
+                    if (i%16 == 15) ESP_LOGI(TAG"\n");
                 }
-                printf("\n");
+                ESP_LOGI(TAG"\n");
+                */
                 lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
                 lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, BUFF_SIZE);
-                printf("Re-read values:\n");
+                ESP_LOGI(TAG, "Re-read values:");
+                ESP_LOG_BUFFER_HEX(TAG, read_buff, BUFF_SIZE);
+                /*
                 for (i=0; i<BUFF_SIZE; ++i)
                 {
-                    printf(" %02X ", read_buff[i]);
-                    if (i%16 == 15) printf("\n");
+                    ESP_LOGI(TAG" %02X ", read_buff[i]);
+                    if (i%16 == 15) ESP_LOGI(TAG"\n");
                 }
-                printf("\n");
+                ESP_LOGI(TAG"\n");
+                */
                 lgw_disconnect();
                 return EXIT_FAILURE;
             }
             else
             {
-                printf("did a %i-byte R/W on a data buffer with no error\n", BUFF_SIZE);
+                ESP_LOGI(TAG, "Did a %i-byte R/W on a data buffer with no error", BUFF_SIZE);
                 ++cycle_number;
             }
         }
     }
     else
     {
-        MSG("ERROR: invalid test number");
+        ESP_LOGE(TAG, "ERROR: invalid test number");
         lgw_disconnect();
         return -1;
     }
@@ -303,18 +307,18 @@ int util_spi_stress(int argc, char **argv)
     i = lgw_disconnect();
     if (i != LGW_REG_SUCCESS)
     {
-        MSG("ERROR: lgw_disconnect() did not return SUCCESS");
+        ESP_LOGE(TAG, "ERROR: lgw_disconnect() did not return SUCCESS");
         return EXIT_FAILURE;
     }
 
-    MSG("INFO: Exiting LoRa concentrator SPI stress-test program\n");
+    ESP_LOGI(TAG, "INFO: Exiting LoRa concentrator SPI stress-test program\n");
     return EXIT_SUCCESS;
 }
 
 void register_spi_stress()
 {
-    spi_stress_args.t = arg_int1("t", NULL, "<T>", "<int> specify which test you want to run (1-4)");
-    spi_stress_args.n = arg_int1("n", NULL, "<N>", "<int> specify read write cycles to perform, max 3000");
+    spi_stress_args.t = arg_int1("t", NULL, "4", "<int> specify which test you want to run (1-4)");
+    spi_stress_args.n = arg_int1("n", NULL, "2500", "<int> specify read write cycles to perform, max 3000, beyond 3000 => infinite");
     spi_stress_args.end = arg_end(1);
 
     const esp_console_cmd_t util_spi_stress_cmd=
