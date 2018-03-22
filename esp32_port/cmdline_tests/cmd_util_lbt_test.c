@@ -38,7 +38,6 @@ Maintainer: Michael Coracinlibloragw/install_ftdi.txt
 /* --- PRIVATE MACROS & CONSTANTS ------------------------------------------- */
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
-#define MSG(args...)    fprintf(stderr, args) /* message that is destined to the user */
 
 #define SPI_SPEED 8000000
 
@@ -52,6 +51,8 @@ static struct
     struct arg_int *s;
     struct arg_end *end;
 } loragw_lbt_args;
+
+static const char* TAG = "[UTIL_LBT]";
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
@@ -85,7 +86,7 @@ int loragw_lbt_test(int argc, char **argv)
     i=loragw_lbt_args.f ->count;
     if ((i != 1) || (f1 < 30.0) || (f1 > 3000.0))
     {
-        MSG("ERROR: Invalid LBT start frequency\n");
+        ESP_LOGE(TAG, "ERROR: Invalid LBT start frequency");
         return EXIT_FAILURE;
     }
     else
@@ -97,7 +98,7 @@ int loragw_lbt_test(int argc, char **argv)
     i=loragw_lbt_args.s ->count;
     if ((i != 1) || ((xi != 128) && (xi != 5000)))
     {
-        MSG("ERROR: scan_time_us must be 128 or 5000 \n");
+        ESP_LOGE(TAG, "ERROR: scan_time_us must be 128 or 5000 ");
         return EXIT_FAILURE;
     }
     else
@@ -108,7 +109,7 @@ int loragw_lbt_test(int argc, char **argv)
     xi=loragw_lbt_args.r ->ival[0];
     i=loragw_lbt_args.r ->count;
     if ((i != 1) || ((xi < -128) && (xi > 0))) {
-        MSG("ERROR: rssi_target must be b/w -128 & 0 \n");
+        ESP_LOGE(TAG, "ERROR: rssi_target must be b/w -128 & 0 ");
         return EXIT_FAILURE;
     }
     else {
@@ -118,7 +119,7 @@ int loragw_lbt_test(int argc, char **argv)
     xi=loragw_lbt_args.o ->ival[0];
     i=loragw_lbt_args.o ->count;
     if((i != 1) || (xi < -128) || (xi > 127)) {
-        MSG("ERROR: rssi_offset must be b/w -128 & 127\n");
+        ESP_LOGE(TAG, "ERROR: rssi_offset must be b/w -128 & 127");
         return EXIT_FAILURE;
     }
     else
@@ -126,13 +127,13 @@ int loragw_lbt_test(int argc, char **argv)
         rssi_offset = (int8_t)xi;
     }
 
-    MSG("INFO: Starting LoRa Gateway v1.5 LBT test\n");
+    ESP_LOGI(TAG, "INFO: Starting LoRa Gateway v1.5 LBT test");
 
     /* Connect to concentrator */
     i = lgw_connect(false, LGW_DEFAULT_NOTCH_FREQ, SPI_SPEED);
     if (i != LGW_REG_SUCCESS)
     {
-        MSG("ERROR: lgw_connect() did not return SUCCESS\n");
+        ESP_LOGE(TAG, "ERROR: lgw_connect() did not return SUCCESS");
         return EXIT_FAILURE;
     }
 
@@ -141,7 +142,7 @@ int loragw_lbt_test(int argc, char **argv)
     lgw_fpga_reg_r(LGW_FPGA_FEATURE, &val);
     if (TAKE_N_BITS_FROM((uint8_t)val, 2, 1) != true)
     {
-        MSG("ERROR: LBT is not supported (0x%x)\n", (uint8_t)val);
+        ESP_LOGE(TAG, "ERROR: LBT is not supported (0x%x)", (uint8_t)val);
         lgw_disconnect();
         return EXIT_FAILURE;
     }
@@ -157,7 +158,7 @@ int loragw_lbt_test(int argc, char **argv)
             f_init = 863000000;
             break;
         default:
-            MSG("ERROR: LBT start frequency %d is not supported\n", val);
+            ESP_LOGE(TAG, "ERROR: LBT start frequency %d is not supported", val);
             lgw_disconnect();
             return EXIT_FAILURE;
     }
@@ -169,18 +170,18 @@ int loragw_lbt_test(int argc, char **argv)
     }
     else if (f_start < f_init)
     {
-        MSG("ERROR: LBT start frequency %u is not supported (f_init=%u)\n", f_start, f_init);
+        ESP_LOGE(TAG, "ERROR: LBT start frequency %u is not supported (f_init=%u)", f_start, f_init);
         lgw_disconnect();
         return EXIT_FAILURE;
     }
-    MSG("FREQ: %u\n", f_start);
+    ESP_LOGE(TAG, "FREQ: %u", f_start);
 
     /* Configure SX127x and read few RSSI points */
     lgw_setup_sx127x(f_init, MOD_FSK, LGW_SX127X_RXBW_100K_HZ, rssi_offset); /* 200KHz LBT channels */
     for (i = 0; i < 100; i++)
     {
         lgw_sx127x_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
-        MSG("SX127x RSSI:%i dBm\n", -(rssi_value/2));
+        ESP_LOGI(TAG, "SX127x RSSI:%i dBm", -(rssi_value/2));
         wait_ms(10);
     }
 
@@ -196,10 +197,10 @@ int loragw_lbt_test(int argc, char **argv)
     }
 
     lgw_fpga_reg_r(LGW_FPGA_RSSI_TARGET, &val);
-    MSG("RSSI_TARGET = %d\n", val);
+    ESP_LOGI(TAG, "RSSI_TARGET = %d", val);
     if (val != (-2*rssi_target_dBm))
     {
-        MSG("ERROR: failed to read back RSSI target register value\n");
+        ESP_LOGE(TAG, "ERROR: failed to read back RSSI target register value");
         lgw_disconnect();
         return EXIT_FAILURE;
     }
@@ -207,10 +208,10 @@ int loragw_lbt_test(int argc, char **argv)
     {
         lgw_fpga_reg_r(LGW_FPGA_LBT_CH0_FREQ_OFFSET+i, &val);
         lgw_fpga_reg_r(LGW_FPGA_LBT_SCAN_TIME_CH0+i, &val2);
-        MSG("CH_%i: freq=%u (offset=%i), scan_time=%u (%i)\n", i, (uint32_t)((val*100E3)+f_init), val, (val2==1)?5000:128, val2);
+        ESP_LOGI(TAG, "CH_%i: freq=%u (offset=%i), scan_time=%u (%i)", i, (uint32_t)((val*100E3)+f_init), val, (val2==1)?5000:128, val2);
     }
     lgw_fpga_reg_r(LGW_FPGA_VERSION, &val);
-    MSG("FPGA VERSION = %d\n", val);
+    ESP_LOGI(TAG, "FPGA VERSION = %d", val);
 
     /* Enable LBT FSM */
     lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
@@ -218,7 +219,7 @@ int loragw_lbt_test(int argc, char **argv)
     /* Start test */
     while (1)
     {
-        MSG("~~~~\n");
+        ESP_LOGE(TAG, "~~~~");
         for (channel = 0; channel < LBT_CHANNEL_FREQ_NB; channel++)
         {
             /* Select LBT channel */
@@ -227,7 +228,7 @@ int loragw_lbt_test(int argc, char **argv)
             /* Get last instant when the selected channel was free */
             lgw_fpga_reg_r(LGW_FPGA_LBT_TIMESTAMP_CH, &val);
             timestamp = (uint32_t)(val & 0x0000FFFF) * 256; /* 16bits (1LSB = 256µs) */
-            MSG(" TIMESTAMP_CH%u = %u\n", channel, timestamp);
+            ESP_LOGI(TAG, " TIMESTAMP_CH%u = %u", channel, timestamp);
         }
 
         loop_cnt += 1;
@@ -238,11 +239,11 @@ int loragw_lbt_test(int argc, char **argv)
     i = lgw_disconnect();
     if (i != LGW_REG_SUCCESS)
     {
-        MSG("ERROR: lgw_disconnect() did not return SUCCESS\n");
+        ESP_LOGE(TAG, "ERROR: lgw_disconnect() did not return SUCCESS");
         return EXIT_FAILURE;
     }
 
-    MSG("INFO: Exiting LoRa Gateway v1.5 LBT test successfully\n");
+    ESP_LOGE(TAG, "INFO: Exiting LoRa Gateway v1.5 LBT test successfully");
     return EXIT_SUCCESS;
 }
 

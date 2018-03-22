@@ -82,7 +82,7 @@ struct cal_res_s
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-static char* TAG = "[LORAGW_CAL]"; 
+static char* TAG = "[UTIL_LORAGW_CAL]"; 
 
 static uint8_t sx125x_cal(uint8_t cal_cmd, struct cal_res_s *cal_res);
 

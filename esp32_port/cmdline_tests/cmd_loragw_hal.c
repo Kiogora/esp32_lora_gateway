@@ -28,6 +28,8 @@
 #define DEFAULT_RSSI_OFFSET 0.0
 #define DEFAULT_NOTCH_FREQ 129000U
 
+static const char* TAG = "[UTIL_LORAGW_HAL]";
+
 /** Arguments**/
 static struct
 {
@@ -68,7 +70,7 @@ static int loragw_hal_test(int argc, char** argv)
         {
             if(loragw_hal_args.k->count == 0)
             {
-                printf("Using default value for option k\n");
+                ESP_LOGI(TAG, "Using default value for option k");
             }
             else
             {
@@ -110,9 +112,9 @@ static int loragw_hal_test(int argc, char** argv)
         return -1;
     }
     /* beginning of LoRa concentrator-specific code */
-    printf("Beginning of test for loragw_hal.c\n");
+    ESP_LOGI(TAG, "Beginning of test for loragw_hal.c");
 
-    printf("*** Library version information ***\n%s\n\n", lgw_version_info());
+    ESP_LOGI(TAG, "*** Library version information ***%s", lgw_version_info());
 
     /* set configuration for board */
     memset(&boardconf, 0, sizeof(boardconf));
@@ -239,11 +241,11 @@ static int loragw_hal_test(int argc, char** argv)
     i = lgw_start(SPI_SPEED);
     if (i == LGW_HAL_SUCCESS) 
     {
-        printf("*** Concentrator started ***\n");
+        ESP_LOGI(TAG, "*** Concentrator started ***");
     } 
     else 
     {
-        printf("*** Impossible to start concentrator ***\n");
+        ESP_LOGE(TAG, "*** Impossible to start concentrator ***");
         return -1;
     }
 
@@ -272,65 +274,62 @@ static int loragw_hal_test(int argc, char** argv)
             for(i=0; i < nb_pkt; ++i)
             {
                 p = &rxpkt[i];
-                printf("---\nRcv pkt #%d >>", i+1);
+                ESP_LOGI(TAG, "---Rcv pkt #%d >>", i+1);
                 if (p->status == STAT_CRC_OK)
                 {
-                    printf(" if_chain:%2d", p->if_chain);
-                    printf(" tstamp:%010u", p->count_us);
-                    printf(" size:%3u", p->size);
+                    ESP_LOGI(TAG, " if_chain:%2d", p->if_chain);
+                    ESP_LOGI(TAG, " tstamp:%010u", p->count_us);
+                    ESP_LOGI(TAG, " size:%3u", p->size);
                     switch (p-> modulation)
                     {
-                        case MOD_LORA: printf(" LoRa"); break;
-                        case MOD_FSK: printf(" FSK"); break;
-                        default: printf(" modulation?");
+                        case MOD_LORA: ESP_LOGI(TAG, " LoRa"); break;
+                        case MOD_FSK: ESP_LOGI(TAG, " FSK"); break;
+                        default: ESP_LOGE(TAG, " modulation?");
                     }
                     switch (p->datarate)
                     {
-                        case DR_LORA_SF7: printf(" SF7"); break;
-                        case DR_LORA_SF8: printf(" SF8"); break;
-                        case DR_LORA_SF9: printf(" SF9"); break;
-                        case DR_LORA_SF10: printf(" SF10"); break;
-                        case DR_LORA_SF11: printf(" SF11"); break;
-                        case DR_LORA_SF12: printf(" SF12"); break;
-                        default: printf(" datarate?");
+                        case DR_LORA_SF7: ESP_LOGI(TAG, " SF7"); break;
+                        case DR_LORA_SF8: ESP_LOGI(TAG, " SF8"); break;
+                        case DR_LORA_SF9: ESP_LOGI(TAG, " SF9"); break;
+                        case DR_LORA_SF10: ESP_LOGI(TAG, " SF10"); break;
+                        case DR_LORA_SF11: ESP_LOGI(TAG, " SF11"); break;
+                        case DR_LORA_SF12: ESP_LOGI(TAG, " SF12"); break;
+                        default: ESP_LOGE(TAG, " datarate?");
                     }
                     switch (p->coderate)
                     {
-                        case CR_LORA_4_5: printf(" CR1(4/5)"); break;
-                        case CR_LORA_4_6: printf(" CR2(2/3)"); break;
-                        case CR_LORA_4_7: printf(" CR3(4/7)"); break;
-                        case CR_LORA_4_8: printf(" CR4(1/2)"); break;
-                        default: printf(" coderate?");
+                        case CR_LORA_4_5: ESP_LOGI(TAG, " CR1(4/5)"); break;
+                        case CR_LORA_4_6: ESP_LOGI(TAG, " CR2(2/3)"); break;
+                        case CR_LORA_4_7: ESP_LOGI(TAG, " CR3(4/7)"); break;
+                        case CR_LORA_4_8: ESP_LOGI(TAG, " CR4(1/2)"); break;
+                        default: ESP_LOGE(TAG, " coderate?");
                     }
-                    printf("\n");
-                    printf(" RSSI:%+6.1f SNR:%+5.1f (min:%+5.1f, max:%+5.1f) payload:\n", p->rssi, p->snr, p->snr_min, p->snr_max);
+                    ESP_LOGI(TAG, "");
+                    ESP_LOGI(TAG, " RSSI:%+6.1f SNR:%+5.1f (min:%+5.1f, max:%+5.1f) payload:", p->rssi, p->snr, p->snr_min, p->snr_max);
 
-                    for (j = 0; j < p->size; ++j)
-                    {
-                        printf(" %02X", p->payload[j]);
-                    }
-                    printf(" #\n");
+                    ESP_LOG_BUFFER_HEX(TAG, p->payload, p->size);
+                    ESP_LOGI(TAG, " #");
                 }
                 else if (p->status == STAT_CRC_BAD)
                 {
-                    printf(" if_chain:%2d", p->if_chain);
-                    printf(" tstamp:%010u", p->count_us);
-                    printf(" size:%3u\n", p->size);
-                    printf(" CRC error, damaged packet\n\n");
+                    ESP_LOGI(TAG, " if_chain:%2d", p->if_chain);
+                    ESP_LOGI(TAG, " tstamp:%010u", p->count_us);
+                    ESP_LOGI(TAG, " size:%3u", p->size);
+                    ESP_LOGE(TAG, " CRC error, damaged packet");
                 }
                 else if (p->status == STAT_NO_CRC)
                 {
-                    printf(" if_chain:%2d", p->if_chain);
-                    printf(" tstamp:%010u", p->count_us);
-                    printf(" size:%3u\n", p->size);
-                    printf(" no CRC\n\n");
+                    ESP_LOGI(TAG, " if_chain:%2d", p->if_chain);
+                    ESP_LOGI(TAG, " tstamp:%010u", p->count_us);
+                    ESP_LOGI(TAG, " size:%3u", p->size);
+                    ESP_LOGE(TAG, " no CRC");
                 }
                 else
                 {
-                    printf(" if_chain:%2d", p->if_chain);
-                    printf(" tstamp:%010u", p->count_us);
-                    printf(" size:%3u\n", p->size);
-                    printf(" invalid status ?!?\n\n");
+                    ESP_LOGI(TAG, " if_chain:%2d", p->if_chain);
+                    ESP_LOGI(TAG, " tstamp:%010u", p->count_us);
+                    ESP_LOGI(TAG, " size:%3u", p->size);
+                    ESP_LOGE(TAG, " invalid status ?!?");
                 }
             }
         }
@@ -345,21 +344,21 @@ static int loragw_hal_test(int argc, char** argv)
             txpkt.payload[19] = 0xff & tx_cnt;
             i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
             j = 0;
-            printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
+            ESP_LOGI(TAG, "+++Sending packet #%d, rf path %d, return %dstatus -> ", tx_cnt, txpkt.rf_chain, i);
             do
             {
                 ++j;
                 wait_ms(100);
                 lgw_status(TX_STATUS, &status_var); /* get TX status */
-                printf("%d:", status_var);
+                ESP_LOGI(TAG, "%d:", status_var);
             }
             while ((status_var != TX_FREE) && (j < 100));
             ++tx_cnt;
-            printf("\nTX finished\n");
+            ESP_LOGI(TAG, "TX finished");
         }
     }
     lgw_stop();
-    printf("\nEnd of test for loragw_hal.c\n");
+    ESP_LOGI(TAG, "End of test for loragw_hal.c");
     return 0;
 }
 

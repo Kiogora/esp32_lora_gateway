@@ -14,7 +14,7 @@
 #include "argtable3/argtable3.h"
 #include "cmd_decl.h"
 
-static const char* TAG = "[PING]";
+static const char* TAG = "[UTIL_PING]";
 
 static struct 
 {
@@ -56,7 +56,8 @@ esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pf){
         mdev=sqrt(sum2 - (avg * avg));
         ESP_LOGI(TAG, "--- %s ping statistics ---", addr);
         ESP_LOGI(TAG, "%d packets transmitted, %d received, %.1f%% packet loss, time %dms", pf->send_count, pf->recv_count,(float)(((pf->send_count-pf->recv_count)/pf->send_count)*100), pf->total_time);
-        ESP_LOGI(TAG, "rtt min/avg/max/mdev = %d/%.1lf/%d/%.1lf", pf->min_time, (float)avg, pf->max_time, mdev); 
+        ESP_LOGI(TAG, "rtt min/avg/max/mdev = %d/%.1lf/%d/%.1lf", pf->min_time, (float)avg, pf->max_time, mdev);
+        waiting_results = 0;
     }
     return ESP_OK;
 }

@@ -37,8 +37,6 @@ Maintainer: Michael Coracin
 #include "loragw_gps.h"
 #include "loragw_reg.h"
 
-char* TAG = "[LORAGW_GPS]:"
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -60,7 +58,7 @@ char* TAG = "[LORAGW_GPS]:"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
+static const char* TAG = "[LORAGW_GPS]";
 /* result of the NMEA parsing */
 ;static short gps_yea = 0; /* year (2 or 4 digits) */
 static short gps_mon = 0; /* month (1-12) */

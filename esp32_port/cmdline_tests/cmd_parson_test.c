@@ -49,13 +49,15 @@
 #include "cmd_decl.h"
 #include "esp_partition.h"
 
-#define TEST(A) printf("%d %-72s-", __LINE__, #A);\
-                if(A){puts(" OK");tests_passed++;}\
-                else{puts(" FAIL");tests_failed++;}
+#define TEST(A) ESP_LOGI(TAG, "%d %-72s-", __LINE__, #A);\
+                if(A){ESP_LOGI(TAG, " OK");tests_passed++;}\
+                else{ESP_LOGI(TAG, " FAIL");tests_failed++;}
 #define STREQ(A, B) ((A) && (B) ? strcmp((A), (B)) == 0 : 0)
 #define EPSILON 0.000001
 
 const char* spiffs_partition_label="storage_2";
+
+static const char* TAG = "[UTIL_PARSON]";
 
 static struct
 {
@@ -90,11 +92,8 @@ static int tests_failed;
 
 int parson_test(int argc, char **argv)
 {
-
-    printf("\r\n\n");
-    printf("====MOUNTING SPIFFS====\r\n");
+    ESP_LOGI(TAG, "====MOUNTING SPIFFS====\r");
     vfs_spiffs_register();
-    printf("\r\n\n");
     if (spiffs_is_mounted)
     {
 	/* Example functions from readme file:      */
@@ -113,13 +112,13 @@ int parson_test(int argc, char **argv)
 	test_suite_8();
 	test_suite_9();
 	test_suite_10();
-	printf("Tests failed: %d\n", tests_failed);
-	printf("Tests passed: %d\n", tests_passed);
+	ESP_LOGI(TAG, "Tests failed: %d", tests_failed);
+	ESP_LOGI(TAG, "Tests passed: %d", tests_passed);
         return 0;
     }
     else
     {
-        printf("Failed to mount SPIFFS\n");
+        ESP_LOGI(TAG, "Failed to mount SPIFFS");
         return -1;
     }
 }
@@ -279,7 +278,7 @@ void test_suite_2_with_comments(void) {
 }
 
 void test_suite_3(void) {
-    puts("Testing valid strings:");
+    ESP_LOGI(TAG, "Testing valid strings:");
     TEST(json_parse_string("{\"lorem\":\"ipsum\"}") != NULL);
     TEST(json_parse_string("[\"lorem\"]") != NULL);
     TEST(json_parse_string("null") != NULL);
@@ -288,13 +287,13 @@ void test_suite_3(void) {
     TEST(json_parse_string("\"string\"") != NULL);
     TEST(json_parse_string("123") != NULL);
 
-    puts("Test UTF-16 parsing:");
+    ESP_LOGI(TAG, "Test UTF-16 parsing:");
     TEST(STREQ(json_string(json_parse_string("\"\\u0024x\"")), "$x"));
     TEST(STREQ(json_string(json_parse_string("\"\\u00A2x\"")), "¢x"));
     TEST(STREQ(json_string(json_parse_string("\"\\u20ACx\"")), "€x"));
     TEST(STREQ(json_string(json_parse_string("\"\\uD801\\uDC37x\"")), "𐐷x"));
 
-    puts("Testing invalid strings:");
+    ESP_LOGI(TAG, "Testing invalid strings:");
     malloc_count = 0;
     TEST(json_parse_string(NULL) == NULL);
     TEST(json_parse_string("") == NULL); /* empty string */
@@ -326,7 +325,7 @@ void test_suite_3(void) {
     TEST(json_parse_string("[\"\a\"]") == NULL); /* control character */
     TEST(json_parse_string("[\"\b\"]") == NULL); /* control character */
     TEST(json_parse_string("[\"\t\"]") == NULL); /* control character */
-    TEST(json_parse_string("[\"\n\"]") == NULL); /* control character */
+    TEST(json_parse_string("[\"\"]") == NULL); /* control character */
     TEST(json_parse_string("[\"\f\"]") == NULL); /* control character */
     TEST(json_parse_string("[\"\r\"]") == NULL); /* control character */
     TEST(json_parse_string("[0x2]") == NULL);    /* hex */
@@ -346,7 +345,7 @@ void test_suite_3(void) {
 void test_suite_4() {
     const char *filename = "/spiffs/test_2.txt";
     JSON_Value *a = NULL, *a_copy = NULL;
-    printf("Testing %s:\n", filename);
+    ESP_LOGI(TAG, "Testing %s:", filename);
     a = json_parse_file(filename);
     TEST(json_value_equals(a, a)); /* test equality test */
     a_copy = json_value_deep_copy(a);
@@ -603,10 +602,10 @@ void print_commits_info(const char *username, const char *repo) {
 
     /* getting array from root value and printing commit info */
     commits = json_value_get_array(root_value);
-    printf("%-10.10s %-10.10s %s\n", "Date", "SHA", "Author");
+    ESP_LOGI(TAG, "%-10.10s %-10.10s %s", "Date", "SHA", "Author");
     for (i = 0; i < json_array_get_count(commits); i++) {
         commit = json_array_get_object(commits, i);
-        printf("%.10s %.10s %s\n",
+        ESP_LOGI(TAG, "%.10s %.10s %s",
                json_object_dotget_string(commit, "commit.author.date"),
                json_object_get_string(commit, "sha"),
                json_object_dotget_string(commit, "commit.author.name"));
@@ -623,14 +622,14 @@ void persistence_example(void) {
     char buf[256];
     const char *name = NULL;
     if (user_data == NULL || json_validate(schema, user_data) != JSONSuccess) {
-        puts("Enter your name:");
+        ESP_LOGI(TAG, "Enter your name:");
         scanf("%s", buf);
         user_data = json_value_init_object();
         json_object_set_string(json_object(user_data), "name", buf);
         json_serialize_to_file(user_data, "user_data.json");
     }
     name = json_object_get_string(json_object(user_data), "name");
-    printf("Hello, %s.", name);
+    ESP_LOGI(TAG, "Hello, %s.", name);
     json_value_free(schema);
     json_value_free(user_data);
     return;
@@ -646,7 +645,7 @@ void serialization_example(void) {
     json_object_dotset_value(root_object, "contact.emails",
                              json_parse_string("[\"email@example.com\", \"email2@example.com\"]"));
     serialized_string = json_serialize_to_string_pretty(root_value);
-    puts(serialized_string);
+    ESP_LOGI(TAG, "%s", serialized_string);
     json_free_serialized_string(serialized_string);
     json_value_free(root_value);
 }

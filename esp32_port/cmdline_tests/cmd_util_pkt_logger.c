@@ -142,7 +142,6 @@ without any consequence for the program execution.
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
-#define MSG(args...)    fprintf(stderr,"loragw_pkt_logger: " args) /* message that is destined to the user */
 
 #define SPI_SPEED 8000000
 
@@ -179,6 +178,8 @@ static struct
     struct arg_end *end;
 } util_pkt_logger_args;
 
+static const char* TAG = "[UTIL_PKT_LOGGER]";
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 static void obtain_time(void);
@@ -209,7 +210,7 @@ static void obtain_time(void)
     int retry = 0;
     const int retry_count = 10;
     while(timeinfo.tm_year < (2018 - 1900) && ++retry < retry_count) {
-        MSG("Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now_time);
         localtime_r(&now_time, &timeinfo);
@@ -220,7 +221,7 @@ static void obtain_time(void)
 
 static void initialize_sntp(void)
 {
-    MSG("Initializing SNTP\n");
+    ESP_LOGI(TAG, "Initializing SNTP\n");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_init();
@@ -240,7 +241,7 @@ static void initialise_wifi(void)
             .password = EXAMPLE_WIFI_PASS,
         },
     };
-    MSG("Setting WiFi configuration SSID %s...\n", wifi_config.sta.ssid);
+    ESP_LOGI(TAG, "Setting WiFi configuration SSID %s...\n", wifi_config.sta.ssid);
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     ESP_ERROR_CHECK( esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
     ESP_ERROR_CHECK( esp_wifi_start() );
@@ -275,17 +276,17 @@ static void get_base_mac(uint8_t* mac_buffer)
         if(esp_efuse_mac_get_default(mac_buffer) == ESP_OK)
         {
 
-            MSG("SUCCESSFULLY READ BASE_MAC FROM EFUSE!\n");
+            ESP_LOGI(TAG, "SUCCESSFULLY READ BASE_MAC FROM EFUSE!\n");
             for(int i=0; i<8; i++)
             {
                 temp_mac = mac_buffer[i];
                 mac |= (temp_mac << (7-i)*8);
             }
-             MSG("INFO: Actual gateway MAC address is configured to 0x%016llX\n", mac);
+             ESP_LOGI(TAG, "INFO: Actual gateway MAC address is configured to 0x%016llX\n", mac);
         }
         else
         {
-            MSG("UNSUCCESSFUL IN READING BASE_MAC FROM EFUSE!\n");
+            ESP_LOGE(TAG, "UNSUCCESSFUL IN READING BASE_MAC FROM EFUSE!\n");
         }
     }
 }
@@ -308,15 +309,15 @@ int parse_SX1301_configuration(const char * conf_file) {
     root_val = json_parse_file_with_comments(conf_file);
     root = json_value_get_object(root_val);
     if (root == NULL) {
-        MSG("ERROR: %s id not a valid JSON file\n", conf_file);
+        ESP_LOGE(TAG, "ERROR: %s id not a valid JSON file\n", conf_file);
         exit(EXIT_FAILURE);
     }
     conf = json_object_get_object(root, conf_obj);
     if (conf == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj);
+        ESP_LOGI(TAG, "INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj);
+        ESP_LOGI(TAG, "INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj);
     }
 
     /* set board configuration */
@@ -325,20 +326,20 @@ int parse_SX1301_configuration(const char * conf_file) {
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.lorawan_public = (bool)json_value_get_boolean(val);
     } else {
-        MSG("WARNING: Data type for lorawan_public seems wrong, please check\n");
+        ESP_LOGW(TAG, "WARNING: Data type for lorawan_public seems wrong, please check\n");
         boardconf.lorawan_public = false;
     }
     val = json_object_get_value(conf, "clksrc"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONNumber) {
         boardconf.clksrc = (uint8_t)json_value_get_number(val);
     } else {
-        MSG("WARNING: Data type for clksrc seems wrong, please check\n");
+        ESP_LOGW(TAG, "WARNING: Data type for clksrc seems wrong, please check\n");
         boardconf.clksrc = 0;
     }
-    MSG("INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
+    ESP_LOGI(TAG, "INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
-        MSG("ERROR: Failed to configure board\n");
+        ESP_LOGE(TAG, "ERROR: Failed to configure board\n");
         return -1;
     }
 
@@ -348,7 +349,7 @@ int parse_SX1301_configuration(const char * conf_file) {
         sprintf(param_name, "radio_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for radio %i\n", i);
+            ESP_LOGI(TAG, "INFO: no configuration for radio %i\n", i);
             continue;
         }
         /* there is an object to configure that radio, let's parse it */
@@ -360,7 +361,7 @@ int parse_SX1301_configuration(const char * conf_file) {
             rfconf.enable = false;
         }
         if (rfconf.enable == false) { /* radio disabled, nothing else to parse */
-            MSG("INFO: radio %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: radio %i disabled\n", i);
         } else  { /* radio enabled, will parse the other parameters */
             snprintf(param_name, sizeof param_name, "radio_%i.freq", i);
             rfconf.freq_hz = (uint32_t)json_object_dotget_number(conf, param_name);
@@ -373,7 +374,7 @@ int parse_SX1301_configuration(const char * conf_file) {
             } else if (!strncmp(str, "SX1257", 6)) {
                 rfconf.type = LGW_RADIO_TYPE_SX1257;
             } else {
-                MSG("WARNING: invalid radio type: %s (should be SX1255 or SX1257)\n", str);
+                ESP_LOGW(TAG, "WARNING: invalid radio type: %s (should be SX1255 or SX1257)\n", str);
             }
             snprintf(param_name, sizeof param_name, "radio_%i.tx_enable", i);
             val = json_object_dotget_value(conf, param_name);
@@ -387,11 +388,11 @@ int parse_SX1301_configuration(const char * conf_file) {
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, tx_notch_freq %u\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.tx_notch_freq);
+            ESP_LOGI(TAG, "INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, tx_notch_freq %u\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.tx_notch_freq);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for radio %i\n", i);
+            ESP_LOGE(TAG, "ERROR: invalid configuration for radio %i\n", i);
             return -1;
         }
     }
@@ -402,7 +403,7 @@ int parse_SX1301_configuration(const char * conf_file) {
         sprintf(param_name, "chan_multiSF_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for LoRa multi-SF channel %i\n", i);
+            ESP_LOGI(TAG, "INFO: no configuration for LoRa multi-SF channel %i\n", i);
             continue;
         }
         /* there is an object to configure that LoRa multi-SF channel, let's parse it */
@@ -414,18 +415,18 @@ int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) { /* LoRa multi-SF channel disabled, nothing else to parse */
-            MSG("INFO: LoRa multi-SF channel %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: LoRa multi-SF channel %i disabled\n", i);
         } else  { /* LoRa multi-SF channel enabled, will parse the other parameters */
             sprintf(param_name, "chan_multiSF_%i.radio", i);
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, param_name);
             sprintf(param_name, "chan_multiSF_%i.if", i);
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, param_name);
             // TODO: handle individual SF enabling and disabling (spread_factor)
-            MSG("INFO: LoRa multi-SF channel %i enabled, radio %i selected, IF %i Hz, 125 kHz bandwidth, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
+            ESP_LOGI(TAG, "INFO: LoRa multi-SF channel %i enabled, radio %i selected, IF %i Hz, 125 kHz bandwidth, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxif_setconf(i, ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for Lora multi-SF channel %i\n", i);
+            ESP_LOGE(TAG, "ERROR: invalid configuration for Lora multi-SF channel %i\n", i);
             return -1;
         }
     }
@@ -434,7 +435,7 @@ int parse_SX1301_configuration(const char * conf_file) {
     memset(&ifconf, 0, sizeof(ifconf)); /* initialize configuration structure */
     val = json_object_get_value(conf, "chan_Lora_std"); /* fetch value (if possible) */
     if (json_value_get_type(val) != JSONObject) {
-        MSG("INFO: no configuration for LoRa standard channel\n");
+        ESP_LOGI(TAG, "INFO: no configuration for LoRa standard channel\n");
     } else {
         val = json_object_dotget_value(conf, "chan_Lora_std.enable");
         if (json_value_get_type(val) == JSONBoolean) {
@@ -443,7 +444,7 @@ int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) {
-            MSG("INFO: LoRa standard channel %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: LoRa standard channel %i disabled\n", i);
         } else  {
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_Lora_std.if");
@@ -464,10 +465,10 @@ int parse_SX1301_configuration(const char * conf_file) {
                 case 12: ifconf.datarate = DR_LORA_SF12; break;
                 default: ifconf.datarate = DR_UNDEFINED;
             }
-            MSG("INFO: LoRa standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
+            ESP_LOGI(TAG, "INFO: LoRa standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
         }
         if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for Lora standard channel\n");
+            ESP_LOGE(TAG, "ERROR: invalid configuration for Lora standard channel\n");
             return -1;
         }
     }
@@ -476,7 +477,7 @@ int parse_SX1301_configuration(const char * conf_file) {
     memset(&ifconf, 0, sizeof(ifconf)); /* initialize configuration structure */
     val = json_object_get_value(conf, "chan_FSK"); /* fetch value (if possible) */
     if (json_value_get_type(val) != JSONObject) {
-        MSG("INFO: no configuration for FSK channel\n");
+        ESP_LOGI(TAG, "INFO: no configuration for FSK channel\n");
     } else {
         val = json_object_dotget_value(conf, "chan_FSK.enable");
         if (json_value_get_type(val) == JSONBoolean) {
@@ -485,7 +486,7 @@ int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) {
-            MSG("INFO: FSK channel %i disabled\n", i);
+            ESP_LOGI(TAG, "INFO: FSK channel %i disabled\n", i);
         } else  {
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_FSK.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_FSK.if");
@@ -499,10 +500,10 @@ int parse_SX1301_configuration(const char * conf_file) {
             else if (bw <= 500000) ifconf.bandwidth = BW_500KHZ;
             else ifconf.bandwidth = BW_UNDEFINED;
             ifconf.datarate = (uint32_t)json_object_dotget_number(conf, "chan_FSK.datarate");
-            MSG("INFO: FSK channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
+            ESP_LOGI(TAG, "INFO: FSK channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
         }
         if (lgw_rxif_setconf(9, ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for FSK channel\n");
+            ESP_LOGE(TAG, "ERROR: invalid configuration for FSK channel\n");
             return -1;
         }
     }
@@ -522,15 +523,15 @@ int parse_gateway_configuration(const char * conf_file) {
     root_val = json_parse_file_with_comments(conf_file);
     root = json_value_get_object(root_val);
     if (root == NULL) {
-        MSG("ERROR: %s id not a valid JSON file\n", conf_file);
+        ESP_LOGE(TAG, "ERROR: %s id not a valid JSON file\n", conf_file);
         exit(EXIT_FAILURE);
     }
     conf = json_object_get_object(root, conf_obj);
     if (conf == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj);
+        ESP_LOGI(TAG, "INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj);
+        ESP_LOGI(TAG, "INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj);
     }
 
     /* getting network parameters (only those necessary for the packet logger) */
@@ -538,7 +539,7 @@ int parse_gateway_configuration(const char * conf_file) {
     if (str != NULL) {
         sscanf(str, "%llx", &ull);
         lgwm = ull;
-        MSG("INFO: Hardcoded gateway MAC address read is %016llX...shall be overridden by dynamic mac\n", ull);
+        ESP_LOGI(TAG, "INFO: Hardcoded gateway MAC address read is %016llX...shall be overridden by dynamic mac\n", ull);
     }
 
     json_value_free(root_val);
@@ -556,17 +557,17 @@ void open_log(void)
     sprintf(log_file_name, "/spiffs/pktlog_%s_%s.csv", lgwm_str, iso_date);
     log_file = fopen(log_file_name, "a"); /* create log file, append if file already exist */
     if (log_file == NULL) {
-        MSG("ERROR: impossible to create log file %s\n", log_file_name);
+        ESP_LOGI(TAG, "ERROR: impossible to create log file %s\n", log_file_name);
         exit(EXIT_FAILURE);
     }
 
     i = fprintf(log_file, "\"gateway ID\",\"node MAC\",\"UTC timestamp\",\"us count\",\"frequency\",\"RF chain\",\"RX chain\",\"status\",\"size\",\"modulation\",\"bandwidth\",\"datarate\",\"coderate\",\"RSSI\",\"SNR\",\"payload\"\n");
     if (i < 0) {
-        MSG("ERROR: impossible to write to log file %s\n", log_file_name);
+        ESP_LOGE(TAG, "ERROR: impossible to write to log file %s\n", log_file_name);
         exit(EXIT_FAILURE);
     }
 
-    MSG("INFO: Now writing to log file %s\n", log_file_name);
+    ESP_LOGI(TAG, "INFO: Now writing to log file %s\n", log_file_name);
     return;
 }
 
@@ -604,7 +605,7 @@ int util_pkt_logger(int argc, char **argv)
 
     if ((util_pkt_logger_args.r->count != 1) || (util_pkt_logger_args.r->ival[0] == 0) || (util_pkt_logger_args.r->ival[0] < -1))
     {
-        MSG("ERROR: Invalid argument for -r option\n");
+        ESP_LOGE(TAG, "ERROR: Invalid argument for -r option\n");
         return EXIT_FAILURE;
     }
     else
@@ -616,7 +617,7 @@ int util_pkt_logger(int argc, char **argv)
     localtime_r(&now_time, &timeinfo);
     // Is time set? If not, tm_year will be (1970 - 1900).
     if (timeinfo.tm_year < (2018 - 1900)) {
-        MSG("Time is not set yet. Connecting to WiFi and getting time over NTP.");
+        ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
         obtain_time();
         // update 'now' variable with current time
         time(&now_time);
@@ -628,12 +629,10 @@ int util_pkt_logger(int argc, char **argv)
     tzset();
     localtime_r(&now_time, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    MSG("The current date/time in Nairobi is: %s", strftime_buf);
+    ESP_LOGI(TAG, "The current date/time in Nairobi is: %s", strftime_buf);
 
-    printf("\r\n\n");
-    printf("====MOUNTING SPIFFS====\r\n");
+    ESP_LOGI(TAG, "====MOUNTING SPIFFS====");
     vfs_spiffs_register();
-    printf("\r\n\n");
     if (spiffs_is_mounted)
     {
         get_base_mac(mac_val);
@@ -646,7 +645,7 @@ int util_pkt_logger(int argc, char **argv)
             fclose(fp);
             fclose(fp1);
             fclose(fp2);
-            MSG("INFO: found debug configuration file %s, other configuration files will be ignored\n", debug_conf_fname);
+            ESP_LOGI(TAG, "INFO: found debug configuration file %s, other configuration files will be ignored\n", debug_conf_fname);
             parse_SX1301_configuration(debug_conf_fname);
             parse_gateway_configuration(debug_conf_fname);
         }
@@ -655,12 +654,12 @@ int util_pkt_logger(int argc, char **argv)
             fclose(fp);
             fclose(fp1);
         /* if there is a global conf, parse it and then try to parse local conf  */
-            MSG("INFO: found global configuration file %s, trying to parse it\n", global_conf_fname);
+            ESP_LOGI(TAG, "INFO: found global configuration file %s, trying to parse it\n", global_conf_fname);
             parse_SX1301_configuration(global_conf_fname);
             parse_gateway_configuration(global_conf_fname);
             if (fp2 != NULL)
             {
-                MSG("INFO: found local configuration file %s, trying to parse it\n", local_conf_fname);
+                ESP_LOGI(TAG, "INFO: found local configuration file %s, trying to parse it\n", local_conf_fname);
                 parse_SX1301_configuration(local_conf_fname);
                 parse_gateway_configuration(local_conf_fname);
             }
@@ -669,20 +668,20 @@ int util_pkt_logger(int argc, char **argv)
             fclose(fp1);
             fclose(fp2);
         /* if there is only a local conf, parse it and that's all */
-            MSG("INFO: found local configuration file %s, trying to parse it\n", local_conf_fname);
+            ESP_LOGI(TAG, "INFO: found local configuration file %s, trying to parse it\n", local_conf_fname);
             parse_SX1301_configuration(local_conf_fname);
             parse_gateway_configuration(local_conf_fname);
         } else {
-            MSG("ERROR: failed to find any configuration file named %s, %s or %s\n", global_conf_fname, local_conf_fname, debug_conf_fname);
+            ESP_LOGI(TAG, "ERROR: failed to find any configuration file named %s, %s or %s\n", global_conf_fname, local_conf_fname, debug_conf_fname);
             return EXIT_FAILURE;
         }
 
         /* starting the concentrator */
         i = lgw_start(SPI_SPEED);
         if (i == LGW_HAL_SUCCESS) {
-            MSG("INFO: concentrator started, packet can now be received\n");
+            ESP_LOGI(TAG, "INFO: concentrator started, packet can now be received\n");
         } else {
-            MSG("ERROR: failed to start the concentrator\n");
+            ESP_LOGE(TAG, "ERROR: failed to start the concentrator\n");
             return EXIT_FAILURE;
         }
 
@@ -697,7 +696,7 @@ int util_pkt_logger(int argc, char **argv)
             /* fetch packets */
             nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
             if (nb_pkt == LGW_HAL_ERROR) {
-                MSG("ERROR: failed packet fetch, exiting\n");
+                ESP_LOGE(TAG, "ERROR: failed packet fetch, exiting\n");
                 return EXIT_FAILURE;
             } else if (nb_pkt == 0) {
                 wait_ms(sleep_time);
@@ -820,7 +819,7 @@ int util_pkt_logger(int argc, char **argv)
                 time(&now_time);
                 if (difftime(now_time, log_start_time) > log_rotate_interval) {
                     fclose(log_file);
-                    MSG("INFO: log file %s closed, %lu packet(s) recorded\n", log_file_name, pkt_in_log);
+                    ESP_LOGI(TAG, "INFO: log file %s closed, %lu packet(s) recorded\n", log_file_name, pkt_in_log);
                     pkt_in_log = 0;
                     open_log();
                 }
@@ -828,13 +827,13 @@ int util_pkt_logger(int argc, char **argv)
         }
     }
 
-    MSG("INFO: Exiting packet logger program\n");
+    ESP_LOGI(TAG, "INFO: Exiting packet logger program\n");
     return EXIT_SUCCESS;
 }
 
 void register_util_pkt_logger()
 {
-    util_pkt_logger_args.r = arg_int1("r", NULL, "<R>", "(int) Log rotate interval in seconds");
+    util_pkt_logger_args.r = arg_int1("r", NULL, "60s", "(int) Log rotate interval in seconds");
     util_pkt_logger_args.end = arg_end(3);
 
     const esp_console_cmd_t util_pkt_logger_cmd=

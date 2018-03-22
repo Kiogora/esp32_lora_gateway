@@ -61,7 +61,7 @@ static wifi_args_t sta_args;
 static pppos_args_t cellular_args;
 
 static bool reconnect = true;
-static const char *TAG="[iperf test]";
+static const char *TAG="[UTIL_IPERF]";
 
 static EventGroupHandle_t wifi_event_group;
 static const int CONNECTED_BIT = BIT0;
