@@ -2,13 +2,13 @@ menu "**WIFI AP configuration**"
 
 config AP_SSID
     string "WIFI AP SSID"
-	default "'EED Sky'"
+	default "\"EED Sky\""
 	help
 		SSID of the Wifi access point.
 
 config AP_PASSPHRASE
     string "WIFI AP PASSPHRASE"
-	default "'20150815'"
+	default "\"20150815\""
 	help
 		passphrase of the Wifi access point.
 

@@ -295,7 +295,7 @@ static int restart(int argc, char** argv)
 void register_network_tests()
 {
     sta_args.ssid = arg_str1(NULL, NULL, WIFI_AP_SSID, "SSID of AP");
-    sta_args.password = arg_str0(NULL, NULL, WIFI_AP_PASSPHRASE, "password of AP");
+    sta_args.password = arg_str1(NULL, NULL, WIFI_AP_PASSPHRASE, "password of AP");
     sta_args.end = arg_end(2);
 
     const esp_console_cmd_t sta_cmd = {
