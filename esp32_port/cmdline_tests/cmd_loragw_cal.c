@@ -82,13 +82,13 @@ struct cal_res_s
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size); /* defined in loragw_hal.c */
+static char* TAG = "[LORAGW_CAL]"; 
 
-uint8_t sx125x_cal(uint8_t cal_cmd, struct cal_res_s *cal_res);
+static uint8_t sx125x_cal(uint8_t cal_cmd, struct cal_res_s *cal_res);
 
-int read_capture(int16_t *i, int16_t *q, int nb_samp);
+static int read_capture(int16_t *i, int16_t *q, int nb_samp);
 
-uint8_t get_img_rej(int16_t *sig_i, int16_t *sig_q, int nb_samp, double f_sig_norm);
+static uint8_t get_img_rej(int16_t *sig_i, int16_t *sig_q, int nb_samp, double f_sig_norm);
 
 static struct
 {
@@ -101,7 +101,7 @@ static struct
     struct arg_end *end;
 } loragw_cal_args;
 
-int loragw_cal_test(int argc, char **argv)
+static int loragw_cal_test(int argc, char **argv)
 {
     int i, j, x;
     int32_t read_val;
@@ -137,7 +137,7 @@ int loragw_cal_test(int argc, char **argv)
         {
             if(loragw_cal_args.k->count == 0 && loragw_cal_args.t->count == 0)
             {
-                printf("Using default value for option k and t\n");
+                ESP_LOGI(TAG, "Using default value for option k and t");
             }
             else
             {
@@ -149,11 +149,11 @@ int loragw_cal_test(int argc, char **argv)
         {
             if(loragw_cal_args.k->count == 0)
             {
-                printf("Using default value for option k\n");
+                ESP_LOGI(TAG, "Using default value for option k");
             }
             else if( loragw_cal_args.t->count == 0)
             {
-                printf("Using default value for option t\n");
+                ESP_LOGI(TAG, "Using default value for option t");
             }
             else
             {
@@ -185,7 +185,7 @@ int loragw_cal_test(int argc, char **argv)
     clocksource = (uint8_t)loragw_cal_args.k->ival[0];
     if(loragw_cal_args.n->count != 1 || ((unsigned int)(loragw_cal_args.n->ival[0]) > NB_CAL_MAX)|| ((unsigned int)(loragw_cal_args.n->ival[0]) < 1))
     {
-        printf("ERROR: invalid number of calibration iterations (MAX %d)\n",NB_CAL_MAX);
+        ESP_LOGE(TAG, "ERROR: invalid number of calibration iterations (MAX %d)",NB_CAL_MAX);
         return 1;
     }
     else
@@ -195,9 +195,9 @@ int loragw_cal_test(int argc, char **argv)
     /* check input parameters */
     if ((fa == 0) || (fb == 0))
     {
-        printf("ERROR: missing frequency input parameter:\n");
-        printf("  Radio A RX: %u\n", fa);
-        printf("  Radio B RX: %u\n", fb);
+        ESP_LOGE(TAG, "ERROR: missing frequency input parameter:");
+        ESP_LOGE(TAG, "  Radio A RX: %u", fa);
+        ESP_LOGE(TAG, "  Radio B RX: %u", fb);
         return -1;
     }
 
@@ -251,16 +251,16 @@ int loragw_cal_test(int argc, char **argv)
     cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 
     /* Recap parameters*/
-    printf("Library version information: %s\n", lgw_version_info());
-    printf("Radio type: %d\n",radio_type);
-    printf("Radio A frequency: %f MHz\n",fa/1e6);
-    printf("Radio B frequency: %f MHz\n",fb/1e6);
-    printf("Number of calibration iterations: %d\n",nb_cal);
-    printf("Calibration command: brd: %d, chip: %d, dac: %d\n\n", cal_cmd >> 6, 1257-2*((cal_cmd & 0x20) >> 5), 2+((cal_cmd & 0x10) >> 4));
+    ESP_LOGI(TAG, "Library version information: %s", lgw_version_info());
+    ESP_LOGI(TAG, "Radio type: %d",radio_type);
+    ESP_LOGI(TAG, "Radio A frequency: %f MHz",fa/1e6);
+    ESP_LOGI(TAG, "Radio B frequency: %f MHz",fb/1e6);
+    ESP_LOGI(TAG, "Number of calibration iterations: %d",nb_cal);
+    ESP_LOGI(TAG, "Calibration command: brd: %d, chip: %d, dac: %d", cal_cmd >> 6, 1257-2*((cal_cmd & 0x20) >> 5), 2+((cal_cmd & 0x10) >> 4));
 
     x = lgw_connect(false, DEFAULT_TX_NOTCH_FREQ, SPI_SPEED);
     if (x == -1) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        ESP_LOGE(TAG, "ERROR: FAIL TO CONNECT BOARD");
         return -1;
     }
 
@@ -294,7 +294,7 @@ int loragw_cal_test(int argc, char **argv)
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_CAL)
     {
-        printf("ERROR: Version of calibration firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_CAL);
+        ESP_LOGE(TAG, "ERROR: Version of calibration firmware not expected, actual:%d expected:%d", fw_version, FW_VERSION_CAL);
         lgw_disconnect();
         return -1;
     }
@@ -307,98 +307,85 @@ int loragw_cal_test(int argc, char **argv)
         /*
         file = fopen("toto.txt","w");
         for (j=0; j<RAM_SIZE; j++) {
-            fprintf(file, "%d %d\n", sig_i[j], sig_q[j]);
+            fESP_LOGI(TAG, file, "%d %d", sig_i[j], sig_q[j]);
         }
         fclose(file);
         */
         img_rej_a[i] = get_img_rej(sig_i, sig_q, RAM_SIZE, FREQ_SIG_NORM);
 
-        printf("Rx A IQ mismatch: Amp: %3d Phi: %3d Rej: %2d dB Status: %3d | Debug: Rej: %2d dB Lna: %1d BB: %2d Dec: %2d\n", cal_res[i].amp_a, cal_res[i].phi_a, cal_res[i].img_rej_a, cal_status, img_rej_a[i], cal_res[i].debug[0], cal_res[i].debug[1], cal_res[i].debug[2]);
+        ESP_LOGI(TAG, "Rx A IQ mismatch: Amp: %3d Phi: %3d Rej: %2d dB Status: %3d | Debug: Rej: %2d dB Lna: %1d BB: %2d Dec: %2d", cal_res[i].amp_a, cal_res[i].phi_a, cal_res[i].img_rej_a, cal_status, img_rej_a[i], cal_res[i].debug[0], cal_res[i].debug[1], cal_res[i].debug[2]);
     }
 
     /* Run Rx B IQ mismatch calibation only */
-    printf("\n");
     for (i=0; i<nb_cal; i++)
     {
         cal_status = sx125x_cal(cal_cmd | 0x02, &cal_res[i]);
         x = read_capture(sig_i, sig_q, RAM_SIZE);
         img_rej_b[i] = get_img_rej(sig_i, sig_q, RAM_SIZE, FREQ_SIG_NORM);
 
-        printf("Rx B IQ mismatch: Amp: %3d Phi: %3d Rej: %2d dB Status: %3d | Debug: Rej: %2d dB Lna: %1d BB: %2d Dec: %2d\n", cal_res[i].amp_b, cal_res[i].phi_b, cal_res[i].img_rej_b, cal_status, img_rej_b[i], cal_res[i].debug[0], cal_res[i].debug[1], cal_res[i].debug[2]);
+        ESP_LOGI(TAG, "Rx B IQ mismatch: Amp: %3d Phi: %3d Rej: %2d dB Status: %3d | Debug: Rej: %2d dB Lna: %1d BB: %2d Dec: %2d", cal_res[i].amp_b, cal_res[i].phi_b, cal_res[i].img_rej_b, cal_status, img_rej_b[i], cal_res[i].debug[0], cal_res[i].debug[1], cal_res[i].debug[2]);
     }
 
     /* Run Tx A DC offset calibation only */
-    printf("\n");
     if ((tx_enable == 1) || (tx_enable == 3)) {
         for (i=0; i<nb_cal; i++) {
             cal_status = sx125x_cal(cal_cmd | 0x04, &cal_res[i]);
 
-            printf("Tx A DC offset I :");
+            ESP_LOGI(TAG, "Tx A DC offset I :");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].offset_i_a[j]);
+                ESP_LOGI(TAG, " %3d", cal_res[i].offset_i_a[j]);
             }
-            printf("\n");
-            printf("Tx A DC offset Q :");
+            ESP_LOGI(TAG, "Tx A DC offset Q :");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].offset_q_a[j]);
+                ESP_LOGI(TAG, " %3d", cal_res[i].offset_q_a[j]);
             }
-            printf("\n");
-            printf("Tx A DC rejection:");
+            ESP_LOGI(TAG, "Tx A DC rejection:");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].offset_rej_a[j]);
+                ESP_LOGI(TAG, " %3d", cal_res[i].offset_rej_a[j]);
             }
-            printf("\n");
-            printf("Tx A DC debug BB :");
+            ESP_LOGI(TAG, "Tx A DC debug BB :");
             for (j=0; j<8; j++) {
-                printf(" %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
+                ESP_LOGI(TAG, " %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
             }
-            printf("\n");
-            printf("Tx A DC debug Dec:");
+            ESP_LOGI(TAG, "Tx A DC debug Dec:");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].debug[j] & 0x0F);
+                ESP_LOGI(TAG, " %3d", cal_res[i].debug[j] & 0x0F);
             }
-            printf("\n");
-            printf("Tx A DC Status   : %3d\n", cal_status);
+            ESP_LOGI(TAG, "Tx A DC Status   : %3d", cal_status);
         }
     } else {
-        printf("Tx A calibration bypassed\n");
+        ESP_LOGI(TAG, "Tx A calibration bypassed");
     }
 
     /* Run Tx B DC offset calibation only */
-    printf("\n");
     if ((tx_enable == 2) || (tx_enable == 3)) {
         for (i=0; i<nb_cal; i++) {
             cal_status = sx125x_cal(cal_cmd | 0x08, &cal_res[i]);
 
-            printf("Tx B DC offset I :");
+            ESP_LOGI(TAG, "Tx B DC offset I :");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].offset_i_b[j]);
+                ESP_LOGI(TAG, " %3d", cal_res[i].offset_i_b[j]);
             }
-            printf("\n");
-            printf("Tx B DC offset Q :");
+            ESP_LOGI(TAG, "Tx B DC offset Q :");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].offset_q_b[j]);
+                ESP_LOGI(TAG, " %3d", cal_res[i].offset_q_b[j]);
             }
-            printf("\n");
-            printf("Tx B DC rejection:");
+            ESP_LOGI(TAG, "Tx B DC rejection:");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].offset_rej_b[j]);
+                ESP_LOGI(TAG, " %3d", cal_res[i].offset_rej_b[j]);
             }
-            printf("\n");
-            printf("Tx B DC debug BB :");
+            ESP_LOGI(TAG, "Tx B DC debug BB :");
             for (j=0; j<8; j++) {
-                printf(" %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
+                ESP_LOGI(TAG, " %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
             }
-            printf("\n");
-            printf("Tx B DC debug Dec:");
+            ESP_LOGI(TAG, "Tx B DC debug Dec:");
             for (j=0; j<8; j++) {
-                printf(" %3d", cal_res[i].debug[j] & 0x0F);
+                ESP_LOGI(TAG, " %3d", cal_res[i].debug[j] & 0x0F);
             }
-            printf("\n");
-            printf("Tx B DC Status   : %3d\n", cal_status);
+            ESP_LOGI(TAG, "Tx B DC Status   : %3d", cal_status);
         }
     }  else {
-        printf("Tx B calibration bypassed\n");
+        ESP_LOGI(TAG, "Tx B calibration bypassed");
     }
 
     /* Compute statistics */
@@ -539,33 +526,29 @@ int loragw_cal_test(int argc, char **argv)
     }
 
     /* Print statistics */
-    printf("\n");
-    printf("Rx A IQ mismatch calibration statistics on %3d iterations (min, max):\n", nb_cal);
-    printf("Amp: %3d %3d Phi: %3d %3d Rej: %2d %2d dB (capt.: %2d %2d dB)\n", cal_res_min.amp_a, cal_res_max.amp_a, cal_res_min.phi_a, cal_res_max.phi_a, cal_res_min.img_rej_a, cal_res_max.img_rej_a, img_rej_a_min, img_rej_a_max);
+    ESP_LOGI(TAG, "Rx A IQ mismatch calibration statistics on %3d iterations (min, max):", nb_cal);
+    ESP_LOGI(TAG, "Amp: %3d %3d Phi: %3d %3d Rej: %2d %2d dB (capt.: %2d %2d dB)", cal_res_min.amp_a, cal_res_max.amp_a, cal_res_min.phi_a, cal_res_max.phi_a, cal_res_min.img_rej_a, cal_res_max.img_rej_a, img_rej_a_min, img_rej_a_max);
 
-    printf("\n");
-    printf("Rx B IQ mismatch calibration statistics on %3d iterations (min, max):\n", nb_cal);
-    printf("Amp: %3d %3d Phi: %3d %3d Rej: %2d %2d dB (capt.: %2d %2d dB)\n", cal_res_min.amp_b, cal_res_max.amp_b, cal_res_min.phi_b, cal_res_max.phi_b, cal_res_min.img_rej_b, cal_res_max.img_rej_b, img_rej_b_min, img_rej_b_max);
+    ESP_LOGI(TAG, "Rx B IQ mismatch calibration statistics on %3d iterations (min, max):", nb_cal);
+    ESP_LOGI(TAG, "Amp: %3d %3d Phi: %3d %3d Rej: %2d %2d dB (capt.: %2d %2d dB)", cal_res_min.amp_b, cal_res_max.amp_b, cal_res_min.phi_b, cal_res_max.phi_b, cal_res_min.img_rej_b, cal_res_max.img_rej_b, img_rej_b_min, img_rej_b_max);
 
     if ((tx_enable == 1) || (tx_enable == 3)) {
-        printf("\n");
-        printf("Tx A DC offset calibration statistics on %3d iterations (min, max):\n", nb_cal);
+        ESP_LOGI(TAG, "Tx A DC offset calibration statistics on %3d iterations (min, max):", nb_cal);
         for (j=0; j<8; j++) {
-            printf(" Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB\n", 8+j, cal_res_min.offset_i_a[j], cal_res_max.offset_i_a[j], cal_res_min.offset_q_a[j], cal_res_max.offset_q_a[j], cal_res_min.offset_rej_a[j], cal_res_max.offset_rej_a[j]);
+            ESP_LOGI(TAG, " Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB", 8+j, cal_res_min.offset_i_a[j], cal_res_max.offset_i_a[j], cal_res_min.offset_q_a[j], cal_res_max.offset_q_a[j], cal_res_min.offset_rej_a[j], cal_res_max.offset_rej_a[j]);
         }
     }
 
     if ((tx_enable == 2) || (tx_enable == 3)) {
-        printf("\n");
-        printf("Tx B DC offset calibration statistics on %3d iterations (min, max):\n", nb_cal);
+        ESP_LOGI(TAG, "Tx B DC offset calibration statistics on %3d iterations (min, max):", nb_cal);
         for (j=0; j<8; j++) {
-            printf(" Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB\n", 8+j, cal_res_min.offset_i_b[j], cal_res_max.offset_i_b[j], cal_res_min.offset_q_b[j], cal_res_max.offset_q_b[j], cal_res_min.offset_rej_b[j], cal_res_max.offset_rej_b[j]);
+            ESP_LOGI(TAG, " Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB", 8+j, cal_res_min.offset_i_b[j], cal_res_max.offset_i_b[j], cal_res_min.offset_q_b[j], cal_res_max.offset_q_b[j], cal_res_min.offset_rej_b[j], cal_res_max.offset_rej_b[j]);
         }
     }
 
     lgw_disconnect();
 
-    printf("\nEnd of radio calibration test\n");
+    ESP_LOGI(TAG, "End of radio calibration test");
 
     return 0;
 }
@@ -604,28 +587,28 @@ uint8_t sx125x_cal(uint8_t cal_cmd, struct cal_res_s *cal_res) {
         bit 7: calibration finished */
 
     if ((cal_status & 0x01) == 0) {
-        printf("WARNING: calibration could not access SX1301 registers\n");
+        ESP_LOGW(TAG, "WARNING: calibration could not access SX1301 registers");
     }
     if ((cal_status & 0x02) == 0) {
-        printf("WARNING: calibration could not access radio A\n");
+        ESP_LOGW(TAG, "WARNING: calibration could not access radio A");
     }
     if ((cal_status & 0x04) == 0) {
-        printf("WARNING: calibration could not access radio B\n");
+        ESP_LOGW(TAG, "WARNING: calibration could not access radio B");
     }
     if ((cal_cmd & 0x01) && ((cal_status & 0x08) == 0)) {
-        printf("WARNING: problem in calibration of radio A for image rejection\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio A for image rejection");
     }
     if ((cal_cmd & 0x02) && ((cal_status & 0x10) == 0)) {
-        printf("WARNING: problem in calibration of radio B for image rejection\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio B for image rejection");
     }
     if ((cal_cmd & 0x04) && ((cal_status & 0x20) == 0)) {
-        printf("WARNING: problem in calibration of radio A for TX imbalance\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio A for TX imbalance");
     }
     if ((cal_cmd & 0x08) && ((cal_status & 0x40) == 0)) {
-        printf("WARNING: problem in calibration of radio B for TX imbalance\n");
+        ESP_LOGW(TAG, "WARNING: problem in calibration of radio B for TX imbalance");
     }
     if ((cal_status & 0x80) == 0) {
-        printf("WARNING: Calibration not finished\n");
+        ESP_LOGW(TAG, "WARNING: Calibration not finished");
     }
 
     /* Get calibration results */
@@ -755,13 +738,13 @@ uint8_t get_img_rej(int16_t *sig_i, int16_t *sig_q, int nb_samp, double f_sig_no
 
 void register_loragw_cal()
 {
-    loragw_cal_args.a = arg_dbl1("a", NULL, "<A>", "<float> Radio A frequency in MHz");
-    loragw_cal_args.b = arg_dbl1("b", NULL, "<B>", "<float> Radio B frequency in MHz");
-    loragw_cal_args.r = arg_int1("r", NULL, "<R>", "<int> Radio type (SX1255:1255, SX1257:1257)");
-    loragw_cal_args.n = arg_int1("n", NULL, "<N>", "<uint> Number of calibration iterations");
-    loragw_cal_args.k = arg_int1("k", NULL, "<K>", "<int> Concentrator clock source (0:radio_A, 1:radio_B(default))");
+    loragw_cal_args.a = arg_dbl1("a", NULL, "867.5", "<float> Radio A frequency in MHz");
+    loragw_cal_args.b = arg_dbl1("b", NULL, "868.5", "<float> Radio B frequency in MHz");
+    loragw_cal_args.r = arg_int1("r", NULL, "1257", "<int> Radio type (SX1255:1255, SX1257:1257)");
+    loragw_cal_args.n = arg_int1("n", NULL, "1", "<uint> Number of calibration iterations");
+    loragw_cal_args.k = arg_int1("k", NULL, "1", "<int> Concentrator clock source (0:radio_A, 1:radio_B(default))");
     loragw_cal_args.k ->ival[0]=1; /*Set default value*/
-    loragw_cal_args.t = arg_int1("t", NULL, "<T>", "<int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)");
+    loragw_cal_args.t = arg_int1("t", NULL, "1", "<int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)");
     loragw_cal_args.t ->ival[0]=0; /*Set default value*/
     loragw_cal_args.end = arg_end(7);
 
