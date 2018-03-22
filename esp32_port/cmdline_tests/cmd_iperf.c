@@ -58,7 +58,6 @@ typedef struct
 } pppos_args_t;
 
 static wifi_args_t sta_args;
-static wifi_args_t ap_args;
 static pppos_args_t cellular_args;
 
 static bool reconnect = true;
