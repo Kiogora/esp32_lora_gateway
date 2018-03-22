@@ -413,6 +413,13 @@ const char* lgw_version_info(void);
 */
 uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet);
 
+/**
+@brief Return the status code of the firmware loading operation.
+@param firmware array definition, firmware size and the specific target to load firmware in the sx1301.
+@return the status code of the operation.
+*/
+int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
