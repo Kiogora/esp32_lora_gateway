@@ -41,7 +41,6 @@ Maintainer: Matthieu Leurent
 
 #define SPI_SPEED 8000000
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#define MSG(args...) fprintf(stderr, args) /* message that is destined to the user */
 
 #define TX_RF_CHAIN             0    /* TX only supported on radio A */
 #define DEFAULT_RSSI_OFFSET     0.0
@@ -78,6 +77,7 @@ static struct
     struct arg_end *end;
 }util_tx_continuous_args;
 
+static const char* TAG = "[UTIL_TX_CONTINUOUS]";
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
@@ -122,7 +122,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.f ->count;
     if ((i != 1) || (arg_u > 3))
     {
-        printf("ERROR: argument parsing of --dig argument.n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --dig argument.n");
         return EXIT_FAILURE;
     }
     else
@@ -133,7 +133,7 @@ int util_tx_continuous(int argc, char **argv)
     arg_u=util_tx_continuous_args.dac ->ival[0];
     i=util_tx_continuous_args.dac ->count;
     if ((i != 1) || (arg_u > 3)) {
-        printf("ERROR: argument parsing of --dac argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --dac argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -145,7 +145,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.mix ->count;
     if ((i != 1) || (arg_u > 15))
     {
-        printf("ERROR: argument parsing of --mix argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --mix argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -157,7 +157,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.pa ->count;
     if ((i != 1) || (arg_u > 3))
     {
-        printf("ERROR: argument parsing of --pa argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --pa argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -169,7 +169,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.mod ->count;
     if ((i != 1) || ((strcmp(arg_s,"LORA") != 0) && (strcmp(arg_s,"FSK") != 0)  && (strcmp(arg_s,"CW") != 0)))
     {
-        printf("ERROR: argument parsing of --mod argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --mod argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -180,7 +180,7 @@ int util_tx_continuous(int argc, char **argv)
     arg_u=util_tx_continuous_args.sf ->ival[0];
     i=util_tx_continuous_args.sf ->count;
     if ((i != 1) || (arg_u < 7) || (arg_u > 12)) {
-        printf("ERROR: argument parsing of --sf argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --sf argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -192,7 +192,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.bw ->count;
     if ((i != 1) || ((arg_u != 125) && (arg_u != 250) && (arg_u != 500)))
     {
-        printf("ERROR: argument parsing of --bw argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --bw argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -204,7 +204,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.br ->count;
     if ((i != 1) || (arg_f < 0.5) || (arg_f > 250))
     {
-        printf("ERROR: argument parsing of --br argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --br argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -216,7 +216,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.fdev ->count;
     if ((i != 1) || (arg_u < 1) || (arg_u > 250))
     {
-        printf("ERROR: argument parsing of --fdev argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --fdev argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -228,7 +228,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.sf ->count;
     if ((i != 1) || (arg_u > 3))
     {
-        printf("ERROR: argument parsing of --bt argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --bt argument. ");
         return EXIT_FAILURE;
     }
     else 
@@ -239,7 +239,7 @@ int util_tx_continuous(int argc, char **argv)
     arg_u=util_tx_continuous_args.notch ->ival[0];
     i=util_tx_continuous_args.notch ->count;
     if ((i != 1) || ((arg_u < 126) || (arg_u > 250))) {
-        printf("ERROR: argument parsing of --notch argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of --notch argument. ");
         return EXIT_FAILURE;
     }
     else
@@ -251,7 +251,7 @@ int util_tx_continuous(int argc, char **argv)
     i=util_tx_continuous_args.sf ->count;
     if ((i != 1) || (arg_f < 1))
     {
-    printf("ERROR: argument parsing of -f argument. \n");
+    ESP_LOGE(TAG, "ERROR: argument parsing of -f argument. ");
     return EXIT_FAILURE;
     }
     else
@@ -269,7 +269,7 @@ int util_tx_continuous(int argc, char **argv)
         radio_type = LGW_RADIO_TYPE_SX1257;
         break;
     default:
-        printf("ERROR: argument parsing of -r argument. \n");
+        ESP_LOGE(TAG, "ERROR: argument parsing of -r argument. ");
         return EXIT_FAILURE;
     }
 
@@ -303,11 +303,11 @@ int util_tx_continuous(int argc, char **argv)
     i = lgw_start(SPI_SPEED);
     if (i == LGW_HAL_SUCCESS)
     {
-        MSG("INFO: concentrator started, packet can be sent\n");
+        ESP_LOGI(TAG, "INFO: concentrator started, packet can be sent");
     }
     else
     {
-        MSG("ERROR: failed to start the concentrator\n");
+        ESP_LOGE(TAG, "ERROR: failed to start the concentrator");
         return EXIT_FAILURE;
     }
 
@@ -329,7 +329,7 @@ int util_tx_continuous(int argc, char **argv)
             case 250: txpkt.bandwidth = BW_250KHZ; break;
             case 500: txpkt.bandwidth = BW_500KHZ; break;
             default:
-                MSG("ERROR: invalid 'bw' variable\n");
+                ESP_LOGE(TAG, "ERROR: invalid 'bw' variable");
                 lgw_stop();
                 return EXIT_FAILURE;
         }
@@ -342,7 +342,7 @@ int util_tx_continuous(int argc, char **argv)
             case 11: txpkt.datarate = DR_LORA_SF11; break;
             case 12: txpkt.datarate = DR_LORA_SF12; break;
             default:
-                MSG("ERROR: invalid 'sf' variable\n");
+                ESP_LOGE(TAG, "ERROR: invalid 'sf' variable");
                 lgw_stop();
                 return EXIT_FAILURE;
         }
@@ -371,34 +371,34 @@ int util_tx_continuous(int argc, char **argv)
     i = lgw_send(txpkt);
 
     /* Recap all settings */
-    printf("SX1301 library version: %s\n", lgw_version_info());
+    ESP_LOGI(TAG, "SX1301 library version: %s", lgw_version_info());
     if (strcmp(mod, "LORA") == 0) {
-        printf("Modulation: LORA SF:%d BW:%d kHz\n", sf, bw_khz);
+        ESP_LOGI(TAG, "Modulation: LORA SF:%d BW:%d kHz", sf, bw_khz);
     }
     else if (strcmp(mod, "FSK") == 0) {
-        printf("Modulation: FSK BR:%3.3f kbps FDEV:%d kHz BT:%d\n", br_kbps, fdev_khz, bt);
+        ESP_LOGI(TAG, "Modulation: FSK BR:%3.3f kbps FDEV:%d kHz BT:%d", br_kbps, fdev_khz, bt);
     }
     else if (strcmp(mod, "CW") == 0) {
-        printf("Modulation: CW\n");
+        ESP_LOGI(TAG, "Modulation: CW");
     }
     switch(rfconf.type) {
         case LGW_RADIO_TYPE_SX1255:
-            printf("Radio Type: SX1255\n");
+            ESP_LOGI(TAG, "Radio Type: SX1255");
             break;
         case LGW_RADIO_TYPE_SX1257:
-            printf("Radio Type: SX1257\n");
+            ESP_LOGI(TAG, "Radio Type: SX1257");
             break;
         default:
-            printf("ERROR: undefined radio type\n");
+            ESP_LOGI(TAG, "ERROR: undefined radio type");
             break;
     }
-    printf("Frequency: %4.3f MHz\n", freq_hz/1e6);
-    printf("TX Gains: Digital:%d DAC:%d Mixer:%d PA:%d\n", g_dig, g_dac, g_mix, g_pa);
+    ESP_LOGI(TAG, "Frequency: %4.3f MHz", freq_hz/1e6);
+    ESP_LOGI(TAG, "TX Gains: Digital:%d DAC:%d Mixer:%d PA:%d", g_dig, g_dac, g_mix, g_pa);
     if (strcmp(mod, "CW") != 0)
     {
         lgw_reg_r(LGW_TX_OFFSET_I, &offset_i);
         lgw_reg_r(LGW_TX_OFFSET_Q, &offset_q);
-        printf("Calibrated DC offsets: I:%d Q:%d\n", offset_i, offset_q);
+        ESP_LOGI(TAG, "Calibrated DC offsets: I:%d Q:%d", offset_i, offset_q);
     }
 
     /* clean up before leaving */
