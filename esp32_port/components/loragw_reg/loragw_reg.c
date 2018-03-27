@@ -20,9 +20,11 @@ Modified for ESP32 by: Alois Mbutura.
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "driver/gpio.h"
 
-
-#include <stdbool.h>    /* bool type */
+#include <stdbool.h> /* bool type */
 #include <stdint.h>
 #include <stddef.h> 
 #include <stdio.h>
@@ -54,6 +56,8 @@ static const char* TAG = "[LORAGW_REG]";
 
 #define PAGE_ADDR        0x00
 #define PAGE_MASK        0x03
+
+#define RESET_PIN GPIO_NUM_5
 
 const uint8_t FPGA_VERSION[] = { 28, 31, 33 }; /* several versions could be supported */
 
@@ -523,6 +527,16 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
     return spi_stat;
 }
 
+void lgw_hard_reset(void)
+{
+    gpio_pad_select_gpio(RESET_PIN);
+    gpio_set_direction(RESET_PIN, GPIO_MODE_OUTPUT);
+    gpio_set_level(RESET_PIN, 1);
+    vTaskDelay(5/portTICK_PERIOD_MS);
+    gpio_set_level(RESET_PIN, 0);
+    vTaskDelay(2/portTICK_PERIOD_MS);
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -533,6 +547,8 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq, long speed)
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
     int x;
+
+    lgw_hard_reset();
 
     /* open the SPI link */
     spi_stat = lgw_spi_open(&lgw_spi_target, speed);

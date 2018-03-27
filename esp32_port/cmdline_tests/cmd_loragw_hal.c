@@ -364,11 +364,11 @@ static int loragw_hal_test(int argc, char** argv)
 
 void register_loragw_hal()
 {
-    loragw_hal_args.a = arg_dbl1("a", NULL, "<A>", "Radio A RX frequency in MHz");
-    loragw_hal_args.b = arg_dbl1("b", NULL, "<B>", "Radio B RX frequency in MHz");
-    loragw_hal_args.t = arg_dbl1("t", NULL, "<T>", "Radio TX frequency in MHz");
-    loragw_hal_args.r = arg_int1("r", NULL, "<R>", "Radio type (SX1255:1255, SX1257:1257)");
-    loragw_hal_args.k = arg_int1("k", NULL, "<K>", "Concentrator clock source (0: radio_A, 1: radio_B(default))");
+    loragw_hal_args.a = arg_dbl1("a", NULL, "867.5", "Radio A RX frequency in MHz");
+    loragw_hal_args.b = arg_dbl1("b", NULL, "868.5", "Radio B RX frequency in MHz");
+    loragw_hal_args.t = arg_dbl1("t", NULL, "868.0", "Radio TX frequency in MHz");
+    loragw_hal_args.r = arg_int1("r", NULL, "1257", "Radio type (SX1255:1255, SX1257:1257)");
+    loragw_hal_args.k = arg_int1("k", NULL, "1", "Concentrator clock source (0: radio_A, 1: radio_B(default))");
     loragw_hal_args.k ->ival[0]=1; /*Set default value*/
     loragw_hal_args.end = arg_end(6);
 
