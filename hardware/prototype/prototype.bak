@@ -44,16 +44,16 @@ NoConn ~ 1100 1300
 $Comp
 L power:GND #PWR?
 U 1 1 5AB8E471
-P 600 1650
-F 0 "#PWR?" H 600 1400 50  0001 C CNN
-F 1 "GND" H 605 1477 50  0000 C CNN
-F 2 "" H 600 1650 50  0001 C CNN
-F 3 "" H 600 1650 50  0001 C CNN
-	1    600  1650
+P 950 1650
+F 0 "#PWR?" H 950 1400 50  0001 C CNN
+F 1 "GND" H 955 1477 50  0000 C CNN
+F 2 "" H 950 1650 50  0001 C CNN
+F 3 "" H 950 1650 50  0001 C CNN
+	1    950  1650
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	600  1650 600  1600
+	950  1650 950  1600
 NoConn ~ 1100 1100
 NoConn ~ 1100 1200
 Wire Wire Line
@@ -93,22 +93,18 @@ F 3 "" H 9500 1150 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	10350 1400 10550 1400
+	10350 1400 10600 1400
 $Comp
 L power:GND #PWR?
 U 1 1 5ABA1E29
-P 10650 1600
-F 0 "#PWR?" H 10650 1350 50  0001 C CNN
-F 1 "GND" H 10655 1427 50  0000 C CNN
-F 2 "" H 10650 1600 50  0001 C CNN
-F 3 "" H 10650 1600 50  0001 C CNN
-	1    10650 1600
+P 10400 1600
+F 0 "#PWR?" H 10400 1350 50  0001 C CNN
+F 1 "GND" H 10405 1427 50  0000 C CNN
+F 2 "" H 10400 1600 50  0001 C CNN
+F 3 "" H 10400 1600 50  0001 C CNN
+	1    10400 1600
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	10650 1500 10350 1500
-Wire Wire Line
-	10650 1500 10650 1600
 Wire Wire Line
 	10350 1000 10650 1000
 Wire Wire Line
@@ -136,7 +132,7 @@ Wire Wire Line
 	9050 900  8800 900 
 Text Label 8800 900  2    50   ~ 0
 PWR_KEY
-Text Label 10550 1400 0    50   ~ 0
+Text Label 11100 1400 1    50   ~ 0
 CELLULAR_5V
 Text Label 8800 1400 2    50   ~ 0
 3V3_REF
@@ -269,8 +265,6 @@ F 3 "" H 1000 4800 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	1000 4800 1300 4800
-Wire Notes Line
-	8270 470  8270 6535
 Text Notes 6950 7800 2    50   ~ 0
 No RTC as the GSM module and ESP32 has an internal, non battery backed RTC available
 $Comp
@@ -284,7 +278,7 @@ F 3 "" H 6700 2750 50  0001 C CNN
 	1    6700 2500
 	1    0    0    -1  
 $EndComp
-Text Notes 8270 5640 2    50   ~ 0
+Text Notes 8270 4970 2    50   ~ 0
 5v power_management
 Text Notes 11220 6535 2    50   ~ 0
 LoRa concentrator connector(Top view), RF connector on left
@@ -313,8 +307,8 @@ $Comp
 L narra:LM2596_MODULE U?
 U 1 1 5AC09295
 P 5950 4450
-F 0 "U?" H 5975 5087 60  0000 C CNN
-F 1 "LM2596_MODULE" H 5975 4981 60  0000 C CNN
+F 0 "U?" H 5950 4600 60  0000 C CNN
+F 1 "LM2596_MODULE" H 5950 4500 60  0000 C CNN
 F 2 "" H 5950 4450 60  0001 C CNN
 F 3 "" H 5950 4450 60  0001 C CNN
 	1    5950 4450
@@ -536,10 +530,6 @@ Text Label 3000 7000 0    50   ~ 0
 10
 Text Label 1150 7600 0    50   ~ 0
 12
-Wire Notes Line
-	6630 480  6630 1220
-Wire Notes Line
-	6630 1220 8270 1220
 Text Notes 8250 1200 2    50   ~ 0
 Alternative programming header
 Text Label 800  5500 2    50   ~ 0
@@ -916,7 +906,7 @@ $Comp
 L Connector_Generic:Conn_01x03 J?
 U 1 1 5AE1CFCD
 P 6800 900
-F 0 "J?" H 6720 575 50  0000 C CNN
+F 0 "J?" H 6995 670 50  0000 C CNN
 F 1 "Conn_01x03" H 6720 666 50  0000 C CNN
 F 2 "" H 6800 900 50  0001 C CNN
 F 3 "~" H 6800 900 50  0001 C CNN
@@ -1154,9 +1144,7 @@ F 3 "~" H 3550 1400 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 Text Label 4250 1500 0    50   ~ 0
-3V3
-Wire Wire Line
-	4250 1500 4200 1500
+GLOBAL_3V3
 Wire Wire Line
 	3750 1400 4150 1400
 Text Label 4250 1400 0    50   ~ 0
@@ -1175,32 +1163,29 @@ $EndComp
 $Comp
 L Device:C C?
 U 1 1 5AFFA324
-P 4200 1700
-F 0 "C?" H 4315 1746 50  0000 L CNN
-F 1 "0.1uF" H 4315 1655 50  0000 L CNN
-F 2 "" H 4238 1550 50  0001 C CNN
-F 3 "~" H 4200 1700 50  0001 C CNN
-	1    4200 1700
+P 4150 1700
+F 0 "C?" H 4265 1746 50  0000 L CNN
+F 1 "0.1uF" H 4265 1655 50  0000 L CNN
+F 2 "" H 4188 1550 50  0001 C CNN
+F 3 "~" H 4150 1700 50  0001 C CNN
+	1    4150 1700
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4200 1550 4200 1500
-Connection ~ 4200 1500
-Wire Wire Line
-	4200 1500 3750 1500
+	4150 1550 4150 1500
 $Comp
 L power:GND #PWR?
 U 1 1 5B002B86
-P 4200 1900
-F 0 "#PWR?" H 4200 1650 50  0001 C CNN
-F 1 "GND" H 4205 1727 50  0000 C CNN
-F 2 "" H 4200 1900 50  0001 C CNN
-F 3 "" H 4200 1900 50  0001 C CNN
-	1    4200 1900
+P 4150 1900
+F 0 "#PWR?" H 4150 1650 50  0001 C CNN
+F 1 "GND" H 4155 1727 50  0000 C CNN
+F 2 "" H 4150 1900 50  0001 C CNN
+F 3 "" H 4150 1900 50  0001 C CNN
+	1    4150 1900
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4200 1900 4200 1850
+	4150 1900 4150 1850
 Wire Notes Line
 	1900 6350 1900 6550
 Text Notes 1200 6500 0    50   ~ 0
@@ -1235,9 +1220,7 @@ Wire Wire Line
 	9950 4400 9950 4350
 Wire Wire Line
 	9950 4350 9850 4350
-Wire Wire Line
-	9850 4200 10050 4200
-Text Label 10050 4200 0    50   ~ 0
+Text Label 10600 4200 0    50   ~ 0
 V_BCKUP
 Text Notes 11220 4855 2    50   ~ 0
 BAT-HLD-001-xx-OTL CR2032 battery holder
@@ -1259,36 +1242,6 @@ Text Notes 2070 3375 0    50   ~ 0
 On board GPS
 Text Notes 2700 3365 0    50   ~ 0
 Alternate_GPS
-$Comp
-L Device:Jumper_NC_Small JP?
-U 1 1 5AC88B76
-P 2400 1400
-F 0 "JP?" H 2550 1450 50  0000 C CNN
-F 1 "Jumper_NC_Small" H 2400 1521 50  0001 C CNN
-F 2 "" H 2400 1400 50  0001 C CNN
-F 3 "~" H 2400 1400 50  0001 C CNN
-	1    2400 1400
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	2500 1400 3250 1400
-Wire Wire Line
-	2150 1400 2300 1400
-$Comp
-L Device:Jumper_NC_Small JP?
-U 1 1 5AC9C348
-P 850 1600
-F 0 "JP?" H 1000 1650 50  0000 C CNN
-F 1 "Jumper_NC_Small" H 850 1721 50  0001 C CNN
-F 2 "" H 850 1600 50  0001 C CNN
-F 3 "~" H 850 1600 50  0001 C CNN
-	1    850  1600
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	950  1600 1100 1600
-Wire Wire Line
-	600  1600 750  1600
 $Comp
 L Device:R R?
 U 1 1 5ACC3516
@@ -1392,8 +1345,6 @@ F 3 "" H 7350 2250 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	7350 2250 7100 2250
-Text Notes 11220 3975 2    50   ~ 0
-Communication_module_header
 Wire Wire Line
 	4250 5800 4250 6050
 Wire Wire Line
@@ -1402,52 +1353,46 @@ Connection ~ 4250 6050
 $Comp
 L Regulator_Linear:TLV71333PDBV U?
 U 1 1 5AC37939
-P 4250 5200
-F 0 "U?" H 4250 5542 50  0000 C CNN
-F 1 "TLV71333PDBV" H 4250 5451 50  0000 C CNN
-F 2 "Package_TO_SOT_SMD:SOT-23-5" H 4250 5525 50  0001 C CIN
-F 3 "http://www.ti.com/lit/ds/symlink/tlv713p.pdf" H 4250 5200 50  0001 C CNN
-	1    4250 5200
+P 4500 5200
+F 0 "U?" H 4500 5542 50  0000 C CNN
+F 1 "TLV71333PDBV" H 4300 5450 50  0000 C CNN
+F 2 "Package_TO_SOT_SMD:SOT-23-5" H 4500 5525 50  0001 C CIN
+F 3 "http://www.ti.com/lit/ds/symlink/tlv713p.pdf" H 4500 5200 50  0001 C CNN
+	1    4500 5200
 	1    0    0    -1  
 $EndComp
 $Comp
 L power:GND #PWR?
 U 1 1 5AC42802
-P 4250 5535
-F 0 "#PWR?" H 4250 5285 50  0001 C CNN
-F 1 "GND" H 4400 5485 50  0000 C CNN
-F 2 "" H 4250 5535 50  0001 C CNN
-F 3 "" H 4250 5535 50  0001 C CNN
-	1    4250 5535
+P 4500 5535
+F 0 "#PWR?" H 4500 5285 50  0001 C CNN
+F 1 "GND" H 4650 5485 50  0000 C CNN
+F 2 "" H 4500 5535 50  0001 C CNN
+F 3 "" H 4500 5535 50  0001 C CNN
+	1    4500 5535
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4250 5535 4250 5500
+	4500 5535 4500 5500
 Text Label 3850 5100 2    50   ~ 0
 GLOBAL_5V
 Wire Wire Line
-	3850 5100 3900 5100
+	4200 5200 4150 5200
 Wire Wire Line
-	3950 5200 3900 5200
+	4150 5200 4150 5100
+Connection ~ 4150 5100
 Wire Wire Line
-	3900 5200 3900 5100
-Connection ~ 3900 5100
-Wire Wire Line
-	3900 5100 3950 5100
-Text Label 4750 5100 0    50   ~ 0
+	4150 5100 4200 5100
+Text Label 5200 5100 0    50   ~ 0
 GLOBAL_3V3
-Wire Wire Line
-	4550 5100 4750 5100
 Wire Notes Line
 	3420 4795 4605 4795
 Wire Notes Line
 	4605 4795 4605 4970
 Wire Notes Line
-	4605 4970 5655 4970
-Wire Notes Line
 	5655 4970 5655 5640
 Text Notes 5655 5640 2    50   ~ 0
-3v power_management
+3v3 power_management
 Text Label 1950 3150 0    50   ~ 0
 GLOBAL_3V3
 Wire Wire Line
@@ -1508,47 +1453,16 @@ F 3 "" H 900 3300 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	900  3300 1050 3300
-$Comp
-L Device:C C?
-U 1 1 5AD19E5A
-P 3950 3750
-F 0 "C?" V 4000 3600 50  0000 L CNN
-F 1 "0.1uF" V 4000 3800 50  0000 L CNN
-F 2 "" H 3988 3600 50  0001 C CNN
-F 3 "~" H 3950 3750 50  0001 C CNN
-	1    3950 3750
-	0    1    1    0   
-$EndComp
 Text Notes 8300 4750 0    50   ~ 0
 Backup current consumption 7uA @ 3v3(Quectel), 15uA Ublox
 Text Label 3700 3650 0    50   ~ 0
 BRD_GPS_VBCKUP
 Text Label 3000 3500 2    50   ~ 0
 V_BCKUP
-Text Label 3750 3500 0    50   ~ 0
-BRD_GPS_VCC
 Wire Wire Line
 	3650 3500 3750 3500
 Wire Wire Line
 	3000 3500 3150 3500
-Wire Wire Line
-	3800 3750 3400 3750
-Wire Wire Line
-	3400 3750 3400 3650
-Connection ~ 3400 3650
-$Comp
-L power:GND #PWR?
-U 1 1 5ADC417D
-P 4350 3750
-F 0 "#PWR?" H 4350 3500 50  0001 C CNN
-F 1 "GND" H 4500 3650 50  0000 C CNN
-F 2 "" H 4350 3750 50  0001 C CNN
-F 3 "" H 4350 3750 50  0001 C CNN
-	1    4350 3750
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	4350 3750 4100 3750
 $Comp
 L Device:Jumper_NC_Dual JP?
 U 1 1 5ADEBDB4
@@ -1564,45 +1478,14 @@ Wire Wire Line
 	1550 3650 1250 3650
 Wire Wire Line
 	1250 3650 1250 3600
-$Comp
-L Device:C C?
-U 1 1 5ADEBDBD
-P 1800 3750
-F 0 "C?" V 1850 3600 50  0000 L CNN
-F 1 "0.1uF" V 1850 3800 50  0000 L CNN
-F 2 "" H 1838 3600 50  0001 C CNN
-F 3 "~" H 1800 3750 50  0001 C CNN
-	1    1800 3750
-	0    1    1    0   
-$EndComp
 Text Label 1550 3650 0    50   ~ 0
-BRD_GPS_VBCKUP
+HDR_GPS_VBCKUP
 Text Label 850  3500 2    50   ~ 0
 V_BCKUP
-Text Label 1600 3500 0    50   ~ 0
-HDR_GPS_VCC
 Wire Wire Line
 	1500 3500 1600 3500
 Wire Wire Line
 	850  3500 1000 3500
-Wire Wire Line
-	1650 3750 1250 3750
-Wire Wire Line
-	1250 3750 1250 3650
-Connection ~ 1250 3650
-$Comp
-L power:GND #PWR?
-U 1 1 5ADEBDCC
-P 2200 3750
-F 0 "#PWR?" H 2200 3500 50  0001 C CNN
-F 1 "GND" H 2350 3650 50  0000 C CNN
-F 2 "" H 2200 3750 50  0001 C CNN
-F 3 "" H 2200 3750 50  0001 C CNN
-	1    2200 3750
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	2200 3750 1950 3750
 Wire Notes Line
 	475  3390 4695 3390
 Text Notes 4695 3975 2    50   ~ 0
@@ -1614,4 +1497,596 @@ Wire Wire Line
 Text Label 4250 1300 0    50   ~ 0
 TEMP_SCK
 NoConn ~ 4150 1300
+Connection ~ 4150 1500
+Wire Wire Line
+	4150 1500 3750 1500
+Wire Wire Line
+	4150 1500 4250 1500
+Connection ~ 3400 3650
+Wire Wire Line
+	3400 3750 3400 3650
+Wire Wire Line
+	3800 3750 3400 3750
+Wire Wire Line
+	4350 3750 4100 3750
+$Comp
+L power:GND #PWR?
+U 1 1 5ADC417D
+P 4350 3750
+F 0 "#PWR?" H 4350 3500 50  0001 C CNN
+F 1 "GND" H 4500 3650 50  0000 C CNN
+F 2 "" H 4350 3750 50  0001 C CNN
+F 3 "" H 4350 3750 50  0001 C CNN
+	1    4350 3750
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C?
+U 1 1 5AD19E5A
+P 3950 3750
+F 0 "C?" V 4000 3600 50  0000 L CNN
+F 1 "0.1uF" V 4000 3800 50  0000 L CNN
+F 2 "" H 3988 3600 50  0001 C CNN
+F 3 "~" H 3950 3750 50  0001 C CNN
+	1    3950 3750
+	0    1    1    0   
+$EndComp
+Text Label 1600 3500 0    50   ~ 0
+GLOBAL_3V3
+Text Label 3750 3500 0    50   ~ 0
+GLOBAL_3V3
+Wire Wire Line
+	2150 1400 3250 1400
+Wire Wire Line
+	950  1600 1100 1600
+Wire Notes Line
+	4695 1220 8270 1220
+$Comp
+L Transistor_BJT:DTC143Z Q?
+U 1 1 5AFA779D
+P 5550 900
+F 0 "Q?" H 5738 946 50  0000 L CNN
+F 1 "DTC143Z" H 5738 855 50  0000 L CNN
+F 2 "" H 5550 900 50  0001 L CNN
+F 3 "" H 5550 900 50  0001 L CNN
+	1    5550 900 
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3700 2600 3700 2700
+Wire Wire Line
+	3700 2700 3900 2700
+Text Label 3900 2700 0    50   ~ 0
+PPS_OUTPUT
+Text Label 5200 900  2    50   ~ 0
+PPS_OUTPUT
+Wire Wire Line
+	5200 900  5300 900 
+Wire Wire Line
+	5650 700  5650 600 
+Wire Wire Line
+	5650 600  5700 600 
+$Comp
+L Device:R R?
+U 1 1 5AFCF5B1
+P 5850 600
+F 0 "R?" V 5750 600 50  0000 C CNN
+F 1 "200" V 5850 600 50  0000 C CNN
+F 2 "" V 5780 600 50  0001 C CNN
+F 3 "~" H 5850 600 50  0001 C CNN
+	1    5850 600 
+	0    1    1    0   
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 5AFCF889
+P 5650 1110
+F 0 "#PWR?" H 5650 860 50  0001 C CNN
+F 1 "GND" H 5775 1035 50  0000 C CNN
+F 2 "" H 5650 1110 50  0001 C CNN
+F 3 "" H 5650 1110 50  0001 C CNN
+	1    5650 1110
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5650 1110 5650 1100
+Text Label 6500 600  0    50   ~ 0
+GLOBAL_3V3
+$Comp
+L Device:LED D?
+U 1 1 5B006196
+P 6300 600
+F 0 "D?" H 6300 400 50  0000 C CNN
+F 1 "LED" H 6300 500 50  0000 C CNN
+F 2 "" H 6300 600 50  0001 C CNN
+F 3 "~" H 6300 600 50  0001 C CNN
+	1    6300 600 
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6000 600  6150 600 
+Wire Wire Line
+	6500 600  6450 600 
+Wire Notes Line
+	6960 470  6960 620 
+Wire Notes Line
+	6960 620  6555 620 
+Wire Notes Line
+	6555 620  6555 1220
+Text Notes 6555 1220 2    50   ~ 0
+PPS indicator
+Wire Wire Line
+	5200 5100 5000 5100
+Wire Wire Line
+	3850 5100 4000 5100
+$Comp
+L Device:C C?
+U 1 1 5B096100
+P 5000 5300
+F 0 "C?" H 4750 5350 50  0000 L CNN
+F 1 "1uF" H 4750 5250 50  0000 L CNN
+F 2 "" H 5038 5150 50  0001 C CNN
+F 3 "~" H 5000 5300 50  0001 C CNN
+	1    5000 5300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5000 5150 5000 5100
+Connection ~ 5000 5100
+Wire Wire Line
+	5000 5100 4800 5100
+$Comp
+L power:GND #PWR?
+U 1 1 5B0A3FE7
+P 5000 5500
+F 0 "#PWR?" H 5000 5250 50  0001 C CNN
+F 1 "GND" H 5150 5450 50  0000 C CNN
+F 2 "" H 5000 5500 50  0001 C CNN
+F 3 "" H 5000 5500 50  0001 C CNN
+	1    5000 5500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5000 5500 5000 5450
+$Comp
+L Device:C C?
+U 1 1 5B0B1E08
+P 4000 5300
+F 0 "C?" H 3750 5350 50  0000 L CNN
+F 1 "0.1uF" H 3750 5250 50  0000 L CNN
+F 2 "" H 4038 5150 50  0001 C CNN
+F 3 "~" H 4000 5300 50  0001 C CNN
+	1    4000 5300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4000 5150 4000 5100
+Connection ~ 4000 5100
+Wire Wire Line
+	4000 5100 4150 5100
+$Comp
+L power:GND #PWR?
+U 1 1 5B0BFD34
+P 4000 5500
+F 0 "#PWR?" H 4000 5250 50  0001 C CNN
+F 1 "GND" H 4150 5450 50  0000 C CNN
+F 2 "" H 4000 5500 50  0001 C CNN
+F 3 "" H 4000 5500 50  0001 C CNN
+	1    4000 5500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4000 5500 4000 5450
+$Comp
+L Connector_Specialized:Test_Point_Probe TP?
+U 1 1 5B0CED12
+P 5000 5100
+F 0 "TP?" H 5153 5202 50  0000 L CNN
+F 1 "Test_Point_Probe" H 5000 5050 50  0000 L CNN
+F 2 "" H 5200 5100 50  0001 C CNN
+F 3 "~" H 5200 5100 50  0001 C CNN
+	1    5000 5100
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 5B0CF87A
+P 5600 2950
+F 0 "#PWR?" H 5600 2700 50  0001 C CNN
+F 1 "GND" V 5605 2822 50  0000 R CNN
+F 2 "" H 5600 2950 50  0001 C CNN
+F 3 "" H 5600 2950 50  0001 C CNN
+	1    5600 2950
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5600 2950 6250 2950
+$Comp
+L Si2323CDS:Si2323 Q?
+U 1 1 5B0E07C0
+P 10300 4300
+F 0 "Q?" V 10450 4450 50  0000 C CNN
+F 1 "Si2323" V 10552 4300 50  0000 C CNN
+F 2 "TO_SOT_Packages_SMD:SOT-23" H 10500 4225 50  0001 L CIN
+F 3 "http://www.vishay.com/docs/65700/si2323cds.pdf" H 10300 4300 50  0001 L CNN
+	1    10300 4300
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	9850 4200 10100 4200
+$Comp
+L power:GND #PWR?
+U 1 1 5B0EF63E
+P 10300 4550
+F 0 "#PWR?" H 10300 4300 50  0001 C CNN
+F 1 "GND" H 10450 4500 50  0000 C CNN
+F 2 "" H 10300 4550 50  0001 C CNN
+F 3 "" H 10300 4550 50  0001 C CNN
+	1    10300 4550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	10300 4550 10300 4500
+Wire Wire Line
+	10600 4200 10500 4200
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B112D4C
+P 5450 5950
+F 0 "MK?" H 5550 5996 50  0000 L CNN
+F 1 "Mounting_Hole" H 5550 5905 50  0000 L CNN
+F 2 "" H 5450 5950 50  0001 C CNN
+F 3 "" H 5450 5950 50  0001 C CNN
+	1    5450 5950
+	1    0    0    -1  
+$EndComp
+Wire Notes Line
+	5385 6235 8270 6235
+Text Notes 8270 6535 2    50   ~ 0
+PCB mounting holes for SMA connectors
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B124D02
+P 5650 6350
+F 0 "MK?" H 5750 6396 50  0000 L CNN
+F 1 "Mounting_Hole" H 5750 6305 50  0000 L CNN
+F 2 "" H 5650 6350 50  0001 C CNN
+F 3 "" H 5650 6350 50  0001 C CNN
+	1    5650 6350
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B124E96
+P 7350 6350
+F 0 "MK?" H 7450 6396 50  0000 L CNN
+F 1 "Mounting_Hole" H 7450 6305 50  0000 L CNN
+F 2 "" H 7350 6350 50  0001 C CNN
+F 3 "" H 7350 6350 50  0001 C CNN
+	1    7350 6350
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B1259F7
+P 6150 5950
+F 0 "MK?" H 6250 5996 50  0000 L CNN
+F 1 "Mounting_Hole" H 6250 5905 50  0000 L CNN
+F 2 "" H 6150 5950 50  0001 C CNN
+F 3 "" H 6150 5950 50  0001 C CNN
+	1    6150 5950
+	1    0    0    -1  
+$EndComp
+Text Notes 8270 6235 2    50   ~ 0
+PCB mounting holes for cellular module cable ties
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B1267F1
+P 6850 5950
+F 0 "MK?" H 6950 5996 50  0000 L CNN
+F 1 "Mounting_Hole" H 6950 5905 50  0000 L CNN
+F 2 "" H 6850 5950 50  0001 C CNN
+F 3 "" H 6850 5950 50  0001 C CNN
+	1    6850 5950
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B12689F
+P 7550 5950
+F 0 "MK?" H 7650 5996 50  0000 L CNN
+F 1 "Mounting_Hole" H 7650 5905 50  0000 L CNN
+F 2 "" H 7550 5950 50  0001 C CNN
+F 3 "" H 7550 5950 50  0001 C CNN
+	1    7550 5950
+	1    0    0    -1  
+$EndComp
+Wire Notes Line
+	4605 4970 8270 4970
+Wire Notes Line
+	8270 470  8270 6535
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B13CEB4
+P 8350 3800
+F 0 "MK?" H 8450 3846 50  0000 L CNN
+F 1 "Mounting_Hole" H 8450 3755 50  0000 L CNN
+F 2 "" H 8350 3800 50  0001 C CNN
+F 3 "" H 8350 3800 50  0001 C CNN
+	1    8350 3800
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B13D028
+P 10500 3800
+F 0 "MK?" H 10600 3846 50  0000 L CNN
+F 1 "Mounting_Hole" H 10600 3755 50  0000 L CNN
+F 2 "" H 10500 3800 50  0001 C CNN
+F 3 "" H 10500 3800 50  0001 C CNN
+	1    10500 3800
+	1    0    0    -1  
+$EndComp
+Wire Notes Line
+	8270 3670 11220 3670
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B14C95D
+P 9400 3800
+F 0 "MK?" H 9500 3846 50  0000 L CNN
+F 1 "Mounting_Hole" H 9500 3755 50  0000 L CNN
+F 2 "" H 9400 3800 50  0001 C CNN
+F 3 "" H 9400 3800 50  0001 C CNN
+	1    9400 3800
+	1    0    0    -1  
+$EndComp
+Text Notes 11220 3975 2    50   ~ 0
+Mounting hole for standoffs for communication module
+Wire Wire Line
+	10400 1600 10400 1500
+Wire Wire Line
+	10400 1500 10350 1500
+$Comp
+L Device:CP C?
+U 1 1 5B179D43
+P 10600 1600
+F 0 "C?" H 10718 1646 50  0000 L CNN
+F 1 "10uF" H 10718 1555 50  0000 L CNN
+F 2 "" H 10638 1450 50  0001 C CNN
+F 3 "~" H 10600 1600 50  0001 C CNN
+	1    10600 1600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	10600 1450 10600 1400
+Connection ~ 10600 1400
+Wire Wire Line
+	10600 1400 11000 1400
+$Comp
+L power:GND #PWR?
+U 1 1 5B18838B
+P 10600 1800
+F 0 "#PWR?" H 10600 1550 50  0001 C CNN
+F 1 "GND" H 10605 1627 50  0000 C CNN
+F 2 "" H 10600 1800 50  0001 C CNN
+F 3 "" H 10600 1800 50  0001 C CNN
+	1    10600 1800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	10600 1800 10600 1750
+$Comp
+L Device:C C?
+U 1 1 5B1A558B
+P 11000 1600
+F 0 "C?" H 11115 1646 50  0000 L CNN
+F 1 "0.1uF" H 11000 1500 50  0000 L CNN
+F 2 "" H 11038 1450 50  0001 C CNN
+F 3 "~" H 11000 1600 50  0001 C CNN
+	1    11000 1600
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	11000 1450 11000 1400
+Connection ~ 11000 1400
+Wire Wire Line
+	11000 1400 11100 1400
+$Comp
+L power:GND #PWR?
+U 1 1 5B1B3E4A
+P 11000 1800
+F 0 "#PWR?" H 11000 1550 50  0001 C CNN
+F 1 "GND" H 11005 1627 50  0000 C CNN
+F 2 "" H 11000 1800 50  0001 C CNN
+F 3 "" H 11000 1800 50  0001 C CNN
+	1    11000 1800
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	11000 1800 11000 1750
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B1C41F7
+P 5900 5350
+F 0 "MK?" H 6000 5396 50  0000 L CNN
+F 1 "Mounting_Hole" H 6000 5305 50  0000 L CNN
+F 2 "" H 5900 5350 50  0001 C CNN
+F 3 "" H 5900 5350 50  0001 C CNN
+	1    5900 5350
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B1C436A
+P 7400 5350
+F 0 "MK?" H 7500 5396 50  0000 L CNN
+F 1 "Mounting_Hole" H 7500 5305 50  0000 L CNN
+F 2 "" H 7400 5350 50  0001 C CNN
+F 3 "" H 7400 5350 50  0001 C CNN
+	1    7400 5350
+	1    0    0    -1  
+$EndComp
+Text Notes 8270 5640 2    50   ~ 0
+PCB mounting hole for controller module cable ties
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B1C7646
+P 8350 3500
+F 0 "MK?" H 8450 3546 50  0000 L CNN
+F 1 "Mounting_Hole" H 8450 3455 50  0000 L CNN
+F 2 "" H 8350 3500 50  0001 C CNN
+F 3 "" H 8350 3500 50  0001 C CNN
+	1    8350 3500
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B1C76FA
+P 9400 3500
+F 0 "MK?" H 9500 3546 50  0000 L CNN
+F 1 "Mounting_Hole" H 9500 3455 50  0000 L CNN
+F 2 "" H 9400 3500 50  0001 C CNN
+F 3 "" H 9400 3500 50  0001 C CNN
+	1    9400 3500
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole MK?
+U 1 1 5B1C78B4
+P 10500 3500
+F 0 "MK?" H 10600 3546 50  0000 L CNN
+F 1 "Mounting_Hole" H 10600 3455 50  0000 L CNN
+F 2 "" H 10500 3500 50  0001 C CNN
+F 3 "" H 10500 3500 50  0001 C CNN
+	1    10500 3500
+	1    0    0    -1  
+$EndComp
+Text Notes 11220 3670 2    50   ~ 0
+Mounting hole for standoffs for GPS module
+Wire Notes Line
+	8270 3405 11220 3405
+Text Label 7700 3450 0    50   ~ 0
+GLOBAL_5V
+Wire Wire Line
+	7700 3450 7550 3450
+$Comp
+L Device:CP C?
+U 1 1 5B1FA2DF
+P 7150 3650
+F 0 "C?" H 7268 3696 50  0000 L CNN
+F 1 "10uF" H 7268 3605 50  0000 L CNN
+F 2 "" H 7188 3500 50  0001 C CNN
+F 3 "~" H 7150 3650 50  0001 C CNN
+	1    7150 3650
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C?
+U 1 1 5B1FA2E6
+P 7550 3650
+F 0 "C?" H 7665 3696 50  0000 L CNN
+F 1 "0.1uF" H 7550 3550 50  0000 L CNN
+F 2 "" H 7588 3500 50  0001 C CNN
+F 3 "~" H 7550 3650 50  0001 C CNN
+	1    7550 3650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7150 3500 7150 3450
+Connection ~ 7150 3450
+Wire Wire Line
+	7150 3450 7100 3450
+Wire Wire Line
+	7550 3500 7550 3450
+Connection ~ 7550 3450
+Wire Wire Line
+	7550 3450 7150 3450
+$Comp
+L power:GND #PWR?
+U 1 1 5B2361D9
+P 7150 3850
+F 0 "#PWR?" H 7150 3600 50  0001 C CNN
+F 1 "GND" H 7050 3750 50  0000 C CNN
+F 2 "" H 7150 3850 50  0001 C CNN
+F 3 "" H 7150 3850 50  0001 C CNN
+	1    7150 3850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7150 3850 7150 3800
+$Comp
+L power:GND #PWR?
+U 1 1 5B245B3B
+P 7550 3850
+F 0 "#PWR?" H 7550 3600 50  0001 C CNN
+F 1 "GND" H 7450 3750 50  0000 C CNN
+F 2 "" H 7550 3850 50  0001 C CNN
+F 3 "" H 7550 3850 50  0001 C CNN
+	1    7550 3850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	7550 3850 7550 3800
+Text Label 5400 3450 2    50   ~ 0
+GLOBAL_5V
+$Comp
+L Device:CP C?
+U 1 1 5B255F74
+P 5450 3650
+F 0 "C?" H 5568 3696 50  0000 L CNN
+F 1 "10uF" H 5568 3605 50  0000 L CNN
+F 2 "" H 5488 3500 50  0001 C CNN
+F 3 "~" H 5450 3650 50  0001 C CNN
+	1    5450 3650
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C C?
+U 1 1 5B255F7B
+P 5850 3650
+F 0 "C?" H 5965 3696 50  0000 L CNN
+F 1 "0.1uF" H 5850 3550 50  0000 L CNN
+F 2 "" H 5888 3500 50  0001 C CNN
+F 3 "~" H 5850 3650 50  0001 C CNN
+	1    5850 3650
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5450 3500 5450 3450
+Connection ~ 5450 3450
+Wire Wire Line
+	5450 3450 5400 3450
+Wire Wire Line
+	5850 3500 5850 3450
+Connection ~ 5850 3450
+Wire Wire Line
+	5850 3450 5450 3450
+$Comp
+L power:GND #PWR?
+U 1 1 5B255F88
+P 5450 3850
+F 0 "#PWR?" H 5450 3600 50  0001 C CNN
+F 1 "GND" H 5350 3750 50  0000 C CNN
+F 2 "" H 5450 3850 50  0001 C CNN
+F 3 "" H 5450 3850 50  0001 C CNN
+	1    5450 3850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5450 3850 5450 3800
+$Comp
+L power:GND #PWR?
+U 1 1 5B255F8F
+P 5850 3850
+F 0 "#PWR?" H 5850 3600 50  0001 C CNN
+F 1 "GND" H 5750 3750 50  0000 C CNN
+F 2 "" H 5850 3850 50  0001 C CNN
+F 3 "" H 5850 3850 50  0001 C CNN
+	1    5850 3850
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5850 3850 5850 3800
+Wire Wire Line
+	5850 3450 6250 3450
 $EndSCHEMATC
