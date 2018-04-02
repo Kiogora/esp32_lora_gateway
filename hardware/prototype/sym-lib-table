@@ -17,4 +17,6 @@
   (lib (name ze_12)(type Legacy)(uri /home/alois/Documents/kaiote/kicad_footprints/lib_sch/ze_12.lib)(options "")(descr ""))
   (lib (name microe_ug95)(type Legacy)(uri /home/alois/Documents/kaiote/kicad_footprints/lib_sch/microe_ug95.lib)(options "")(descr ""))
   (lib (name esp32_devkitC)(type Legacy)(uri /home/alois/Documents/kaiote/kicad_footprints/lib_sch/esp32_devkitC.lib)(options "")(descr ""))
+  (lib (name narra)(type Legacy)(uri /home/alois/Downloads/footprints_components-master/component_libraries/narra.lib)(options "")(descr ""))
+  (lib (name battery-holder)(type Legacy)(uri /home/alois/Documents/kaiote/kicad_footprints/lib_sch/battery-holder.lib)(options "")(descr ""))
 )
