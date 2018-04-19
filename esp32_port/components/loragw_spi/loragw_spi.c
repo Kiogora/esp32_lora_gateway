@@ -36,10 +36,10 @@ static const char* TAG = "[LORAGW_SPI]";
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80
 
-#define PIN_NUM_MISO 25
-#define PIN_NUM_MOSI 23
-#define PIN_NUM_CLK  19
-#define PIN_NUM_CS   22
+#define PIN_NUM_MISO 33
+#define PIN_NUM_MOSI 32
+#define PIN_NUM_CLK  18
+#define PIN_NUM_CS   4
 #define NUM_QUEUE 7
 
 #define CHECK_NULL(a) if(a == NULL){ESP_LOGE(TAG, "%s:%d: ERROR: NULL POINTER AS ARGUMENT",__FUNCTION__, __LINE__);return LGW_SPI_ERROR;}

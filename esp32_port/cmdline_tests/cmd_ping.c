@@ -39,15 +39,16 @@ static char* addr = NULL;
 
 void register_ping();
 
-esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pf){
+esp_err_t pingResults(ping_target_id_t msgType, esp_ping_found * pf)
+{
     if (total_counts <= ping_count) {
         ESP_LOGI(TAG, "%d bytes from %s: icmp_seq=%d ttl=%d time=%d ms", pf->bytes, addr, pf->send_count, IP_DEFAULT_TTL, pf->resp_time);
-        waiting_results = 0;
         total_counts += 1;
         /*Calculate running square*/
         sum2 += ((pf->resp_time)*(pf->resp_time));
     }
-    else {
+    else
+    {
         /*calculate mean square..base calculation on recv count*/
         sum2 /= pf->recv_count;
          /*Calculate average*/
@@ -67,7 +68,7 @@ int ping_test(int argc, char **argv)
     ping_count = 0;  //how many pings per report
     ping_timeout = 0; //mS till we consider it timed out
     ping_delay = 0; //mS between pings
-    waiting_results = 0;
+    waiting_results = 1;
     total_counts = 1;
     sum2 = 0.0;
     mdev = 0.0;
@@ -119,18 +120,16 @@ int ping_test(int argc, char **argv)
         ping_delay = ping_args.delay->ival[0];
     }
 
-    while(total_counts <= ping_count)
+    esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
+    esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
+    esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
+    esp_ping_set_target(PING_TARGET_IP_ADDRESS, &device.addr, sizeof(uint32_t));
+    esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
+    ping_init();
+
+    while(waiting_results)
     {
-        if(!waiting_results)
-        {
-            esp_ping_set_target(PING_TARGET_IP_ADDRESS_COUNT, &ping_count, sizeof(uint32_t));
-            esp_ping_set_target(PING_TARGET_RCV_TIMEO, &ping_timeout, sizeof(uint32_t));
-            esp_ping_set_target(PING_TARGET_DELAY_TIME, &ping_delay, sizeof(uint32_t));
-            esp_ping_set_target(PING_TARGET_IP_ADDRESS, &device.addr, sizeof(uint32_t));
-            esp_ping_set_target(PING_TARGET_RES_FN, &pingResults, sizeof(pingResults));
-            ping_init();
-            waiting_results = 1;
-        }
+        ;
     }
     ping_deinit();
     return ESP_OK;
