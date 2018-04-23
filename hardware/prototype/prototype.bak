@@ -5,11 +5,11 @@ EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
-Title ""
-Date ""
-Rev ""
-Comp ""
-Comment1 ""
+Title "Kaiote LoRa gateway"
+Date "2018-04-23"
+Rev "1"
+Comp "Kaiote Limited"
+Comment1 "Design by: Alois Mbutura"
 Comment2 ""
 Comment3 ""
 Comment4 ""
@@ -67,7 +67,7 @@ Text Label 2550 1200 0    50   ~ 0
 BRD_GPS_VBCKUP
 Text Label 2550 1100 0    50   ~ 0
 BRD_GPS_1PPS
-Text Notes 8270 3975 2    50   ~ 0
+Text Notes 8250 3500 2    50   ~ 0
 ESP32_controller
 Wire Notes Line
 	470  3975 11220 3975
@@ -92,24 +92,23 @@ $EndComp
 Wire Wire Line
 	10350 1400 10600 1400
 Wire Wire Line
-	10350 1000 10650 1000
+	10350 1000 10450 1000
 Wire Wire Line
-	10350 1100 10650 1100
-Text Label 10650 1000 0    50   ~ 0
+	10350 1100 10450 1100
+Text Label 10450 1000 0    50   ~ 0
 GSM_TX
-Text Label 10650 1100 0    50   ~ 0
+Text Label 10450 1100 0    50   ~ 0
 GSM_RX
 Wire Wire Line
-	9050 900  8800 900 
-Text Label 8800 900  2    50   ~ 0
+	9050 900  9000 900 
+Text Label 9000 900  2    50   ~ 0
 PWR_KEY
 Text Label 11100 1400 1    50   ~ 0
 CELLULAR_5V
-Text Label 8800 1400 2    50   ~ 0
+Text Label 9000 1400 2    50   ~ 0
 3V3_REF
 Wire Wire Line
-	9050 1400 8800 1400
-NoConn ~ 9050 800 
+	9050 1400 9000 1400
 NoConn ~ 9050 1100
 NoConn ~ 9050 1200
 NoConn ~ 9050 1300
@@ -125,8 +124,8 @@ Wire Wire Line
 	2150 1200 2550 1200
 Wire Notes Line
 	475  5145 3420 5145
-Text Notes 6950 7800 2    50   ~ 0
-No RTC as the GSM module and ESP32 has an internal, non battery backed RTC available
+Text Notes 3450 7800 0    50   ~ 0
+Note: No external RTC is implemented as this is an always on power device. ESP32 \nhas an on power RTC
 $Comp
 L esp32_devkitC:DevkitC U4
 U 1 1 5AC380A0
@@ -143,67 +142,58 @@ Text Notes 8270 4970 2    50   ~ 0
 5v power_management
 Text Notes 11220 6535 2    50   ~ 0
 LoRa concentrator connector(Top view), SMA RF connector on right
-Text Label 4600 4100 0    50   ~ 0
+Text Label 3900 4100 0    50   ~ 0
 (+)RAIL
 NoConn ~ 10000 5800
 $Comp
 L narra:LM2596_MODULE U3
 U 1 1 5AC09295
-P 5950 4450
-F 0 "U3" H 5950 4600 60  0000 C CNN
-F 1 "LM2596_MODULE" H 5950 4500 60  0000 C CNN
-F 2 "lib_fp:LM2596_MODULE" H 5950 4450 60  0001 C CNN
-F 3 "" H 5950 4450 60  0001 C CNN
-F 4 "https://store.nerokas.co.ke/index.php?route=product/product&product_id=1083&search=lm2596&description=true" H 5950 4450 50  0001 C CNN "purchase page"
-	1    5950 4450
+P 5650 4450
+F 0 "U3" H 5650 4600 60  0000 C CNN
+F 1 "LM2596_MODULE" H 5650 4500 60  0000 C CNN
+F 2 "lib_fp:LM2596_MODULE" H 5650 4450 60  0001 C CNN
+F 3 "" H 5650 4450 60  0001 C CNN
+F 4 "https://store.nerokas.co.ke/index.php?route=product/product&product_id=1083&search=lm2596&description=true" H 5650 4450 50  0001 C CNN "purchase page"
+	1    5650 4450
 	1    0    0    -1  
 $EndComp
-Text Label 7800 4700 2    50   ~ 0
+Text Label 8250 4200 3    50   ~ 0
 GLOBAL_5V
 $Comp
 L power:GND #PWR019
 U 1 1 5AC119E2
-P 4800 4800
-F 0 "#PWR019" H 4800 4550 50  0001 C CNN
-F 1 "GND" H 4950 4700 50  0000 C CNN
-F 2 "" H 4800 4800 50  0001 C CNN
-F 3 "" H 4800 4800 50  0001 C CNN
-	1    4800 4800
+P 4500 4700
+F 0 "#PWR019" H 4500 4450 50  0001 C CNN
+F 1 "GND" H 4650 4600 50  0000 C CNN
+F 2 "" H 4500 4700 50  0001 C CNN
+F 3 "" H 4500 4700 50  0001 C CNN
+	1    4500 4700
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4800 4800 4800 4700
-Connection ~ 4800 4700
-Wire Wire Line
-	4800 4700 4900 4700
+	4500 4700 4600 4700
 $Comp
 L power:GND #PWR025
 U 1 1 5AC13B96
-P 7250 4750
-F 0 "#PWR025" H 7250 4500 50  0001 C CNN
-F 1 "GND" H 7255 4577 50  0000 C CNN
-F 2 "" H 7250 4750 50  0001 C CNN
-F 3 "" H 7250 4750 50  0001 C CNN
-	1    7250 4750
+P 7700 4700
+F 0 "#PWR025" H 7700 4450 50  0001 C CNN
+F 1 "GND" H 7705 4527 50  0000 C CNN
+F 2 "" H 7700 4700 50  0001 C CNN
+F 3 "" H 7700 4700 50  0001 C CNN
+	1    7700 4700
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	7250 4750 7250 4700
-Wire Wire Line
-	7250 4700 7050 4700
-Wire Notes Line
-	5385 5640 5385 6535
-Text Notes 8300 5650 2    50   ~ 0
+Text Notes 6965 7100 2    50   ~ 0
 5v Input voltage tie-point
 Wire Wire Line
-	6350 5450 6750 5450
-Text Label 7350 5200 0    50   ~ 0
+	5100 7000 5500 7000
+Text Label 6100 6750 0    50   ~ 0
 CELLULAR_5V
-Text Label 6950 5450 0    50   ~ 0
+Text Label 5700 7000 0    50   ~ 0
 LoRa_5V
 Wire Wire Line
-	6750 5200 7350 5200
-Text Label 6350 5450 2    50   ~ 0
+	5500 6750 6100 6750
+Text Label 5100 7000 2    50   ~ 0
 GLOBAL_5V
 Wire Notes Line
 	3420 5640 8270 5640
@@ -685,10 +675,10 @@ $EndComp
 Wire Wire Line
 	7350 2250 7100 2250
 Wire Wire Line
-	6750 5200 6750 5450
+	5500 6750 5500 7000
 Wire Wire Line
-	6950 5450 6750 5450
-Connection ~ 6750 5450
+	5700 7000 5500 7000
+Connection ~ 5500 7000
 $Comp
 L Regulator_Linear:TLV71333PDBV U2
 U 1 1 5AC37939
@@ -926,8 +916,6 @@ Wire Wire Line
 	10700 4200 10550 4200
 Wire Notes Line
 	4605 4970 8270 4970
-Wire Notes Line
-	8270 470  8270 6535
 Wire Wire Line
 	10400 1500 10350 1500
 Wire Wire Line
@@ -1242,7 +1230,7 @@ $EndComp
 NoConn ~ 9050 1000
 NoConn ~ 10350 900 
 NoConn ~ 10350 800 
-Text Notes 7550 3900 2    50   ~ 0
+Text Notes 5500 3950 0    50   ~ 0
 Handle strapping pins GPIO 0, 2, 5, 12, 15 on boot\n(Set as outputs or handle their state on reset if inputs)
 Text Label 8600 5200 2    50   ~ 0
 LoRa_5V
@@ -1439,8 +1427,6 @@ Wire Wire Line
 Wire Notes Line
 	4540 6535 4540 7100
 Wire Notes Line
-	4540 7100 3420 7100
-Wire Notes Line
 	1900 6530 1900 6420
 $Comp
 L dk_Coaxial-Connectors-RF:0734120114 J1
@@ -1483,7 +1469,7 @@ Wire Wire Line
 	1200 3000 1200 2900
 Wire Wire Line
 	1200 2900 1100 2900
-Text Notes 5550 3700 0    50   ~ 0
+Text Notes 5500 3750 0    50   ~ 0
 Remove jumper on 5v rail when USB programming \nto avoid circulating currents between supplies.
 $Comp
 L Device:CP C10
@@ -1627,7 +1613,7 @@ Wire Wire Line
 	7900 2950 8150 2950
 Text Label 10450 3000 0    50   ~ 0
 RMII_REFOSC_nINT
-Text Label 5250 1500 2    50   ~ 0
+Text Label 5250 1400 2    50   ~ 0
 GLOBAL_3V3
 Text Label 7400 2450 0    50   ~ 0
 PWR_KEY
@@ -1636,12 +1622,12 @@ Wire Wire Line
 $Comp
 L Device:R R3
 U 1 1 5ADD9BA8
-P 5450 1700
-F 0 "R3" H 5300 1750 50  0000 L CNN
-F 1 "10k" V 5450 1650 50  0000 L CNN
-F 2 "Resistor_SMD:R_0805_2012Metric" V 5380 1700 50  0001 C CNN
-F 3 "~" H 5450 1700 50  0001 C CNN
-	1    5450 1700
+P 5450 1600
+F 0 "R3" H 5300 1650 50  0000 L CNN
+F 1 "10k" V 5450 1550 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 5380 1600 50  0001 C CNN
+F 3 "~" H 5450 1600 50  0001 C CNN
+	1    5450 1600
 	1    0    0    -1  
 $EndComp
 Text Label 7400 2650 0    50   ~ 0
@@ -1662,22 +1648,22 @@ Wire Wire Line
 Wire Wire Line
 	10300 3000 10450 3000
 Wire Wire Line
-	5450 1550 5450 1500
+	5450 1450 5450 1400
 $Comp
 L Device:Jumper JP18
 U 1 1 5AED67E5
-P 7450 4100
-F 0 "JP18" H 7350 3900 50  0000 C CNN
-F 1 "Jumper" H 7450 4000 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 7450 4100 50  0001 C CNN
-F 3 "~" H 7450 4100 50  0001 C CNN
-	1    7450 4100
+P 7100 4100
+F 0 "JP18" H 7100 4050 50  0000 C CNN
+F 1 "Jumper" H 7100 4000 50  0000 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 7100 4100 50  0001 C CNN
+F 3 "~" H 7100 4100 50  0001 C CNN
+	1    7100 4100
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	7150 4100 7050 4100
+	6800 4100 6750 4100
 Wire Wire Line
-	7750 4100 7800 4100
+	7400 4100 7500 4100
 Text Label 5350 3050 2    50   ~ 0
 PHY_POWER_EN
 $Comp
@@ -1722,128 +1708,97 @@ Text Label 6000 1650 2    50   ~ 0
 Wire Wire Line
 	5250 2150 6250 2150
 Wire Wire Line
-	5250 1500 5450 1500
+	5250 1400 5450 1400
 Text Label 5800 2850 2    50   ~ 0
 NETWORK_STATUS
 Text Label 9250 3300 2    50   ~ 0
 GLOBAL_3V3
 Text Label 10500 3300 0    50   ~ 0
 GLOBAL_3V3
-Text Label 6900 5750 2    50   ~ 0
+Text Label 6150 5750 2    50   ~ 0
 NETWORK_STATUS
 $Comp
 L Device:LED D2
 U 1 1 5AFB0C79
-P 7250 5900
-F 0 "D2" V 7288 5783 50  0000 R CNN
-F 1 "LED" V 7197 5783 50  0000 R CNN
-F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 7250 5900 50  0001 C CNN
-F 3 "~" H 7250 5900 50  0001 C CNN
-	1    7250 5900
+P 6500 5900
+F 0 "D2" V 6538 5783 50  0000 R CNN
+F 1 "LED" V 6447 5783 50  0000 R CNN
+F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 6500 5900 50  0001 C CNN
+F 3 "~" H 6500 5900 50  0001 C CNN
+	1    6500 5900
 	0    -1   -1   0   
 $EndComp
 Wire Wire Line
-	7250 5750 6900 5750
+	6500 5750 6150 5750
 $Comp
 L Device:R R6
 U 1 1 5AFC467F
-P 7650 6150
-F 0 "R6" V 7550 6150 50  0000 C CNN
-F 1 "270R" V 7650 6150 50  0000 C CNN
-F 2 "Resistor_SMD:R_0805_2012Metric" V 7580 6150 50  0001 C CNN
-F 3 "~" H 7650 6150 50  0001 C CNN
-	1    7650 6150
+P 6900 6150
+F 0 "R6" V 6800 6150 50  0000 C CNN
+F 1 "270R" V 6900 6150 50  0000 C CNN
+F 2 "Resistor_SMD:R_0805_2012Metric" V 6830 6150 50  0001 C CNN
+F 3 "~" H 6900 6150 50  0001 C CNN
+	1    6900 6150
 	0    1    1    0   
 $EndComp
 Wire Wire Line
-	7500 6150 7250 6150
+	6750 6150 6500 6150
 Wire Wire Line
-	7250 6150 7250 6050
+	6500 6150 6500 6050
 $Comp
 L power:GND #PWR041
 U 1 1 5AFD876B
-P 7950 6250
-F 0 "#PWR041" H 7950 6000 50  0001 C CNN
-F 1 "GND" H 8100 6200 50  0000 C CNN
-F 2 "" H 7950 6250 50  0001 C CNN
-F 3 "" H 7950 6250 50  0001 C CNN
-	1    7950 6250
+P 7200 6250
+F 0 "#PWR041" H 7200 6000 50  0001 C CNN
+F 1 "GND" H 7350 6200 50  0000 C CNN
+F 2 "" H 7200 6250 50  0001 C CNN
+F 3 "" H 7200 6250 50  0001 C CNN
+	1    7200 6250
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	7950 6250 7950 6150
+	7200 6250 7200 6150
 Wire Wire Line
-	7950 6150 7800 6150
-Text Notes 5385 6535 0    50   ~ 0
-Network status LED\n=================\nToggles once every 500ms for a network error. Check network interfaces.\nToggles once every 30 sec for a successful uplink report.
+	7200 6150 7050 6150
+Text Notes 3435 6535 0    50   ~ 0
+Network status LED\n=================\nToggles once every 500ms(2Hz) for a network error. Check network interfaces.\nOnce a new interface is sensed, moves from 2Hz(3sec) to 5Hz(2sec) finally 10Hz(1sec)\nToggles once rapidly every uplink delay sec(usually 30) for a successful uplink report via cellular.\nToggles twice rapidly every uplink delay sec(usually 30) for a successful uplink report via ethernet.
 Text Notes 2355 3390 2    50   ~ 0
 1PPS output to LED/ uFL connector
 $Comp
 L Connector_Specialized:Jack-DC J8
 U 1 1 5B03C5B5
-P 3850 4200
-F 0 "J8" H 3500 4250 50  0000 C CNN
-F 1 "Jack-DC" H 3600 4150 50  0000 C CNN
-F 2 "Connector_BarrelJack:BarrelJack_Horizontal" H 3900 4160 50  0001 C CNN
-F 3 "https://www.cui.com/product/resource/pj-002a.pdf" H 3900 4160 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/cui-inc/PJ-002A/CP-002A-ND/96962" H 3850 4200 50  0001 C CNN "purchase page"
-	1    3850 4200
+P 3600 4200
+F 0 "J8" H 3500 4050 50  0000 C CNN
+F 1 "Jack-DC" H 3600 3950 50  0000 C CNN
+F 2 "Connector_BarrelJack:BarrelJack_Horizontal" H 3650 4160 50  0001 C CNN
+F 3 "https://www.cui.com/product/resource/pj-002a.pdf" H 3650 4160 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/cui-inc/PJ-002A/CP-002A-ND/96962" H 3600 4200 50  0001 C CNN "purchase page"
+	1    3600 4200
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	4150 4300 4500 4300
-Wire Wire Line
-	4500 4300 4500 4700
-Wire Wire Line
-	4500 4700 4800 4700
-Wire Wire Line
-	4150 4200 4500 4200
-Wire Wire Line
-	4500 4200 4500 4300
-Connection ~ 4500 4300
 Text Label 5900 3450 0    50   ~ 0
 ESP32_5v
 Text Label 7300 700  0    50   ~ 0
 ESP32_5v
 Wire Wire Line
 	7000 700  7300 700 
-Text Label 7150 4400 2    50   ~ 0
+Text Label 6850 4400 2    50   ~ 0
 (+)RAIL
 Wire Wire Line
-	7800 4400 7800 4100
-Connection ~ 7800 4100
+	7500 4400 7500 4100
 $Comp
 L Device:Jumper JP20
 U 1 1 5B1637D0
-P 7500 4400
-F 0 "JP20" H 7400 4200 50  0000 C CNN
-F 1 "Jumper" H 7450 4300 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 7500 4400 50  0001 C CNN
-F 3 "~" H 7500 4400 50  0001 C CNN
-	1    7500 4400
+P 7200 4400
+F 0 "JP20" H 7200 4350 50  0000 C CNN
+F 1 "Jumper" H 7200 4300 50  0000 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 7200 4400 50  0001 C CNN
+F 3 "~" H 7200 4400 50  0001 C CNN
+	1    7200 4400
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	7150 4400 7200 4400
-$Comp
-L Device:Polyfuse F1
-U 1 1 5B18ECA6
-P 8000 4350
-F 0 "F1" H 7850 4250 50  0000 L CNN
-F 1 "Polyfuse" H 7650 4150 50  0000 L CNN
-F 2 "" H 8050 4150 50  0001 L CNN
-F 3 "~" H 8000 4350 50  0001 C CNN
-	1    8000 4350
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	7800 4700 8000 4700
-Wire Wire Line
-	8000 4700 8000 4500
-Wire Wire Line
-	8000 4200 8000 4100
-Wire Wire Line
-	7800 4100 8000 4100
+	6850 4400 6900 4400
 Wire Wire Line
 	4200 5200 4150 5200
 Text Label 4150 5200 2    50   ~ 0
@@ -1857,21 +1812,13 @@ Wire Wire Line
 Connection ~ 3500 5100
 Text Label 650  1400 1    50   ~ 0
 GLOBAL_3V3
-Text Label 5250 1950 2    50   ~ 0
+Text Label 5250 1850 2    50   ~ 0
 BRD_GPS_RX
 Wire Wire Line
 	7400 2650 7100 2650
 Wire Wire Line
-	5250 1950 5450 1950
-Wire Wire Line
 	5250 2050 6250 2050
-Wire Wire Line
-	5450 1850 5450 1950
-Connection ~ 5450 1950
-Wire Wire Line
-	5450 1950 6250 1950
 NoConn ~ 6250 1750
-NoConn ~ 6250 1850
 NoConn ~ 6250 3150
 NoConn ~ 6250 3250
 NoConn ~ 6250 3350
@@ -1887,8 +1834,6 @@ Text Label 4200 850  0    50   ~ 0
 GLOBAL_3V3
 Wire Wire Line
 	4200 850  4150 850 
-Wire Wire Line
-	4150 4100 4900 4100
 $Comp
 L Device:C C15
 U 1 1 5AE0CC18
@@ -2052,4 +1997,434 @@ Wire Wire Line
 	9000 1600 9000 1500
 Wire Wire Line
 	9000 1500 9050 1500
+Text Label 9000 800  2    50   ~ 0
+STATUS
+Text Label 5250 1950 2    50   ~ 0
+STATUS
+Wire Wire Line
+	5250 1850 5450 1850
+Connection ~ 5450 1850
+Wire Wire Line
+	5450 1850 6250 1850
+Wire Wire Line
+	5450 1750 5450 1850
+Text Notes 3450 7450 0    50   ~ 0
+Conformance standards\n====================\n1. IEC 60950-1 Information technology equipment standard(general)\n2. IEC 60950-22 Information technology equipment-standard(outdoor installation)
+$Comp
+L Device:R R?
+U 1 1 5ADF0459
+P 4750 2100
+F 0 "R?" H 4800 2050 50  0000 L CNN
+F 1 "10k" V 4750 2050 50  0000 L CNN
+F 2 "" V 4680 2100 50  0001 C CNN
+F 3 "~" H 4750 2100 50  0001 C CNN
+	1    4750 2100
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4750 1950 6250 1950
+$Comp
+L power:GND #PWR?
+U 1 1 5AE07D9E
+P 4750 2300
+F 0 "#PWR?" H 4750 2050 50  0001 C CNN
+F 1 "GND" H 4900 2200 50  0000 C CNN
+F 2 "" H 4750 2300 50  0001 C CNN
+F 3 "" H 4750 2300 50  0001 C CNN
+	1    4750 2300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4750 2300 4750 2250
+Wire Wire Line
+	9000 800  9050 800 
+$Comp
+L Device:Fuse_Small F?
+U 1 1 5AE3A097
+P 7900 4100
+F 0 "F?" H 7850 4050 50  0000 L CNN
+F 1 "Fuse_Small" H 7700 4150 50  0000 L CNN
+F 2 "" H 7900 4100 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_461_datasheet.pdf.pdf" H 7900 4100 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/0461002.ER/F1551CT-ND/447217" H 7900 4100 50  0001 C CNN "purchase page"
+	1    7900 4100
+	1    0    0    -1  
+$EndComp
+Text Notes 5680 5230 0    50   ~ 0
+The fuse is a slow blow fuse, that lets downstream components\nwork but opens after sustained surge duration. Example:\nMelting (i^2)*r=17 therefore at 2A buck limit, 4.25s to melt.
+Wire Notes Line
+	3420 7100 6970 7100
+Wire Notes Line
+	5655 5230 8270 5230
+$Comp
+L Device:D_TVS D?
+U 1 1 5AEE33BD
+P 1100 4850
+F 0 "D?" V 1054 4929 50  0000 L CNN
+F 1 "D_TVS" V 1145 4929 50  0000 L CNN
+F 2 "" H 1100 4850 50  0001 C CNN
+F 3 "~" H 1100 4850 50  0001 C CNN
+	1    1100 4850
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:D_TVS D?
+U 1 1 5AEE3837
+P 1550 4850
+F 0 "D?" V 1504 4929 50  0000 L CNN
+F 1 "D_TVS" V 1595 4929 50  0000 L CNN
+F 2 "" H 1550 4850 50  0001 C CNN
+F 3 "~" H 1550 4850 50  0001 C CNN
+	1    1550 4850
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:D_TVS D?
+U 1 1 5AEE38D7
+P 1050 4300
+F 0 "D?" V 1004 4379 50  0000 L CNN
+F 1 "D_TVS" V 1095 4379 50  0000 L CNN
+F 2 "" H 1050 4300 50  0001 C CNN
+F 3 "~" H 1050 4300 50  0001 C CNN
+	1    1050 4300
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:D_TVS D?
+U 1 1 5AEE3989
+P 1600 4300
+F 0 "D?" V 1554 4379 50  0000 L CNN
+F 1 "D_TVS" V 1645 4379 50  0000 L CNN
+F 2 "" H 1600 4300 50  0001 C CNN
+F 3 "~" H 1600 4300 50  0001 C CNN
+	1    1600 4300
+	0    1    1    0   
+$EndComp
+$Comp
+L Device:D_TVS D?
+U 1 1 5AEE3A2F
+P 2000 4850
+F 0 "D?" V 1954 4929 50  0000 L CNN
+F 1 "D_TVS" V 2045 4929 50  0000 L CNN
+F 2 "" H 2000 4850 50  0001 C CNN
+F 3 "~" H 2000 4850 50  0001 C CNN
+	1    2000 4850
+	0    1    1    0   
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 5AF1230E
+P 1100 5050
+F 0 "#PWR?" H 1100 4800 50  0001 C CNN
+F 1 "GND" H 1250 5000 50  0000 C CNN
+F 2 "" H 1100 5050 50  0001 C CNN
+F 3 "" H 1100 5050 50  0001 C CNN
+	1    1100 5050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1100 5050 1100 5000
+$Comp
+L power:GND #PWR?
+U 1 1 5AF2998C
+P 1550 5050
+F 0 "#PWR?" H 1550 4800 50  0001 C CNN
+F 1 "GND" H 1700 5000 50  0000 C CNN
+F 2 "" H 1550 5050 50  0001 C CNN
+F 3 "" H 1550 5050 50  0001 C CNN
+	1    1550 5050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1550 5050 1550 5000
+$Comp
+L power:GND #PWR?
+U 1 1 5AF411D0
+P 2000 5050
+F 0 "#PWR?" H 2000 4800 50  0001 C CNN
+F 1 "GND" H 2150 5000 50  0000 C CNN
+F 2 "" H 2000 5050 50  0001 C CNN
+F 3 "" H 2000 5050 50  0001 C CNN
+	1    2000 5050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2000 5050 2000 5000
+$Comp
+L Device:D_TVS D?
+U 1 1 5AFA0C5B
+P 750 4850
+F 0 "D?" V 704 4929 50  0000 L CNN
+F 1 "D_TVS" V 795 4929 50  0000 L CNN
+F 2 "" H 750 4850 50  0001 C CNN
+F 3 "~" H 750 4850 50  0001 C CNN
+	1    750  4850
+	0    1    1    0   
+$EndComp
+Text Label 700  4700 2    50   ~ 0
+RMII_TX1
+Wire Wire Line
+	700  4700 750  4700
+$Comp
+L power:GND #PWR?
+U 1 1 5AFB9D63
+P 750 5050
+F 0 "#PWR?" H 750 4800 50  0001 C CNN
+F 1 "GND" H 900 5000 50  0000 C CNN
+F 2 "" H 750 5050 50  0001 C CNN
+F 3 "" H 750 5050 50  0001 C CNN
+	1    750  5050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	750  5050 750  5000
+Text Label 1050 4700 2    50   ~ 0
+RMII_TX0
+Wire Wire Line
+	1050 4700 1100 4700
+Text Label 1500 4700 2    50   ~ 0
+RMII_RX1
+Wire Wire Line
+	1500 4700 1550 4700
+Text Label 950  4150 2    50   ~ 0
+RMII_CRS_DV
+$Comp
+L power:GND #PWR?
+U 1 1 5B0053E7
+P 1050 4500
+F 0 "#PWR?" H 1050 4250 50  0001 C CNN
+F 1 "GND" H 1200 4450 50  0000 C CNN
+F 2 "" H 1050 4500 50  0001 C CNN
+F 3 "" H 1050 4500 50  0001 C CNN
+	1    1050 4500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1050 4500 1050 4450
+Wire Wire Line
+	1050 4150 950  4150
+$Comp
+L Device:D_TVS D?
+U 1 1 5B037A09
+P 2500 4850
+F 0 "D?" V 2454 4929 50  0000 L CNN
+F 1 "D_TVS" V 2545 4929 50  0000 L CNN
+F 2 "" H 2500 4850 50  0001 C CNN
+F 3 "~" H 2500 4850 50  0001 C CNN
+	1    2500 4850
+	0    1    1    0   
+$EndComp
+$Comp
+L power:GND #PWR?
+U 1 1 5B037B9F
+P 2500 5050
+F 0 "#PWR?" H 2500 4800 50  0001 C CNN
+F 1 "GND" H 2650 5000 50  0000 C CNN
+F 2 "" H 2500 5050 50  0001 C CNN
+F 3 "" H 2500 5050 50  0001 C CNN
+	1    2500 5050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2500 5050 2500 5000
+Text Label 2450 4700 2    50   ~ 0
+RMII_MDC
+Wire Wire Line
+	2450 4700 2500 4700
+$Comp
+L power:GND #PWR?
+U 1 1 5B06BCB2
+P 1600 4500
+F 0 "#PWR?" H 1600 4250 50  0001 C CNN
+F 1 "GND" H 1750 4450 50  0000 C CNN
+F 2 "" H 1600 4500 50  0001 C CNN
+F 3 "" H 1600 4500 50  0001 C CNN
+	1    1600 4500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1600 4500 1600 4450
+Text Label 1550 4150 2    50   ~ 0
+RMII_TX_EN
+Wire Wire Line
+	1550 4150 1600 4150
+Text Label 1950 4700 2    50   ~ 0
+RMII-RX0
+Text Label 2300 4150 2    50   ~ 0
+RMII_REFOSC_nINT
+Wire Wire Line
+	2000 4700 1950 4700
+$Comp
+L Device:D_TVS D?
+U 1 1 5B13F006
+P 2350 4300
+F 0 "D?" V 2304 4379 50  0000 L CNN
+F 1 "D_TVS" V 2395 4379 50  0000 L CNN
+F 2 "" H 2350 4300 50  0001 C CNN
+F 3 "~" H 2350 4300 50  0001 C CNN
+	1    2350 4300
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	2350 4150 2300 4150
+$Comp
+L power:GND #PWR?
+U 1 1 5B15992F
+P 2350 4500
+F 0 "#PWR?" H 2350 4250 50  0001 C CNN
+F 1 "GND" H 2500 4450 50  0000 C CNN
+F 2 "" H 2350 4500 50  0001 C CNN
+F 3 "" H 2350 4500 50  0001 C CNN
+	1    2350 4500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2350 4500 2350 4450
+Text Notes 3400 4100 2    50   ~ 0
+RMII TVS surge protection
+$Comp
+L Device:D_TVS D?
+U 1 1 5B192C2B
+P 8100 4350
+F 0 "D?" V 8050 4200 50  0000 L CNN
+F 1 "D_TVS" V 8150 4100 50  0000 L CNN
+F 2 "" H 8100 4350 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/tvs_diodes/littelfuse_tvs_diode_smaj_datasheet.pdf.pdf" H 8100 4350 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SMAJ5.0A/SMAJ5.0ALFCT-ND/762462" V 8100 4350 50  0001 C CNN "purchase page"
+	1    8100 4350
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	7800 4100 7700 4100
+Connection ~ 7500 4100
+Wire Wire Line
+	8000 4100 8100 4100
+Wire Wire Line
+	8100 4100 8100 4200
+Wire Wire Line
+	8250 4200 8250 4100
+Wire Wire Line
+	8250 4100 8100 4100
+Connection ~ 8100 4100
+Text Notes 5650 5400 0    50   ~ 0
+The TVS diode protects the downstream components at Vwm 5v,  \nVbr 6.4-7.0v and Vc 9.2v and peak pulse current(8/20) 43.5A 
+$Comp
+L Device:Fuse_Small F?
+U 1 1 5B26C3F4
+P 4300 4100
+F 0 "F?" H 4150 4050 50  0000 L CNN
+F 1 "Fuse_Small" H 4100 4000 50  0000 L CNN
+F 2 "" H 4300 4100 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_461_datasheet.pdf.pdf" H 4300 4100 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/0461002.ER/F1551CT-ND/447217" H 4300 4100 50  0001 C CNN "purchase page"
+	1    4300 4100
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:D_TVS D?
+U 1 1 5B2860A1
+P 4500 4350
+F 0 "D?" V 4450 4400 50  0000 L CNN
+F 1 "D_TVS" V 4550 4400 50  0000 L CNN
+F 2 "" H 4500 4350 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/tvs_diodes/littelfuse_tvs_diode_sma6j_datasheet.pdf.pdf" H 4500 4350 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SMA6J12A/SMA6J12ATR-ND/3997484" V 4500 4350 50  0001 C CNN "purchase page"
+	1    4500 4350
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	4500 4200 4500 4100
+Wire Wire Line
+	4500 4500 4500 4700
+Connection ~ 4500 4700
+Wire Wire Line
+	3900 4200 3900 4300
+Wire Wire Line
+	3900 4300 3900 4700
+Wire Wire Line
+	3900 4700 4050 4700
+Connection ~ 3900 4300
+Wire Wire Line
+	3900 4100 4050 4100
+Wire Wire Line
+	6750 4700 7700 4700
+Wire Wire Line
+	8100 4700 7700 4700
+Wire Wire Line
+	8100 4500 8100 4700
+Connection ~ 7700 4700
+$Comp
+L Graphic:SYM_ESD_Large #SYM?
+U 1 1 5B37928B
+P 7250 6700
+F 0 "#SYM?" H 7250 6900 50  0001 C CNN
+F 1 "SYM_ESD_Large" H 7250 6450 50  0001 C CNN
+F 2 "" H 7245 6670 50  0001 C CNN
+F 3 "~" H 7245 6670 50  0001 C CNN
+	1    7250 6700
+	1    0    0    -1  
+$EndComp
+$Comp
+L Graphic:SYM_Radio_Waves_Large #SYM?
+U 1 1 5B37BDDF
+P 7900 6700
+F 0 "#SYM?" H 7900 6900 50  0001 C CNN
+F 1 "SYM_Radio_Waves_Large" H 7900 6450 50  0001 C CNN
+F 2 "" H 7900 6500 50  0001 C CNN
+F 3 "~" H 7930 6500 50  0001 C CNN
+	1    7900 6700
+	1    0    0    -1  
+$EndComp
+$Comp
+L GDT-:GDT- GDT?
+U 1 1 5B37CA10
+P 4050 4400
+F 0 "GDT?" V 4004 4506 50  0000 L CNN
+F 1 "GDT-" V 4095 4506 50  0000 L CNN
+F 2 "" H 4050 4400 50  0001 C CNN
+F 3 "http://www.bourns.com/docs/Product-Datasheets/2051.pdf" H 4050 4400 50  0001 L BNN
+F 4 "https://www.digikey.com/product-detail/en/bourns-inc/2051-09-SM-RPLF/2051-09-SM-RPLFCT-ND/2625123" V 4050 4400 50  0001 C CNN "purchase page"
+	1    4050 4400
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	4050 4200 4050 4100
+Connection ~ 4050 4100
+Wire Wire Line
+	4050 4600 4050 4700
+Connection ~ 4050 4700
+Wire Wire Line
+	4050 4700 4500 4700
+Wire Wire Line
+	7700 4200 7700 4100
+Connection ~ 7700 4100
+Wire Wire Line
+	7700 4100 7500 4100
+Wire Wire Line
+	7700 4600 7700 4700
+$Comp
+L GDT-:GDT- GDT?
+U 1 1 5B5DCEDC
+P 7700 4400
+F 0 "GDT?" V 7800 4200 50  0000 L CNN
+F 1 "GDT-" V 7900 4200 50  0000 L CNN
+F 2 "" H 7700 4400 50  0001 C CNN
+F 3 "http://www.bourns.com/docs/Product-Datasheets/2051.pdf" H 7700 4400 50  0001 L BNN
+F 4 "https://www.digikey.com/product-detail/en/bourns-inc/2051-09-SM-RPLF/2051-09-SM-RPLFCT-ND/2625123" V 7700 4400 50  0001 C CNN "purchase page"
+	1    7700 4400
+	0    1    1    0   
+$EndComp
+Wire Notes Line
+	5655 5405 8270 5405
+Wire Notes Line
+	8270 470  8270 6535
+Text Notes 5650 5600 0    50   ~ 0
+The initial GDT provides 2kA lightning protection at the power input.\nIt also reduces the voltage down to 90v,
+Wire Wire Line
+	4050 4100 4200 4100
+Connection ~ 4500 4100
+Wire Wire Line
+	4400 4100 4500 4100
+Wire Wire Line
+	4500 4100 4600 4100
 $EndSCHEMATC
