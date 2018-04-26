@@ -4,7 +4,7 @@ EELAYER 26 0
 EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
-Sheet 1 1
+Sheet 1 2
 Title "Kaiote LoRa gateway with surge suppression"
 Date "2018-04-23"
 Rev "1"
@@ -201,7 +201,7 @@ U 1 1 5ABE743B
 P 1100 5500
 F 0 "JP2" H 1100 5739 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 1100 5648 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 1100 5500 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 1100 5500 50  0001 C CNN
 F 3 "~" H 1100 5500 50  0001 C CNN
 	1    1100 5500
 	1    0    0    -1  
@@ -212,7 +212,7 @@ U 1 1 5ABE75DF
 P 2050 5500
 F 0 "JP8" H 2050 5739 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 2050 5648 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 2050 5500 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 2050 5500 50  0001 C CNN
 F 3 "~" H 2050 5500 50  0001 C CNN
 	1    2050 5500
 	1    0    0    -1  
@@ -223,7 +223,7 @@ U 1 1 5ABE76D3
 P 2950 5500
 F 0 "JP12" H 2950 5739 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 2950 5648 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 2950 5500 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 2950 5500 50  0001 C CNN
 F 3 "~" H 2950 5500 50  0001 C CNN
 	1    2950 5500
 	1    0    0    -1  
@@ -234,7 +234,7 @@ U 1 1 5ABE773F
 P 1100 6050
 F 0 "JP3" H 1100 6289 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 1100 6198 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 1100 6050 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 1100 6050 50  0001 C CNN
 F 3 "~" H 1100 6050 50  0001 C CNN
 	1    1100 6050
 	1    0    0    -1  
@@ -245,7 +245,7 @@ U 1 1 5ABE779D
 P 1900 6050
 F 0 "JP7" H 1900 6289 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 1900 6198 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 1900 6050 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 1900 6050 50  0001 C CNN
 F 3 "~" H 1900 6050 50  0001 C CNN
 	1    1900 6050
 	1    0    0    -1  
@@ -286,7 +286,7 @@ U 1 1 5AC244DA
 P 1100 6850
 F 0 "JP4" H 1100 7089 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 1100 6998 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 1100 6850 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 1100 6850 50  0001 C CNN
 F 3 "~" H 1100 6850 50  0001 C CNN
 	1    1100 6850
 	1    0    0    -1  
@@ -297,7 +297,7 @@ U 1 1 5AC244E8
 P 3100 6850
 F 0 "JP15" H 3100 7089 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 3100 6998 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 3100 6850 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 3100 6850 50  0001 C CNN
 F 3 "~" H 3100 6850 50  0001 C CNN
 	1    3100 6850
 	1    0    0    -1  
@@ -308,7 +308,7 @@ U 1 1 5AC244F6
 P 1100 7400
 F 0 "JP5" H 1100 7639 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 1100 7548 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 1100 7400 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 1100 7400 50  0001 C CNN
 F 3 "~" H 1100 7400 50  0001 C CNN
 	1    1100 7400
 	1    0    0    -1  
@@ -335,7 +335,7 @@ Text Label 3000 7000 2    50   ~ 0
 19
 Text Label 1200 7600 0    50   ~ 0
 20
-Text Notes 8250 1200 2    50   ~ 0
+Text Notes 8270 6535 2    50   ~ 0
 Alternative programming header
 Wire Wire Line
 	1400 5500 1350 5500
@@ -359,7 +359,7 @@ U 1 1 5ACA767E
 P 2950 6050
 F 0 "JP13" H 2950 6289 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 2950 6198 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 2950 6050 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 2950 6050 50  0001 C CNN
 F 3 "~" H 2950 6050 50  0001 C CNN
 	1    2950 6050
 	1    0    0    -1  
@@ -393,7 +393,7 @@ U 1 1 5AC244FD
 P 2150 7400
 F 0 "JP10" H 2150 7639 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 2150 7548 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 2150 7400 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 2150 7400 50  0001 C CNN
 F 3 "~" H 2150 7400 50  0001 C CNN
 	1    2150 7400
 	1    0    0    -1  
@@ -410,7 +410,7 @@ U 1 1 5AD7DBBB
 P 2950 7400
 F 0 "JP14" H 2950 7639 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 2950 7548 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 2950 7400 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 2950 7400 50  0001 C CNN
 F 3 "~" H 2950 7400 50  0001 C CNN
 	1    2950 7400
 	1    0    0    -1  
@@ -427,7 +427,7 @@ U 1 1 5AD9956F
 P 4000 6850
 F 0 "JP16" H 4000 7089 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 4000 6998 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 4000 6850 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 4000 6850 50  0001 C CNN
 F 3 "~" H 4000 6850 50  0001 C CNN
 	1    4000 6850
 	1    0    0    -1  
@@ -438,7 +438,7 @@ U 1 1 5AE37C76
 P 3250 2800
 F 0 "JP11" H 3085 2705 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 3250 2948 50  0001 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 3250 2800 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 3250 2800 50  0001 C CNN
 F 3 "~" H 3250 2800 50  0001 C CNN
 	1    3250 2800
 	1    0    0    -1  
@@ -569,12 +569,12 @@ Wire Wire Line
 Wire Wire Line
 	3250 2950 3250 2900
 Wire Wire Line
-	7000 900  7300 900 
-Text Label 7300 900  0    50   ~ 0
+	5750 6350 5850 6350
+Text Label 5850 6350 0    50   ~ 0
 CONTROLLER_TX
 Wire Wire Line
-	7000 1000 7300 1000
-Text Label 7300 1000 0    50   ~ 0
+	5750 6450 5850 6450
+Text Label 5850 6450 0    50   ~ 0
 CONTROLLER_RX
 $Comp
 L Device:R R1
@@ -623,16 +623,16 @@ CONTROLLER_RX
 $Comp
 L power:GND #PWR028
 U 1 1 5AD69F58
-P 7950 800
-F 0 "#PWR028" H 7950 550 50  0001 C CNN
-F 1 "GND" V 7955 672 50  0000 R CNN
-F 2 "" H 7950 800 50  0001 C CNN
-F 3 "" H 7950 800 50  0001 C CNN
-	1    7950 800 
+P 5850 6250
+F 0 "#PWR028" H 5850 6000 50  0001 C CNN
+F 1 "GND" V 5855 6122 50  0000 R CNN
+F 2 "" H 5850 6250 50  0001 C CNN
+F 3 "" H 5850 6250 50  0001 C CNN
+	1    5850 6250
 	0    -1   -1   0   
 $EndComp
 Wire Wire Line
-	7000 800  7950 800 
+	5750 6250 5850 6250
 $Comp
 L power:GND #PWR026
 U 1 1 5AD767CC
@@ -751,63 +751,6 @@ Wire Wire Line
 	950  1600 1100 1600
 Wire Notes Line
 	4695 1220 8270 1220
-Text Label 5200 900  2    50   ~ 0
-PPS_VISUAL
-Wire Wire Line
-	5200 900  5300 900 
-Wire Wire Line
-	5650 700  5650 600 
-Wire Wire Line
-	5650 600  5700 600 
-$Comp
-L Device:R R2
-U 1 1 5AFCF5B1
-P 5850 600
-F 0 "R2" V 5750 600 50  0000 C CNN
-F 1 "200R" V 5850 600 50  0000 C CNN
-F 2 "Resistor_SMD:R_0805_2012Metric" V 5780 600 50  0001 C CNN
-F 3 "~" H 5850 600 50  0001 C CNN
-	1    5850 600 
-	0    1    1    0   
-$EndComp
-$Comp
-L power:GND #PWR024
-U 1 1 5AFCF889
-P 5650 1110
-F 0 "#PWR024" H 5650 860 50  0001 C CNN
-F 1 "GND" H 5775 1035 50  0000 C CNN
-F 2 "" H 5650 1110 50  0001 C CNN
-F 3 "" H 5650 1110 50  0001 C CNN
-	1    5650 1110
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	5650 1110 5650 1100
-Text Label 6500 600  0    50   ~ 0
-GLOBAL_3V3
-$Comp
-L Device:LED D1
-U 1 1 5B006196
-P 6300 600
-F 0 "D1" H 6300 400 50  0000 C CNN
-F 1 "LED" H 6300 500 50  0000 C CNN
-F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 6300 600 50  0001 C CNN
-F 3 "~" H 6300 600 50  0001 C CNN
-	1    6300 600 
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	6000 600  6150 600 
-Wire Wire Line
-	6500 600  6450 600 
-Wire Notes Line
-	6960 470  6960 620 
-Wire Notes Line
-	6960 620  6555 620 
-Wire Notes Line
-	6555 620  6555 1220
-Text Notes 6555 1220 2    50   ~ 0
-GPS FIX indicator
 Wire Wire Line
 	5200 5100 5000 5100
 $Comp
@@ -872,7 +815,7 @@ U 1 1 5B0E07C0
 P 10300 4300
 F 0 "Q2" V 10450 4450 50  0000 C CNN
 F 1 "Si2323" V 10200 4000 50  0000 C CNN
-F 2 "TO_SOT_Packages_SMD:SOT-23" H 10500 4225 50  0001 L CIN
+F 2 "Package_TO_SOT_SMD:SOT-23" H 10500 4225 50  0001 L CIN
 F 3 "http://www.vishay.com/docs/65700/si2323cds.pdf" H 10300 4300 50  0001 L CNN
 F 4 "https://www.digikey.com/product-detail/en/vishay-siliconix/SI2323CDS-T1-GE3/SI2323CDS-T1-GE3CT-ND/2441900" V 10300 4300 50  0001 C CNN "purchase page"
 	1    10300 4300
@@ -1070,7 +1013,7 @@ U 1 1 5AE84E08
 P 1600 2800
 F 0 "JP6" H 1600 3024 50  0000 C CNN
 F 1 "Jumper_3_Open" H 1600 2933 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 1600 2800 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 1600 2800 50  0001 C CNN
 F 3 "~" H 1600 2800 50  0001 C CNN
 	1    1600 2800
 	1    0    0    -1  
@@ -1112,7 +1055,7 @@ U 1 1 5AF1E970
 P 9650 3000
 F 0 "J5" H 9700 3517 50  0000 C CNN
 F 1 "Conn_02x07_Odd_Even" H 9700 3426 50  0000 C CNN
-F 2 "lib_fp:waveshare_lan_8720" H 9650 3000 50  0001 C CNN
+F 2 "lib_fp:lan_waveshare_8720" H 9650 3000 50  0001 C CNN
 F 3 "http://sullinscorp.com/drawings/101_P(N)PxCxx2LJBN-RC,_10494-H.pdf" H 9650 3000 50  0001 C CNN
 F 4 "https://www.digikey.com/product-detail/en/sullins-connector-solutions/PPPC072LJBN-RC/S5560-ND/776018" H 9650 3000 50  0001 C CNN "purchase_page"
 	1    9650 3000
@@ -1181,7 +1124,7 @@ U 1 1 5B1BC618
 P 5600 3450
 F 0 "JP17" H 5600 3400 50  0000 C CNN
 F 1 "Jumper" H 5650 3600 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 5600 3450 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 5600 3450 50  0001 C CNN
 F 3 "~" H 5600 3450 50  0001 C CNN
 	1    5600 3450
 	1    0    0    -1  
@@ -1194,12 +1137,12 @@ Wire Wire Line
 $Comp
 L Connector_Generic:Conn_01x04 J4
 U 1 1 5B2068E3
-P 6800 900
-F 0 "J4" H 6950 700 50  0000 C CNN
-F 1 "Conn_01x04" H 6400 550 50  0000 C CNN
-F 2 "lib_fp:PinHeader_1x04_P2.54mm_staggered_Vertical" H 6800 900 50  0001 C CNN
-F 3 "~" H 6800 900 50  0001 C CNN
-	1    6800 900 
+P 5550 6350
+F 0 "J4" H 5700 6150 50  0000 C CNN
+F 1 "Conn_01x04" H 5150 6000 50  0000 C CNN
+F 2 "lib_fp:PinHeader_1x04_P2.54mm_staggered_Vertical" H 5550 6350 50  0001 C CNN
+F 3 "~" H 5550 6350 50  0001 C CNN
+	1    5550 6350
 	-1   0    0    1   
 $EndComp
 NoConn ~ 9050 1000
@@ -1339,7 +1282,7 @@ U 1 1 5AC244E1
 P 2100 6850
 F 0 "JP9" H 2100 7089 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 2100 6998 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 2100 6850 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 2100 6850 50  0001 C CNN
 F 3 "~" H 2100 6850 50  0001 C CNN
 	1    2100 6850
 	1    0    0    -1  
@@ -1626,7 +1569,7 @@ U 1 1 5AED67E5
 P 7100 4100
 F 0 "JP18" H 7100 4050 50  0000 C CNN
 F 1 "Jumper" H 7100 4000 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 7100 4100 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 7100 4100 50  0001 C CNN
 F 3 "~" H 7100 4100 50  0001 C CNN
 	1    7100 4100
 	1    0    0    -1  
@@ -1686,45 +1629,6 @@ Text Label 10650 2500 2    50   ~ 0
 GLOBAL_3V3
 Text Label 10500 3300 0    50   ~ 0
 GLOBAL_3V3
-Text Label 5800 6150 2    50   ~ 0
-NETWORK_STATUS
-$Comp
-L Device:LED D2
-U 1 1 5AFB0C79
-P 6250 6150
-F 0 "D2" H 6150 6200 50  0000 R CNN
-F 1 "LED" H 6000 6200 50  0000 R CNN
-F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 6250 6150 50  0001 C CNN
-F 3 "~" H 6250 6150 50  0001 C CNN
-	1    6250 6150
-	-1   0    0    1   
-$EndComp
-Wire Wire Line
-	6100 6150 5800 6150
-$Comp
-L Device:R R6
-U 1 1 5AFC467F
-P 6900 6150
-F 0 "R6" V 7000 6150 50  0000 C CNN
-F 1 "270R" V 6900 6150 50  0000 C CNN
-F 2 "Resistor_SMD:R_0805_2012Metric" V 6830 6150 50  0001 C CNN
-F 3 "~" H 6900 6150 50  0001 C CNN
-	1    6900 6150
-	0    1    1    0   
-$EndComp
-$Comp
-L power:GND #PWR041
-U 1 1 5AFD876B
-P 7400 6150
-F 0 "#PWR041" H 7400 5900 50  0001 C CNN
-F 1 "GND" V 7400 5950 50  0000 C CNN
-F 2 "" H 7400 6150 50  0001 C CNN
-F 3 "" H 7400 6150 50  0001 C CNN
-	1    7400 6150
-	0    -1   -1   0   
-$EndComp
-Text Notes 3435 6535 0    50   ~ 0
-Network status LED\n=================\nToggles once every 500ms(2Hz) for a network error. Check network interfaces.\nOnce a ETH interface is sensed, moves from 2Hz(3sec) to 5Hz(2sec) finally 10Hz(1sec), reversed order for cell.\nToggles once rapidly every uplink delay sec(usually 30) for a successful uplink report via cellular.\nToggles twice rapidly every uplink delay sec(usually 30) for a successful uplink report via ethernet.
 Text Notes 2355 3390 2    50   ~ 0
 1PPS output to LED/ uFL connector
 $Comp
@@ -1741,10 +1645,10 @@ F 4 "https://www.digikey.com/product-detail/en/cui-inc/PJ-002A/CP-002A-ND/96962"
 $EndComp
 Text Label 5900 3450 0    50   ~ 0
 ESP32_5v
-Text Label 7300 700  0    50   ~ 0
+Text Label 5850 6150 0    50   ~ 0
 ESP32_5v
 Wire Wire Line
-	7000 700  7300 700 
+	5750 6150 5850 6150
 Text Label 6850 4400 2    50   ~ 0
 (+)RAIL
 Wire Wire Line
@@ -1755,7 +1659,7 @@ U 1 1 5B1637D0
 P 7200 4400
 F 0 "JP20" H 7200 4350 50  0000 C CNN
 F 1 "Jumper" H 7200 4300 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 7200 4400 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 7200 4400 50  0001 C CNN
 F 3 "~" H 7200 4400 50  0001 C CNN
 	1    7200 4400
 	1    0    0    -1  
@@ -1919,18 +1823,6 @@ Wire Wire Line
 Connection ~ 5050 3850
 Wire Wire Line
 	5050 3850 5250 3850
-$Comp
-L Transistor_BJT:DTC143Z Q1
-U 1 1 5ADEE2D1
-P 5550 900
-F 0 "Q1" H 5738 946 50  0000 L CNN
-F 1 "DTC143Z" H 5738 855 50  0000 L CNN
-F 2 "Package_TO_SOT_SMD:SC-59_Handsoldering" H 5550 900 50  0001 L CNN
-F 3 "http://www.rohm.com/web/global/datasheet/DTC143ZEB/dtc143zebtl-e" H 5550 900 50  0001 L CNN
-F 4 "https://www.digikey.com/product-detail/en/rohm-semiconductor/DTC143ZKAT146/DTC143ZKAT146CT-ND/650725" H 5550 900 50  0001 C CNN "purchase page"
-	1    5550 900 
-	1    0    0    -1  
-$EndComp
 NoConn ~ 9300 2700
 Wire Wire Line
 	10400 1600 10400 1500
@@ -2324,8 +2216,6 @@ F 3 "" H 3600 5950 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	3600 5950 3600 5900
-Wire Wire Line
-	6400 6150 6750 6150
 Wire Notes Line
 	3420 6055 8270 6055
 Wire Notes Line
@@ -2378,30 +2268,6 @@ F 3 "" H 6000 5950 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	6000 5950 6000 5900
-$Comp
-L Mechanical:Mounting_Hole_PAD MK4
-U 1 1 5B0F20B1
-P 7100 5800
-F 0 "MK4" H 7200 5851 50  0000 L CNN
-F 1 "Mounting_Hole_PAD" H 7200 5760 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 7100 5800 50  0001 C CNN
-F 3 "" H 7100 5800 50  0001 C CNN
-	1    7100 5800
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:GND #PWR049
-U 1 1 5B0F20B8
-P 7100 5950
-F 0 "#PWR049" H 7100 5700 50  0001 C CNN
-F 1 "GND" H 7000 5950 50  0000 C CNN
-F 2 "" H 7100 5950 50  0001 C CNN
-F 3 "" H 7100 5950 50  0001 C CNN
-	1    7100 5950
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	7100 5950 7100 5900
 Text Notes 8270 6055 2    50   ~ 0
 Grounded mounting holes \nfor safe enclosure discharge
 Wire Wire Line
@@ -2757,7 +2623,7 @@ U 1 1 5B7F475F
 P 8250 4550
 F 0 "JP21" H 8250 4850 50  0000 C CNN
 F 1 "Jumper" H 8250 4800 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 8250 4550 50  0001 C CNN
+F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 8250 4550 50  0001 C CNN
 F 3 "~" H 8250 4550 50  0001 C CNN
 	1    8250 4550
 	0    -1   -1   0   
@@ -2767,9 +2633,59 @@ Wire Wire Line
 Wire Wire Line
 	8250 4850 7600 4850
 Wire Wire Line
-	7050 6150 7400 6150
-Wire Wire Line
 	8700 3200 9350 3200
 Text Label 9250 3300 2    50   ~ 0
 GLOBAL_3V3
+$Sheet
+S 5700 600  1350 550 
+U 5AE62D7C
+F0 "Sheet5AE62D7B" 50
+F1 "SYSTEM_LEDS.sch" 50
+F2 "PPS_VISUAL" I L 5700 700 50 
+F3 "GLOBAL_3V3" I R 7050 700 50 
+F4 "GLOBAL_5V" I R 7050 950 50 
+F5 "NETWORK_STATUS" I L 5700 950 50 
+$EndSheet
+Text Label 5450 700  2    50   ~ 0
+PPS_VISUAL
+Text Label 5650 950  2    50   ~ 0
+NETWORK_STATUS
+Wire Wire Line
+	5650 950  5700 950 
+Wire Wire Line
+	5450 700  5700 700 
+Wire Wire Line
+	7050 700  7400 700 
+Wire Wire Line
+	7050 950  7400 950 
+Text Label 7400 700  0    50   ~ 0
+GLOBAL_3V3
+Text Label 7400 950  0    50   ~ 0
+GLOBAL_5V
+Text Notes 8270 1220 2    50   ~ 0
+System LED(s) block
+Wire Wire Line
+	7100 5950 7100 5900
+$Comp
+L power:GND #PWR049
+U 1 1 5B0F20B8
+P 7100 5950
+F 0 "#PWR049" H 7100 5700 50  0001 C CNN
+F 1 "GND" H 7000 5950 50  0000 C CNN
+F 2 "" H 7100 5950 50  0001 C CNN
+F 3 "" H 7100 5950 50  0001 C CNN
+	1    7100 5950
+	1    0    0    -1  
+$EndComp
+$Comp
+L Mechanical:Mounting_Hole_PAD MK4
+U 1 1 5B0F20B1
+P 7100 5800
+F 0 "MK4" H 7200 5851 50  0000 L CNN
+F 1 "Mounting_Hole_PAD" H 7200 5760 50  0000 L CNN
+F 2 "MountingHole:MountingHole_3.2mm_M3_Pad_Via" H 7100 5800 50  0001 C CNN
+F 3 "" H 7100 5800 50  0001 C CNN
+	1    7100 5800
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
