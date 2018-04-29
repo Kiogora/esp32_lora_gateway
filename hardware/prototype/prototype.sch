@@ -30,10 +30,10 @@ Wire Notes Line
 Text Notes 2640 2365 0    50   ~ 0
 Quectel GPS module
 $Comp
-L power:GND #PWR08
+L power:GND #PWR09
 U 1 1 5AB8DBE6
 P 2200 1400
-F 0 "#PWR08" H 2200 1150 50  0001 C CNN
+F 0 "#PWR09" H 2200 1150 50  0001 C CNN
 F 1 "GND" H 2205 1227 50  0000 C CNN
 F 2 "" H 2200 1400 50  0001 C CNN
 F 3 "" H 2200 1400 50  0001 C CNN
@@ -137,48 +137,46 @@ F 4 "https://www.digikey.com/product-detail/en/espressif-systems/ESP32-DEVKITC/1
 	1    0    0    -1  
 $EndComp
 Text Notes 8270 4970 2    50   ~ 0
-5v power_management
+Power_management
 Text Notes 11220 6535 2    50   ~ 0
 LoRa concentrator connector(Top view), SMA RF connector on right
-Text Label 3900 4100 0    50   ~ 0
-(+)RAIL
 NoConn ~ 10000 5800
 $Comp
 L narra:LM2596_MODULE U3
 U 1 1 5AC09295
-P 5650 4450
-F 0 "U3" H 5650 4600 60  0000 C CNN
-F 1 "LM2596_MODULE" H 5650 4500 60  0000 C CNN
-F 2 "lib_fp:LM2596_MODULE" H 5650 4450 60  0001 C CNN
-F 3 "" H 5650 4450 60  0001 C CNN
-F 4 "https://store.nerokas.co.ke/index.php?route=product/product&product_id=1083&search=lm2596&description=true" H 5650 4450 50  0001 C CNN "purchase page"
-	1    5650 4450
+P 4750 4500
+F 0 "U3" H 4750 4650 60  0000 C CNN
+F 1 "LM2596_MODULE" H 4750 4550 60  0000 C CNN
+F 2 "lib_fp:LM2596_MODULE" H 4750 4500 60  0001 C CNN
+F 3 "" H 4750 4500 60  0001 C CNN
+F 4 "https://store.nerokas.co.ke/index.php?route=product/product&product_id=1083&search=lm2596&description=true" H 4750 4500 50  0001 C CNN "purchase page"
+	1    4750 4500
 	1    0    0    -1  
 $EndComp
-Text Label 7600 4850 2    50   ~ 0
+Text Label 8000 4500 2    50   ~ 0
 GLOBAL_5V
 $Comp
-L power:GND #PWR019
+L power:GND #PWR014
 U 1 1 5AC119E2
-P 4450 4700
-F 0 "#PWR019" H 4450 4450 50  0001 C CNN
-F 1 "GND" H 4600 4600 50  0000 C CNN
-F 2 "" H 4450 4700 50  0001 C CNN
-F 3 "" H 4450 4700 50  0001 C CNN
-	1    4450 4700
+P 3550 4750
+F 0 "#PWR014" H 3550 4500 50  0001 C CNN
+F 1 "GND" H 3700 4650 50  0000 C CNN
+F 2 "" H 3550 4750 50  0001 C CNN
+F 3 "" H 3550 4750 50  0001 C CNN
+	1    3550 4750
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	4450 4700 4600 4700
+	3550 4750 3700 4750
 $Comp
-L power:GND #PWR025
+L power:GND #PWR028
 U 1 1 5AC13B96
-P 7700 4700
-F 0 "#PWR025" H 7700 4450 50  0001 C CNN
-F 1 "GND" H 7850 4650 50  0000 C CNN
-F 2 "" H 7700 4700 50  0001 C CNN
-F 3 "" H 7700 4700 50  0001 C CNN
-	1    7700 4700
+P 6800 4750
+F 0 "#PWR028" H 6800 4500 50  0001 C CNN
+F 1 "GND" H 6950 4700 50  0000 C CNN
+F 2 "" H 6800 4750 50  0001 C CNN
+F 3 "" H 6800 4750 50  0001 C CNN
+	1    6800 4750
 	1    0    0    -1  
 $EndComp
 Text Notes 6965 7100 2    50   ~ 0
@@ -422,10 +420,10 @@ Wire Wire Line
 Wire Wire Line
 	4050 7050 4000 7050
 $Comp
-L Device:Jumper_NC_Dual JP16
+L Device:Jumper_NC_Dual JP17
 U 1 1 5AD9956F
 P 4000 6850
-F 0 "JP16" H 4000 7089 50  0000 C CNN
+F 0 "JP17" H 4000 7089 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 4000 6998 50  0000 C CNN
 F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 4000 6850 50  0001 C CNN
 F 3 "~" H 4000 6850 50  0001 C CNN
@@ -433,10 +431,10 @@ F 3 "~" H 4000 6850 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:Jumper_NC_Dual JP11
+L Device:Jumper_NC_Dual JP16
 U 1 1 5AE37C76
 P 3250 2800
-F 0 "JP11" H 3085 2705 50  0000 C CNN
+F 0 "JP16" H 3085 2705 50  0000 C CNN
 F 1 "Jumper_NC_Dual" H 3250 2948 50  0001 C CNN
 F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 3250 2800 50  0001 C CNN
 F 3 "~" H 3250 2800 50  0001 C CNN
@@ -488,10 +486,10 @@ Wire Notes Line
 Text Notes 4695 2360 2    50   ~ 0
 DHT22 Temp, Humidity sensor\n(vertical)
 $Comp
-L Connector_Generic:Conn_01x04 J2
+L Connector_Generic:Conn_01x04 J3
 U 1 1 5AFCF9CD
 P 3550 1400
-F 0 "J2" H 3470 975 50  0000 C CNN
+F 0 "J3" H 3470 975 50  0000 C CNN
 F 1 "Conn_01x04" H 3450 1050 50  0000 C CNN
 F 2 "lib_fp:PinHeader_1x04_P2.54mm_staggered_Vertical" H 3550 1400 50  0001 C CNN
 F 3 "~" H 3550 1400 50  0001 C CNN
@@ -505,10 +503,10 @@ Wire Wire Line
 Text Label 4250 1400 0    50   ~ 0
 TEMP_DATA
 $Comp
-L power:GND #PWR014
+L power:GND #PWR016
 U 1 1 5AFF154E
 P 3850 1200
-F 0 "#PWR014" H 3850 950 50  0001 C CNN
+F 0 "#PWR016" H 3850 950 50  0001 C CNN
 F 1 "GND" V 3950 1150 50  0000 R CNN
 F 2 "" H 3850 1200 50  0001 C CNN
 F 3 "" H 3850 1200 50  0001 C CNN
@@ -529,10 +527,10 @@ $EndComp
 Wire Wire Line
 	4150 1550 4150 1500
 $Comp
-L power:GND #PWR016
+L power:GND #PWR017
 U 1 1 5B002B86
 P 4150 1900
-F 0 "#PWR016" H 4150 1650 50  0001 C CNN
+F 0 "#PWR017" H 4150 1650 50  0001 C CNN
 F 1 "GND" H 4155 1727 50  0000 C CNN
 F 2 "" H 4150 1900 50  0001 C CNN
 F 3 "" H 4150 1900 50  0001 C CNN
@@ -621,10 +619,10 @@ Wire Wire Line
 Text Label 7400 2050 0    50   ~ 0
 CONTROLLER_RX
 $Comp
-L power:GND #PWR028
+L power:GND #PWR026
 U 1 1 5AD69F58
 P 5850 6250
-F 0 "#PWR028" H 5850 6000 50  0001 C CNN
+F 0 "#PWR026" H 5850 6000 50  0001 C CNN
 F 1 "GND" V 5855 6122 50  0000 R CNN
 F 2 "" H 5850 6250 50  0001 C CNN
 F 3 "" H 5850 6250 50  0001 C CNN
@@ -634,10 +632,10 @@ $EndComp
 Wire Wire Line
 	5750 6250 5850 6250
 $Comp
-L power:GND #PWR026
+L power:GND #PWR030
 U 1 1 5AD767CC
 P 7350 1650
-F 0 "#PWR026" H 7350 1400 50  0001 C CNN
+F 0 "#PWR030" H 7350 1400 50  0001 C CNN
 F 1 "GND" V 7355 1522 50  0000 R CNN
 F 2 "" H 7350 1650 50  0001 C CNN
 F 3 "" H 7350 1650 50  0001 C CNN
@@ -647,10 +645,10 @@ $EndComp
 Wire Wire Line
 	7350 1650 7100 1650
 $Comp
-L power:GND #PWR027
+L power:GND #PWR031
 U 1 1 5AD812DE
 P 7350 2250
-F 0 "#PWR027" H 7350 2000 50  0001 C CNN
+F 0 "#PWR031" H 7350 2000 50  0001 C CNN
 F 1 "GND" V 7355 2122 50  0000 R CNN
 F 2 "" H 7350 2250 50  0001 C CNN
 F 3 "" H 7350 2250 50  0001 C CNN
@@ -677,10 +675,10 @@ F 4 "https://www.digikey.ca/product-detail/en/texas-instruments/TLV73333PDBVR/29
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR018
+L power:GND #PWR020
 U 1 1 5AC42802
 P 4500 5535
-F 0 "#PWR018" H 4500 5285 50  0001 C CNN
+F 0 "#PWR020" H 4500 5285 50  0001 C CNN
 F 1 "GND" H 4650 5485 50  0000 C CNN
 F 2 "" H 4500 5535 50  0001 C CNN
 F 3 "" H 4500 5535 50  0001 C CNN
@@ -724,10 +722,10 @@ Wire Wire Line
 Wire Wire Line
 	4200 3050 3950 3050
 $Comp
-L power:GND #PWR012
+L power:GND #PWR018
 U 1 1 5ADC417D
 P 4200 3050
-F 0 "#PWR012" H 4200 2800 50  0001 C CNN
+F 0 "#PWR018" H 4200 2800 50  0001 C CNN
 F 1 "GND" H 4350 2950 50  0000 C CNN
 F 2 "" H 4200 3050 50  0001 C CNN
 F 3 "" H 4200 3050 50  0001 C CNN
@@ -735,10 +733,10 @@ F 3 "" H 4200 3050 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:C C1
+L Device:C C4
 U 1 1 5AD19E5A
 P 3800 3050
-F 0 "C1" V 3850 2900 50  0000 L CNN
+F 0 "C4" V 3850 2900 50  0000 L CNN
 F 1 "0.1uF" V 3850 3100 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 3838 2900 50  0001 C CNN
 F 3 "~" H 3800 3050 50  0001 C CNN
@@ -772,10 +770,10 @@ Wire Wire Line
 Wire Wire Line
 	5000 5500 5000 5450
 $Comp
-L Device:C C4
+L Device:C C3
 U 1 1 5B0B1E08
 P 3500 5300
-F 0 "C4" H 3650 5350 50  0000 L CNN
+F 0 "C3" H 3650 5350 50  0000 L CNN
 F 1 "1uF" H 3650 5250 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 3538 5150 50  0001 C CNN
 F 3 "http://www.yageo.com/documents/recent/UPY-GPHC_X7R_6.3V-to-50V_18.pdf" H 3500 5300 50  0001 C CNN
@@ -786,21 +784,10 @@ $EndComp
 Wire Wire Line
 	3500 5500 3500 5450
 $Comp
-L Connector_Specialized:Test_Point_Probe TP1
-U 1 1 5B0CED12
-P 5000 5100
-F 0 "TP1" H 5153 5202 50  0000 L CNN
-F 1 "Test_Point_Probe" H 5000 5050 50  0000 L CNN
-F 2 "TestPoint:TestPoint_Pad_D1.0mm" H 5200 5100 50  0001 C CNN
-F 3 "~" H 5200 5100 50  0001 C CNN
-	1    5000 5100
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:GND #PWR023
+L power:GND #PWR025
 U 1 1 5B0CF87A
 P 5550 2950
-F 0 "#PWR023" H 5550 2700 50  0001 C CNN
+F 0 "#PWR025" H 5550 2700 50  0001 C CNN
 F 1 "GND" V 5555 2822 50  0000 R CNN
 F 2 "" H 5550 2950 50  0001 C CNN
 F 3 "" H 5550 2950 50  0001 C CNN
@@ -810,10 +797,10 @@ $EndComp
 Wire Wire Line
 	5550 2950 6250 2950
 $Comp
-L Si2323CDS:Si2323 Q2
+L Si2323CDS:Si2323 Q1
 U 1 1 5B0E07C0
 P 10300 4300
-F 0 "Q2" V 10450 4450 50  0000 C CNN
+F 0 "Q1" V 10450 4450 50  0000 C CNN
 F 1 "Si2323" V 10200 4000 50  0000 C CNN
 F 2 "Package_TO_SOT_SMD:SOT-23" H 10500 4225 50  0001 L CIN
 F 3 "http://www.vishay.com/docs/65700/si2323cds.pdf" H 10300 4300 50  0001 L CNN
@@ -824,10 +811,10 @@ $EndComp
 Wire Wire Line
 	9850 4200 10050 4200
 $Comp
-L power:GND #PWR034
+L power:GND #PWR035
 U 1 1 5B0EF63E
 P 10100 4550
-F 0 "#PWR034" H 10100 4300 50  0001 C CNN
+F 0 "#PWR035" H 10100 4300 50  0001 C CNN
 F 1 "GND" H 10250 4500 50  0000 C CNN
 F 2 "" H 10100 4550 50  0001 C CNN
 F 3 "" H 10100 4550 50  0001 C CNN
@@ -846,10 +833,10 @@ Connection ~ 10600 1400
 Wire Wire Line
 	10600 1400 11000 1400
 $Comp
-L Device:C C12
+L Device:C C16
 U 1 1 5B1A558B
 P 11000 1600
-F 0 "C12" H 11000 1700 50  0000 L CNN
+F 0 "C16" H 11000 1700 50  0000 L CNN
 F 1 "0.1uF" H 11000 1500 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 11038 1450 50  0001 C CNN
 F 3 "~" H 11000 1600 50  0001 C CNN
@@ -862,10 +849,10 @@ Connection ~ 11000 1400
 Wire Wire Line
 	11000 1400 11100 1400
 $Comp
-L power:GND #PWR039
+L power:GND #PWR038
 U 1 1 5B1B3E4A
 P 10800 1850
-F 0 "#PWR039" H 10800 1600 50  0001 C CNN
+F 0 "#PWR038" H 10800 1600 50  0001 C CNN
 F 1 "GND" H 10805 1677 50  0000 C CNN
 F 2 "" H 10800 1850 50  0001 C CNN
 F 3 "" H 10800 1850 50  0001 C CNN
@@ -908,10 +895,10 @@ Wire Wire Line
 Wire Wire Line
 	4900 3850 4900 3800
 $Comp
-L power:GND #PWR022
+L power:GND #PWR023
 U 1 1 5B255F8F
 P 5050 3850
-F 0 "#PWR022" H 5050 3600 50  0001 C CNN
+F 0 "#PWR023" H 5050 3600 50  0001 C CNN
 F 1 "GND" H 4950 3750 50  0000 C CNN
 F 2 "" H 5050 3850 50  0001 C CNN
 F 3 "" H 5050 3850 50  0001 C CNN
@@ -951,10 +938,10 @@ Wire Wire Line
 Wire Wire Line
 	2200 1400 2150 1400
 $Comp
-L Device:C C2
+L Device:C C1
 U 1 1 5AE064A3
 P 3150 1700
-F 0 "C2" H 2900 1750 50  0000 L CNN
+F 0 "C1" H 2900 1750 50  0000 L CNN
 F 1 "0.1uF" H 2850 1650 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 3188 1550 50  0001 C CNN
 F 3 "~" H 3150 1700 50  0001 C CNN
@@ -967,10 +954,10 @@ Connection ~ 3150 1300
 Wire Wire Line
 	3150 1300 3350 1300
 $Comp
-L Device:C C3
+L Device:C C2
 U 1 1 5AE15768
 P 3350 1700
-F 0 "C3" H 3465 1746 50  0000 L CNN
+F 0 "C2" H 3465 1746 50  0000 L CNN
 F 1 "10uF" H 3465 1655 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 3388 1550 50  0001 C CNN
 F 3 "http://datasheets.avx.com/TAJ.pdf" H 3350 1700 50  0001 C CNN
@@ -984,10 +971,10 @@ Wire Wire Line
 	3350 1300 3400 1300
 Connection ~ 3350 1300
 $Comp
-L power:GND #PWR011
+L power:GND #PWR012
 U 1 1 5AE347D8
 P 3250 2000
-F 0 "#PWR011" H 3250 1750 50  0001 C CNN
+F 0 "#PWR012" H 3250 1750 50  0001 C CNN
 F 1 "GND" V 3255 1872 50  0000 R CNN
 F 2 "" H 3250 2000 50  0001 C CNN
 F 3 "" H 3250 2000 50  0001 C CNN
@@ -1025,10 +1012,10 @@ Wire Wire Line
 Wire Notes Line
 	2350 2360 2350 3390
 $Comp
-L Jumper:SolderJumper_2_Open JP19
+L Jumper:SolderJumper_2_Open JP21
 U 1 1 5AEEED80
 P 10300 4050
-F 0 "JP19" H 10650 4050 50  0000 C CNN
+F 0 "JP21" H 10650 4050 50  0000 C CNN
 F 1 "SolderJumper_2_Open" H 10300 4164 50  0001 C CNN
 F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 10300 4050 50  0001 C CNN
 F 3 "~" H 10300 4050 50  0001 C CNN
@@ -1119,10 +1106,10 @@ Wire Wire Line
 Wire Wire Line
 	9850 2900 9900 2900
 $Comp
-L Device:Jumper JP17
+L Device:Jumper JP18
 U 1 1 5B1BC618
 P 5600 3450
-F 0 "JP17" H 5600 3400 50  0000 C CNN
+F 0 "JP18" H 5600 3400 50  0000 C CNN
 F 1 "Jumper" H 5650 3600 50  0000 C CNN
 F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 5600 3450 50  0001 C CNN
 F 3 "~" H 5600 3450 50  0001 C CNN
@@ -1163,10 +1150,10 @@ Wire Wire Line
 Text Label 9900 5300 2    50   ~ 0
 3
 $Comp
-L power:GND #PWR036
+L power:GND #PWR039
 U 1 1 5ADE0F7D
 P 10850 5300
-F 0 "#PWR036" H 10850 5050 50  0001 C CNN
+F 0 "#PWR039" H 10850 5050 50  0001 C CNN
 F 1 "GND" H 10855 5127 50  0000 C CNN
 F 2 "" H 10850 5300 50  0001 C CNN
 F 3 "" H 10850 5300 50  0001 C CNN
@@ -1189,10 +1176,10 @@ Wire Wire Line
 Text Label 9900 5700 2    50   ~ 0
 11
 $Comp
-L power:GND #PWR05
+L power:GND #PWR06
 U 1 1 5AEB44AA
 P 1400 5550
-F 0 "#PWR05" H 1400 5300 50  0001 C CNN
+F 0 "#PWR06" H 1400 5300 50  0001 C CNN
 F 1 "GND" H 1405 5377 50  0000 C CNN
 F 2 "" H 1400 5550 50  0001 C CNN
 F 3 "" H 1400 5550 50  0001 C CNN
@@ -1202,10 +1189,10 @@ $EndComp
 Wire Wire Line
 	1400 5550 1400 5500
 $Comp
-L power:GND #PWR07
+L power:GND #PWR08
 U 1 1 5AEC5F37
 P 1700 5550
-F 0 "#PWR07" H 1700 5300 50  0001 C CNN
+F 0 "#PWR08" H 1700 5300 50  0001 C CNN
 F 1 "GND" H 1705 5377 50  0000 C CNN
 F 2 "" H 1700 5550 50  0001 C CNN
 F 3 "" H 1700 5550 50  0001 C CNN
@@ -1219,10 +1206,10 @@ Wire Wire Line
 NoConn ~ 2300 5500
 NoConn ~ 850  5500
 $Comp
-L power:GND #PWR010
+L power:GND #PWR011
 U 1 1 5AF0A224
 P 2700 5550
-F 0 "#PWR010" H 2700 5300 50  0001 C CNN
+F 0 "#PWR011" H 2700 5300 50  0001 C CNN
 F 1 "GND" H 2705 5377 50  0000 C CNN
 F 2 "" H 2700 5550 50  0001 C CNN
 F 3 "" H 2700 5550 50  0001 C CNN
@@ -1233,10 +1220,10 @@ Wire Wire Line
 	2700 5550 2700 5500
 NoConn ~ 3200 5500
 $Comp
-L power:GND #PWR06
+L power:GND #PWR07
 U 1 1 5AF2C0FA
 P 1550 6100
-F 0 "#PWR06" H 1550 5850 50  0001 C CNN
+F 0 "#PWR07" H 1550 5850 50  0001 C CNN
 F 1 "GND" H 1555 5927 50  0000 C CNN
 F 2 "" H 1550 6100 50  0001 C CNN
 F 3 "" H 1550 6100 50  0001 C CNN
@@ -1300,10 +1287,10 @@ SCK
 NoConn ~ 1350 7400
 NoConn ~ 1900 7400
 $Comp
-L power:GND #PWR09
+L power:GND #PWR010
 U 1 1 5B08E3BD
 P 2450 7450
-F 0 "#PWR09" H 2450 7200 50  0001 C CNN
+F 0 "#PWR010" H 2450 7200 50  0001 C CNN
 F 1 "GND" H 2455 7277 50  0000 C CNN
 F 2 "" H 2450 7450 50  0001 C CNN
 F 3 "" H 2450 7450 50  0001 C CNN
@@ -1330,10 +1317,10 @@ Wire Wire Line
 	3300 7400 3200 7400
 NoConn ~ 3750 6850
 $Comp
-L power:GND #PWR017
+L power:GND #PWR019
 U 1 1 5B0D62C7
 P 4300 6850
-F 0 "#PWR017" H 4300 6600 50  0001 C CNN
+F 0 "#PWR019" H 4300 6600 50  0001 C CNN
 F 1 "GND" H 4305 6677 50  0000 C CNN
 F 2 "" H 4300 6850 50  0001 C CNN
 F 3 "" H 4300 6850 50  0001 C CNN
@@ -1345,10 +1332,10 @@ Wire Wire Line
 Wire Notes Line
 	4540 6535 4540 7100
 $Comp
-L dk_Coaxial-Connectors-RF:0734120114 J1
+L dk_Coaxial-Connectors-RF:0734120114 J2
 U 1 1 5B167719
 P 900 3000
-F 0 "J1" H 894 2513 60  0000 C CNN
+F 0 "J2" H 894 2513 60  0000 C CNN
 F 1 "0734120114" H 894 2619 60  0000 C CNN
 F 2 "digikey-footprints:Molex_734120114_UMC_RF_CONN_Vertical" H 1100 3200 60  0001 L CNN
 F 3 "http://www.molex.com/pdm_docs/sd/734120110_sd.pdf" H 1100 3300 60  0001 L CNN
@@ -1371,10 +1358,10 @@ Wire Wire Line
 Wire Wire Line
 	1600 3100 1600 2950
 $Comp
-L power:GND #PWR04
+L power:GND #PWR05
 U 1 1 5B194EB9
 P 1200 3000
-F 0 "#PWR04" H 1200 2750 50  0001 C CNN
+F 0 "#PWR05" H 1200 2750 50  0001 C CNN
 F 1 "GND" H 1350 2900 50  0000 C CNN
 F 2 "" H 1200 3000 50  0001 C CNN
 F 3 "" H 1200 3000 50  0001 C CNN
@@ -1388,10 +1375,10 @@ Wire Wire Line
 Text Notes 5500 3750 0    50   ~ 0
 Remove jumper on 5v rail when USB programming \nto avoid circulating currents between supplies.
 $Comp
-L Device:CP C10
+L Device:CP C12
 U 1 1 5AE00D90
 P 9550 5400
-F 0 "C10" H 9350 5450 50  0000 L CNN
+F 0 "C12" H 9350 5450 50  0000 L CNN
 F 1 "220uF" H 9300 5300 50  0000 L CNN
 F 2 "Capacitor_SMD:CP_Elec_6.3x5.8" H 9588 5250 50  0001 C CNN
 F 3 "http://nichicon-us.com/english/products/pdfs/e-uud.pdf" H 9550 5400 50  0001 C CNN
@@ -1426,10 +1413,10 @@ RMII_CRS_DV
 Text Label 9300 2900 2    50   ~ 0
 RMII_RX1
 $Comp
-L power:GND #PWR037
+L power:GND #PWR040
 U 1 1 5AF132A3
 P 11100 3300
-F 0 "#PWR037" H 11100 3050 50  0001 C CNN
+F 0 "#PWR040" H 11100 3050 50  0001 C CNN
 F 1 "GND" H 11105 3127 50  0000 C CNN
 F 2 "" H 11100 3300 50  0001 C CNN
 F 3 "" H 11100 3300 50  0001 C CNN
@@ -1437,10 +1424,10 @@ F 3 "" H 11100 3300 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR029
+L power:GND #PWR032
 U 1 1 5AF22DE2
 P 8700 3300
-F 0 "#PWR029" H 8700 3050 50  0001 C CNN
+F 0 "#PWR032" H 8700 3050 50  0001 C CNN
 F 1 "GND" H 8705 3127 50  0000 C CNN
 F 2 "" H 8700 3300 50  0001 C CNN
 F 3 "" H 8700 3300 50  0001 C CNN
@@ -1479,10 +1466,10 @@ F 3 "~" H 10450 3450 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR042
+L power:GND #PWR036
 U 1 1 5ADC9FA3
 P 10300 3650
-F 0 "#PWR042" H 10300 3400 50  0001 C CNN
+F 0 "#PWR036" H 10300 3400 50  0001 C CNN
 F 1 "GND" H 10305 3477 50  0000 C CNN
 F 2 "" H 10300 3650 50  0001 C CNN
 F 3 "" H 10300 3650 50  0001 C CNN
@@ -1504,10 +1491,10 @@ Connection ~ 10150 3300
 Wire Wire Line
 	7100 2950 7900 2950
 $Comp
-L Device:R R7
+L Device:R R5
 U 1 1 5AE93230
 P 7900 2750
-F 0 "R7" H 7950 2700 50  0000 L CNN
+F 0 "R5" H 7950 2700 50  0000 L CNN
 F 1 "4.7k" V 7900 2650 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 7830 2750 50  0001 C CNN
 F 3 "~" H 7900 2750 50  0001 C CNN
@@ -1547,10 +1534,10 @@ $EndComp
 Text Label 7400 2650 0    50   ~ 0
 GSM_RX
 $Comp
-L Device:R R8
+L Device:R R6
 U 1 1 5AE4C3B2
 P 10150 3000
-F 0 "R8" V 10100 2850 50  0000 C CNN
+F 0 "R6" V 10100 2850 50  0000 C CNN
 F 1 "33R" V 10150 3000 50  0000 C CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 10080 3000 50  0001 C CNN
 F 3 "~" H 10150 3000 50  0001 C CNN
@@ -1564,20 +1551,16 @@ Wire Wire Line
 Wire Wire Line
 	5450 1450 5450 1400
 $Comp
-L Device:Jumper JP18
+L Device:Jumper JP19
 U 1 1 5AED67E5
-P 7100 4100
-F 0 "JP18" H 7100 4050 50  0000 C CNN
-F 1 "Jumper" H 7100 4000 50  0000 C CNN
-F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 7100 4100 50  0001 C CNN
-F 3 "~" H 7100 4100 50  0001 C CNN
-	1    7100 4100
+P 6200 4150
+F 0 "JP19" H 6200 4100 50  0000 C CNN
+F 1 "Jumper" H 6200 4050 50  0000 C CNN
+F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 6200 4150 50  0001 C CNN
+F 3 "~" H 6200 4150 50  0001 C CNN
+	1    6200 4150
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	6800 4100 6750 4100
-Wire Wire Line
-	7400 4100 7500 4100
 Text Label 5350 3050 2    50   ~ 0
 PHY_POWER_EN
 $Comp
@@ -1592,10 +1575,10 @@ F 3 "~" H 5450 3200 50  0001 C CNN
 	0    1    1    0   
 $EndComp
 $Comp
-L power:GND #PWR040
+L power:GND #PWR024
 U 1 1 5AF12114
 P 5200 3250
-F 0 "#PWR040" H 5200 3000 50  0001 C CNN
+F 0 "#PWR024" H 5200 3000 50  0001 C CNN
 F 1 "GND" H 5050 3150 50  0000 C CNN
 F 2 "" H 5200 3250 50  0001 C CNN
 F 3 "" H 5200 3250 50  0001 C CNN
@@ -1632,15 +1615,15 @@ GLOBAL_3V3
 Text Notes 2355 3390 2    50   ~ 0
 1PPS output to LED/ uFL connector
 $Comp
-L Connector_Specialized:Jack-DC J8
+L Connector_Specialized:Jack-DC J1
 U 1 1 5B03C5B5
-P 3600 4200
-F 0 "J8" H 3500 4050 50  0000 C CNN
-F 1 "Jack-DC" H 3600 3950 50  0000 C CNN
-F 2 "Connector_BarrelJack:BarrelJack_Horizontal" H 3650 4160 50  0001 C CNN
-F 3 "https://www.cui.com/product/resource/pj-002a.pdf" H 3650 4160 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/cui-inc/PJ-002A/CP-002A-ND/96962" H 3600 4200 50  0001 C CNN "purchase page"
-	1    3600 4200
+P 650 4250
+F 0 "J1" H 550 4100 50  0000 C CNN
+F 1 "Jack-DC" H 650 4000 50  0000 C CNN
+F 2 "Connector_BarrelJack:BarrelJack_Horizontal" H 700 4210 50  0001 C CNN
+F 3 "https://www.cui.com/product/resource/pj-002a.pdf" H 700 4210 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/cui-inc/PJ-002A/CP-002A-ND/96962" H 650 4250 50  0001 C CNN "purchase page"
+	1    650  4250
 	1    0    0    -1  
 $EndComp
 Text Label 5900 3450 0    50   ~ 0
@@ -1649,23 +1632,6 @@ Text Label 5850 6150 0    50   ~ 0
 ESP32_5v
 Wire Wire Line
 	5750 6150 5850 6150
-Text Label 6850 4400 2    50   ~ 0
-(+)RAIL
-Wire Wire Line
-	7500 4400 7500 4100
-$Comp
-L Device:Jumper JP20
-U 1 1 5B1637D0
-P 7200 4400
-F 0 "JP20" H 7200 4350 50  0000 C CNN
-F 1 "Jumper" H 7200 4300 50  0000 C CNN
-F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 7200 4400 50  0001 C CNN
-F 3 "~" H 7200 4400 50  0001 C CNN
-	1    7200 4400
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	6850 4400 6900 4400
 Wire Wire Line
 	4200 5200 4150 5200
 Text Label 4150 5200 2    50   ~ 0
@@ -1702,10 +1668,10 @@ GLOBAL_3V3
 Wire Wire Line
 	4200 850  4150 850 
 $Comp
-L Device:C C15
+L Device:C C10
 U 1 1 5AE0CC18
 P 8950 5400
-F 0 "C15" H 8750 5450 50  0000 L CNN
+F 0 "C10" H 8750 5450 50  0000 L CNN
 F 1 "0.1uF" H 8700 5300 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 8988 5250 50  0001 C CNN
 F 3 "~" H 8950 5400 50  0001 C CNN
@@ -1713,10 +1679,10 @@ F 3 "~" H 8950 5400 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:CP C16
+L Device:CP C11
 U 1 1 5AE0CCE7
 P 9250 5400
-F 0 "C16" H 9050 5450 50  0000 L CNN
+F 0 "C11" H 9050 5450 50  0000 L CNN
 F 1 "220uF" H 9000 5300 50  0000 L CNN
 F 2 "Capacitor_SMD:CP_Elec_6.3x5.8" H 9288 5250 50  0001 C CNN
 F 3 "http://nichicon-us.com/english/products/pdfs/e-uud.pdf" H 9250 5400 50  0001 C CNN
@@ -1747,10 +1713,10 @@ Connection ~ 8650 5200
 Wire Wire Line
 	8650 5200 8950 5200
 $Comp
-L power:GND #PWR031
+L power:GND #PWR034
 U 1 1 5AE363B9
 P 9100 5700
-F 0 "#PWR031" H 9100 5450 50  0001 C CNN
+F 0 "#PWR034" H 9100 5450 50  0001 C CNN
 F 1 "GND" H 9105 5527 50  0000 C CNN
 F 2 "" H 9100 5700 50  0001 C CNN
 F 3 "" H 9100 5700 50  0001 C CNN
@@ -1779,10 +1745,10 @@ Wire Wire Line
 Text Notes 8300 6350 0    50   ~ 0
 In RHF0M301 Datasheet p20, filtering \ncircuit on RESET line is ignored as \nthere are no mechanical components \non that line.
 $Comp
-L Device:CP C11
+L Device:CP C15
 U 1 1 5AF2E50E
 P 10600 1600
-F 0 "C11" H 10650 1700 50  0000 L CNN
+F 0 "C15" H 10650 1700 50  0000 L CNN
 F 1 "220uF" H 10650 1500 50  0000 L CNN
 F 2 "Capacitor_SMD:CP_Elec_6.3x5.8" H 10638 1450 50  0001 C CNN
 F 3 "http://nichicon-us.com/english/products/pdfs/e-uud.pdf" H 10600 1600 50  0001 C CNN
@@ -1827,10 +1793,10 @@ NoConn ~ 9300 2700
 Wire Wire Line
 	10400 1600 10400 1500
 $Comp
-L power:GND #PWR035
+L power:GND #PWR037
 U 1 1 5ABA1E29
 P 10400 1600
-F 0 "#PWR035" H 10400 1350 50  0001 C CNN
+F 0 "#PWR037" H 10400 1350 50  0001 C CNN
 F 1 "GND" H 10405 1427 50  0000 C CNN
 F 2 "" H 10400 1600 50  0001 C CNN
 F 3 "" H 10400 1600 50  0001 C CNN
@@ -1838,10 +1804,10 @@ F 3 "" H 10400 1600 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR045
+L power:GND #PWR033
 U 1 1 5AE9742D
 P 9000 1600
-F 0 "#PWR045" H 9000 1350 50  0001 C CNN
+F 0 "#PWR033" H 9000 1350 50  0001 C CNN
 F 1 "GND" H 9005 1427 50  0000 C CNN
 F 2 "" H 9000 1600 50  0001 C CNN
 F 3 "" H 9000 1600 50  0001 C CNN
@@ -1866,10 +1832,10 @@ Wire Wire Line
 Text Notes 3450 7450 0    50   ~ 0
 Conformance standards\n====================\n1. IEC 60950-1 Information technology equipment standard(general)\n2. IEC 60950-22 Information technology equipment-standard(outdoor installation)
 $Comp
-L Device:R R5
+L Device:R R2
 U 1 1 5ADF0459
 P 4750 2100
-F 0 "R5" H 4800 2050 50  0000 L CNN
+F 0 "R2" H 4800 2050 50  0000 L CNN
 F 1 "10k" V 4750 2050 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 4680 2100 50  0001 C CNN
 F 3 "~" H 4750 2100 50  0001 C CNN
@@ -1879,10 +1845,10 @@ $EndComp
 Wire Wire Line
 	4750 1950 6250 1950
 $Comp
-L power:GND #PWR044
+L power:GND #PWR021
 U 1 1 5AE07D9E
 P 4750 2300
-F 0 "#PWR044" H 4750 2050 50  0001 C CNN
+F 0 "#PWR021" H 4750 2050 50  0001 C CNN
 F 1 "GND" H 4900 2200 50  0000 C CNN
 F 2 "" H 4750 2300 50  0001 C CNN
 F 3 "" H 4750 2300 50  0001 C CNN
@@ -1896,13 +1862,13 @@ Wire Wire Line
 $Comp
 L Device:Fuse_Small F2
 U 1 1 5AE3A097
-P 7900 4100
-F 0 "F2" H 7850 4050 50  0000 L CNN
-F 1 "Fuse_Small" H 7700 4150 50  0000 L CNN
-F 2 "lib_fp:461_series_Telelink" H 7900 4100 50  0001 C CNN
-F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_461_datasheet.pdf.pdf" H 7900 4100 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/0461002.ER/F1551CT-ND/447217" H 7900 4100 50  0001 C CNN "purchase page"
-	1    7900 4100
+P 7000 4150
+F 0 "F2" H 6950 4100 50  0000 L CNN
+F 1 "Fuse_Small" H 6800 4200 50  0000 L CNN
+F 2 "lib_fp:461_series_Telelink" H 7000 4150 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_461_datasheet.pdf.pdf" H 7000 4150 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/0461002.ER/F1551CT-ND/447217" H 7000 4150 50  0001 C CNN "purchase page"
+	1    7000 4150
 	1    0    0    -1  
 $EndComp
 Text Notes 5680 5230 0    50   ~ 0
@@ -1912,96 +1878,69 @@ Wire Notes Line
 Wire Notes Line
 	5655 5230 8270 5230
 $Comp
-L power:GND #PWR043
-U 1 1 5B037B9F
-P 3000 5050
-F 0 "#PWR043" H 3000 4800 50  0001 C CNN
-F 1 "GND" H 3150 5000 50  0000 C CNN
-F 2 "" H 3000 5050 50  0001 C CNN
-F 3 "" H 3000 5050 50  0001 C CNN
-	1    3000 5050
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	3000 5050 3000 5000
-Wire Wire Line
-	2950 4700 3000 4700
-Text Notes 3400 4050 2    50   ~ 0
-RMII TVS surge protection
-$Comp
-L Device:D_TVS D12
+L Device:D_TVS D2
 U 1 1 5B192C2B
-P 8100 4350
-F 0 "D12" V 8100 4150 50  0000 L CNN
-F 1 "D_TVS" V 8150 4100 50  0001 L CNN
-F 2 "digikey-footprints:DO-214AC" H 8100 4350 50  0001 C CNN
-F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/tvs_diodes/littelfuse_tvs_diode_smaj_datasheet.pdf.pdf" H 8100 4350 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SMAJ5.0A/SMAJ5.0ALFCT-ND/762462" V 8100 4350 50  0001 C CNN "purchase page"
-	1    8100 4350
+P 7200 4400
+F 0 "D2" V 7200 4200 50  0000 L CNN
+F 1 "D_TVS" V 7250 4150 50  0001 L CNN
+F 2 "digikey-footprints:DO-214AC" H 7200 4400 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/tvs_diodes/littelfuse_tvs_diode_smaj_datasheet.pdf.pdf" H 7200 4400 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SMAJ5.0A/SMAJ5.0ALFCT-ND/762462" V 7200 4400 50  0001 C CNN "purchase page"
+	1    7200 4400
 	0    1    1    0   
 $EndComp
 Wire Wire Line
-	7800 4100 7700 4100
-Connection ~ 7500 4100
+	6900 4150 6800 4150
 Wire Wire Line
-	8000 4100 8100 4100
+	7100 4150 7200 4150
 Wire Wire Line
-	8100 4100 8100 4200
-Wire Wire Line
-	8250 4100 8100 4100
-Connection ~ 8100 4100
+	7200 4150 7200 4250
+Connection ~ 7200 4150
 Text Notes 5650 5400 0    50   ~ 0
 The TVS diode protects the downstream components at Vwm 5v,  \nVbr 6.4-7.0v and Vc 9.2v and peak pulse current(8/20) 43.5A 
 $Comp
 L Device:Fuse_Small F1
 U 1 1 5B26C3F4
-P 4300 4100
-F 0 "F1" H 4150 4050 50  0000 L CNN
-F 1 "Fuse_Small" H 4100 4000 50  0001 L CNN
-F 2 "lib_fp:461_series_Telelink" H 4300 4100 50  0001 C CNN
-F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_461_datasheet.pdf.pdf" H 4300 4100 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/0461002.ER/F1551CT-ND/447217" H 4300 4100 50  0001 C CNN "purchase page"
-	1    4300 4100
+P 3400 4150
+F 0 "F1" H 3250 4100 50  0000 L CNN
+F 1 "Fuse_Small" H 3200 4050 50  0001 L CNN
+F 2 "lib_fp:461_series_Telelink" H 3400 4150 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/fuses/littelfuse_fuse_461_datasheet.pdf.pdf" H 3400 4150 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/0461002.ER/F1551CT-ND/447217" H 3400 4150 50  0001 C CNN "purchase page"
+	1    3400 4150
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:D_TVS D11
+L Device:D_TVS D1
 U 1 1 5B2860A1
-P 4450 4350
-F 0 "D11" V 4450 4400 50  0000 L CNN
-F 1 "D_TVS" V 4550 4400 50  0001 L CNN
-F 2 "digikey-footprints:DO-214AC" H 4450 4350 50  0001 C CNN
-F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/tvs_diodes/littelfuse_tvs_diode_sma6j_datasheet.pdf.pdf" H 4450 4350 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SMA6J12A/SMA6J12ATR-ND/3997484" V 4450 4350 50  0001 C CNN "purchase page"
-	1    4450 4350
+P 3550 4400
+F 0 "D1" V 3550 4450 50  0000 L CNN
+F 1 "D_TVS" V 3650 4450 50  0001 L CNN
+F 2 "digikey-footprints:DO-214AC" H 3550 4400 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/tvs_diodes/littelfuse_tvs_diode_sma6j_datasheet.pdf.pdf" H 3550 4400 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SMA6J12A/SMA6J12ATR-ND/3997484" V 3550 4400 50  0001 C CNN "purchase page"
+	1    3550 4400
 	0    1    1    0   
 $EndComp
 Wire Wire Line
-	4450 4200 4450 4100
+	3550 4250 3550 4150
 Wire Wire Line
-	4450 4500 4450 4700
-Connection ~ 4450 4700
+	3550 4550 3550 4750
+Connection ~ 3550 4750
 Wire Wire Line
-	3900 4200 3900 4300
+	950  4250 950  4350
 Wire Wire Line
-	3900 4300 3900 4700
+	5850 4750 6800 4750
 Wire Wire Line
-	3900 4700 4050 4700
-Connection ~ 3900 4300
+	7200 4750 6800 4750
 Wire Wire Line
-	3900 4100 4050 4100
-Wire Wire Line
-	6750 4700 7700 4700
-Wire Wire Line
-	8100 4700 7700 4700
-Wire Wire Line
-	8100 4500 8100 4700
-Connection ~ 7700 4700
+	7200 4550 7200 4750
+Connection ~ 6800 4750
 $Comp
-L Graphic:SYM_ESD_Large #SYM1
+L Graphic:SYM_ESD_Large #SYM3
 U 1 1 5B37928B
 P 7250 6700
-F 0 "#SYM1" H 7250 6900 50  0001 C CNN
+F 0 "#SYM3" H 7250 6900 50  0001 C CNN
 F 1 "SYM_ESD_Large" H 7250 6450 50  0001 C CNN
 F 2 "" H 7245 6670 50  0001 C CNN
 F 3 "~" H 7245 6670 50  0001 C CNN
@@ -2009,10 +1948,10 @@ F 3 "~" H 7245 6670 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Graphic:SYM_Radio_Waves_Large #SYM2
+L Graphic:SYM_Radio_Waves_Large #SYM4
 U 1 1 5B37BDDF
 P 7900 6700
-F 0 "#SYM2" H 7900 6900 50  0001 C CNN
+F 0 "#SYM4" H 7900 6900 50  0001 C CNN
 F 1 "SYM_Radio_Waves_Large" H 7900 6450 50  0001 C CNN
 F 2 "" H 7900 6500 50  0001 C CNN
 F 3 "~" H 7930 6500 50  0001 C CNN
@@ -2022,176 +1961,49 @@ $EndComp
 $Comp
 L GDT-:GDT- GDT1
 U 1 1 5B37CA10
-P 4050 4400
-F 0 "GDT1" V 4200 4400 50  0000 L CNN
-F 1 "GDT-" V 4095 4506 50  0001 L CNN
-F 2 "lib_fp:SL1411A075-SM" H 4050 4400 50  0001 C CNN
-F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/gas_discharge_tubes/littelfuse_gdt_sl1011a_sl1411a_datasheet.pdf.pdf" H 4050 4400 50  0001 L BNN
-F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SL1411A075A/F5590CT-ND/3307063" V 4050 4400 50  0001 C CNN "purchase page"
-	1    4050 4400
+P 3150 4450
+F 0 "GDT1" V 3300 4450 50  0000 L CNN
+F 1 "GDT-" V 3195 4556 50  0001 L CNN
+F 2 "lib_fp:SL1411A075-SM" H 3150 4450 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/gas_discharge_tubes/littelfuse_gdt_sl1011a_sl1411a_datasheet.pdf.pdf" H 3150 4450 50  0001 L BNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SL1411A075A/F5590CT-ND/3307063" V 3150 4450 50  0001 C CNN "purchase page"
+	1    3150 4450
 	0    1    1    0   
 $EndComp
 Wire Wire Line
-	4050 4200 4050 4100
-Connection ~ 4050 4100
+	3150 4250 3150 4150
 Wire Wire Line
-	4050 4600 4050 4700
-Connection ~ 4050 4700
+	3150 4650 3150 4750
 Wire Wire Line
-	4050 4700 4450 4700
+	3150 4750 3550 4750
 Wire Wire Line
-	7700 4200 7700 4100
-Connection ~ 7700 4100
+	6800 4250 6800 4150
+Connection ~ 6800 4150
 Wire Wire Line
-	7700 4100 7500 4100
-Wire Wire Line
-	7700 4600 7700 4700
+	6800 4650 6800 4750
 Wire Notes Line
 	5655 5405 8270 5405
 Text Notes 5650 5600 0    50   ~ 0
 The initial GDT provides 10kA lightning protection at the power \ninput. It also reduces the voltage down to 60-90v, 75v typ
 Wire Wire Line
-	4050 4100 4200 4100
-Connection ~ 4450 4100
+	3150 4150 3300 4150
+Connection ~ 3550 4150
 Wire Wire Line
-	4450 4100 4600 4100
+	3550 4150 3700 4150
 $Comp
 L GDT-:GDT- GDT2
 U 1 1 5AE0C554
-P 7700 4400
-F 0 "GDT2" V 7800 4150 50  0000 L CNN
-F 1 "GDT-" V 7900 4150 50  0001 L CNN
-F 2 "lib_fp:SL1411A075-SM" H 7700 4400 50  0001 C CNN
-F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/gas_discharge_tubes/littelfuse_gdt_sl1011a_sl1411a_datasheet.pdf.pdf" H 7700 4400 50  0001 L BNN
-F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SL1411A075A/F5590CT-ND/3307063" V 7700 4400 50  0001 C CNN "purchase page"
-	1    7700 4400
+P 6800 4450
+F 0 "GDT2" V 6900 4200 50  0000 L CNN
+F 1 "GDT-" V 7000 4200 50  0001 L CNN
+F 2 "lib_fp:SL1411A075-SM" H 6800 4450 50  0001 C CNN
+F 3 "http://www.littelfuse.com/~/media/electronics/datasheets/gas_discharge_tubes/littelfuse_gdt_sl1011a_sl1411a_datasheet.pdf.pdf" H 6800 4450 50  0001 L BNN
+F 4 "https://www.digikey.com/product-detail/en/littelfuse-inc/SL1411A075A/F5590CT-ND/3307063" V 6800 4450 50  0001 C CNN "purchase page"
+	1    6800 4450
 	0    1    1    0   
 $EndComp
-Wire Notes Line
-	3420 4970 8270 4970
 Wire Wire Line
-	4400 4100 4450 4100
-Wire Wire Line
-	3000 4500 3000 4450
-$Comp
-L power:GND #PWR038
-U 1 1 5B15992F
-P 3000 4500
-F 0 "#PWR038" H 3000 4250 50  0001 C CNN
-F 1 "GND" H 3150 4450 50  0000 C CNN
-F 2 "" H 3000 4500 50  0001 C CNN
-F 3 "" H 3000 4500 50  0001 C CNN
-	1    3000 4500
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	3000 4150 2950 4150
-Wire Wire Line
-	2350 4700 2300 4700
-Text Label 2950 4150 2    50   ~ 0
-RMII_REFOSC_nINT
-Text Label 2300 4700 2    50   ~ 0
-RMII-RX0
-Wire Wire Line
-	2150 4150 2200 4150
-Text Label 2150 4150 2    50   ~ 0
-RMII_TX_EN
-Wire Wire Line
-	2200 4500 2200 4450
-$Comp
-L power:GND #PWR032
-U 1 1 5B06BCB2
-P 2200 4500
-F 0 "#PWR032" H 2200 4250 50  0001 C CNN
-F 1 "GND" H 2350 4450 50  0000 C CNN
-F 2 "" H 2200 4500 50  0001 C CNN
-F 3 "" H 2200 4500 50  0001 C CNN
-	1    2200 4500
-	1    0    0    -1  
-$EndComp
-Text Label 2950 4700 2    50   ~ 0
-RMII_MDC
-Wire Wire Line
-	1050 4150 950  4150
-Wire Wire Line
-	1050 4500 1050 4450
-$Comp
-L power:GND #PWR020
-U 1 1 5B0053E7
-P 1050 4500
-F 0 "#PWR020" H 1050 4250 50  0001 C CNN
-F 1 "GND" H 1200 4450 50  0000 C CNN
-F 2 "" H 1050 4500 50  0001 C CNN
-F 3 "" H 1050 4500 50  0001 C CNN
-	1    1050 4500
-	1    0    0    -1  
-$EndComp
-Text Label 950  4150 2    50   ~ 0
-RMII_CRS_DV
-Wire Wire Line
-	1750 4700 1800 4700
-Text Label 1750 4700 2    50   ~ 0
-RMII_RX1
-Wire Wire Line
-	1250 4700 1300 4700
-Text Label 1250 4700 2    50   ~ 0
-RMII_TX0
-Wire Wire Line
-	850  5050 850  5000
-$Comp
-L power:GND #PWR015
-U 1 1 5AFB9D63
-P 850 5050
-F 0 "#PWR015" H 850 4800 50  0001 C CNN
-F 1 "GND" H 1000 5000 50  0000 C CNN
-F 2 "" H 850 5050 50  0001 C CNN
-F 3 "" H 850 5050 50  0001 C CNN
-	1    850  5050
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	800  4700 850  4700
-Text Label 800  4700 2    50   ~ 0
-RMII_TX1
-Wire Wire Line
-	2350 5050 2350 5000
-$Comp
-L power:GND #PWR033
-U 1 1 5AF411D0
-P 2350 5050
-F 0 "#PWR033" H 2350 4800 50  0001 C CNN
-F 1 "GND" H 2500 5000 50  0000 C CNN
-F 2 "" H 2350 5050 50  0001 C CNN
-F 3 "" H 2350 5050 50  0001 C CNN
-	1    2350 5050
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	1800 5050 1800 5000
-$Comp
-L power:GND #PWR030
-U 1 1 5AF2998C
-P 1800 5050
-F 0 "#PWR030" H 1800 4800 50  0001 C CNN
-F 1 "GND" H 1950 5000 50  0000 C CNN
-F 2 "" H 1800 5050 50  0001 C CNN
-F 3 "" H 1800 5050 50  0001 C CNN
-	1    1800 5050
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	1300 5050 1300 5000
-$Comp
-L power:GND #PWR021
-U 1 1 5AF1230E
-P 1300 5050
-F 0 "#PWR021" H 1300 4800 50  0001 C CNN
-F 1 "GND" H 1450 5000 50  0000 C CNN
-F 2 "" H 1300 5050 50  0001 C CNN
-F 3 "" H 1300 5050 50  0001 C CNN
-	1    1300 5050
-	1    0    0    -1  
-$EndComp
+	3500 4150 3550 4150
 $Comp
 L Mechanical:Mounting_Hole_PAD MK1
 U 1 1 5B00EC0F
@@ -2204,10 +2016,10 @@ F 3 "" H 3600 5800 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR046
+L power:GND #PWR015
 U 1 1 5B00EEAC
 P 3600 5950
-F 0 "#PWR046" H 3600 5700 50  0001 C CNN
+F 0 "#PWR015" H 3600 5700 50  0001 C CNN
 F 1 "GND" H 3500 5950 50  0000 C CNN
 F 2 "" H 3600 5950 50  0001 C CNN
 F 3 "" H 3600 5950 50  0001 C CNN
@@ -2232,10 +2044,10 @@ F 3 "" H 4850 5800 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR047
+L power:GND #PWR022
 U 1 1 5B0B9983
 P 4850 5950
-F 0 "#PWR047" H 4850 5700 50  0001 C CNN
+F 0 "#PWR022" H 4850 5700 50  0001 C CNN
 F 1 "GND" H 4750 5950 50  0000 C CNN
 F 2 "" H 4850 5950 50  0001 C CNN
 F 3 "" H 4850 5950 50  0001 C CNN
@@ -2256,10 +2068,10 @@ F 3 "" H 6000 5800 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L power:GND #PWR048
+L power:GND #PWR027
 U 1 1 5B0D5B96
 P 6000 5950
-F 0 "#PWR048" H 6000 5700 50  0001 C CNN
+F 0 "#PWR027" H 6000 5700 50  0001 C CNN
 F 1 "GND" H 5900 5950 50  0000 C CNN
 F 2 "" H 6000 5950 50  0001 C CNN
 F 3 "" H 6000 5950 50  0001 C CNN
@@ -2271,35 +2083,14 @@ Wire Wire Line
 Text Notes 8270 6055 2    50   ~ 0
 Grounded mounting holes \nfor safe enclosure discharge
 Wire Wire Line
-	1550 4150 1600 4150
-Wire Wire Line
-	1600 4500 1600 4450
-$Comp
-L power:GND #PWR050
-U 1 1 5B16862E
-P 1600 4500
-F 0 "#PWR050" H 1600 4250 50  0001 C CNN
-F 1 "GND" H 1750 4450 50  0000 C CNN
-F 2 "" H 1600 4500 50  0001 C CNN
-F 3 "" H 1600 4500 50  0001 C CNN
-	1    1600 4500
-	1    0    0    -1  
-$EndComp
-Text Label 1550 4150 2    50   ~ 0
-RMII_MDIO
-Wire Wire Line
 	11100 3300 11100 3200
-Wire Notes Line
-	3420 7100 3420 7795
-Wire Notes Line
-	3420 6535 3420 3975
 Wire Notes Line
 	3420 6535 6970 6535
 $Comp
-L Graphic:SYM_Arrow_XLarge #SYM3
+L Graphic:SYM_Arrow_XLarge #SYM1
 U 1 1 5B3B5A0B
 P 1700 6400
-F 0 "#SYM3" H 1700 6490 50  0001 C CNN
+F 0 "#SYM1" H 1700 6490 50  0001 C CNN
 F 1 "SYM_Arrow_XLarge" H 1700 6320 50  0001 C CNN
 F 2 "" H 1700 6400 50  0001 C CNN
 F 3 "~" H 1700 6400 50  0001 C CNN
@@ -2307,10 +2098,10 @@ F 3 "~" H 1700 6400 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Graphic:SYM_Arrow_XLarge #SYM4
+L Graphic:SYM_Arrow_XLarge #SYM2
 U 1 1 5B3B5B56
 P 2100 6400
-F 0 "#SYM4" H 2100 6490 50  0001 C CNN
+F 0 "#SYM2" H 2100 6490 50  0001 C CNN
 F 1 "SYM_Arrow_XLarge" H 2100 6320 50  0001 C CNN
 F 2 "" H 2100 6400 50  0001 C CNN
 F 3 "~" H 2100 6400 50  0001 C CNN
@@ -2328,22 +2119,10 @@ Wire Notes Line
 Wire Notes Line
 	1900 6550 1900 6350
 $Comp
-L Device:D_TVS D10
-U 1 1 5AF0C44B
-P 3000 4850
-F 0 "D10" V 2950 4650 50  0000 L CNN
-F 1 "D_TVS" V 3050 4600 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 3000 4850 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 3000 4850 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 3000 4850 50  0001 C CNN "purchase page"
-	1    3000 4850
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:R R9
+L Device:R R7
 U 1 1 5B4136D8
 P 10650 2700
-F 0 "R9" H 10700 2700 50  0000 L CNN
+F 0 "R7" H 10700 2700 50  0000 L CNN
 F 1 "1.5k" V 10650 2600 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 10580 2700 50  0001 C CNN
 F 3 "~" H 10650 2700 50  0001 C CNN
@@ -2364,249 +2143,6 @@ Wire Wire Line
 Text Notes 8300 3750 0    50   ~ 0
 IEEE 802.3 specifies a 1.5k 5% pullup \non MDIO line.
 $Comp
-L Device:D_TVS D9
-U 1 1 5B51D991
-P 2350 4850
-F 0 "D9" V 2300 4650 50  0000 L CNN
-F 1 "D_TVS" V 2400 4600 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 2350 4850 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 2350 4850 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 2350 4850 50  0001 C CNN "purchase page"
-	1    2350 4850
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D7
-U 1 1 5B51DA51
-P 1800 4850
-F 0 "D7" V 1750 4650 50  0000 L CNN
-F 1 "D_TVS" V 1850 4600 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 1800 4850 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 1800 4850 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 1800 4850 50  0001 C CNN "purchase page"
-	1    1800 4850
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D5
-U 1 1 5B51DB11
-P 1300 4850
-F 0 "D5" V 1250 4650 50  0000 L CNN
-F 1 "D_TVS" V 1350 4600 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 1300 4850 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 1300 4850 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 1300 4850 50  0001 C CNN "purchase page"
-	1    1300 4850
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D3
-U 1 1 5B51DBCD
-P 850 4850
-F 0 "D3" V 800 4650 50  0000 L CNN
-F 1 "D_TVS" V 900 4600 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 850 4850 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 850 4850 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 850 4850 50  0001 C CNN "purchase page"
-	1    850  4850
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D4
-U 1 1 5B51DC8B
-P 1050 4300
-F 0 "D4" V 1000 4100 50  0000 L CNN
-F 1 "D_TVS" V 1100 4050 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 1050 4300 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 1050 4300 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 1050 4300 50  0001 C CNN "purchase page"
-	1    1050 4300
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D6
-U 1 1 5B51DD59
-P 1600 4300
-F 0 "D6" V 1550 4100 50  0000 L CNN
-F 1 "D_TVS" V 1650 4050 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 1600 4300 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 1600 4300 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 1600 4300 50  0001 C CNN "purchase page"
-	1    1600 4300
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D8
-U 1 1 5B51DE21
-P 2200 4300
-F 0 "D8" V 2150 4100 50  0000 L CNN
-F 1 "D_TVS" V 2250 4050 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 2200 4300 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 2200 4300 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 2200 4300 50  0001 C CNN "purchase page"
-	1    2200 4300
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D13
-U 1 1 5B51DEEB
-P 3000 4300
-F 0 "D13" V 2950 4100 50  0000 L CNN
-F 1 "D_TVS" V 3050 4050 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 3000 4300 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 3000 4300 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 3000 4300 50  0001 C CNN "purchase page"
-	1    3000 4300
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D14
-U 1 1 5B521B32
-P 900 3650
-F 0 "D14" V 850 3450 50  0000 L CNN
-F 1 "D_TVS" V 950 3400 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 900 3650 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 900 3650 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 900 3650 50  0001 C CNN "purchase page"
-	1    900  3650
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D15
-U 1 1 5B521CFA
-P 1600 3650
-F 0 "D15" V 1550 3450 50  0000 L CNN
-F 1 "D_TVS" V 1650 3400 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 1600 3650 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 1600 3650 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 1600 3650 50  0001 C CNN "purchase page"
-	1    1600 3650
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D16
-U 1 1 5B521DC8
-P 2250 3650
-F 0 "D16" V 2200 3450 50  0000 L CNN
-F 1 "D_TVS" V 2300 3400 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 2250 3650 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 2250 3650 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 2250 3650 50  0001 C CNN "purchase page"
-	1    2250 3650
-	0    1    1    0   
-$EndComp
-$Comp
-L Device:D_TVS D17
-U 1 1 5B521EA2
-P 2950 3650
-F 0 "D17" V 2900 3450 50  0000 L CNN
-F 1 "D_TVS" V 3000 3400 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 2950 3650 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 2950 3650 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 2950 3650 50  0001 C CNN "purchase page"
-	1    2950 3650
-	0    1    1    0   
-$EndComp
-Text Label 800  3500 2    50   ~ 0
-CSN
-Wire Wire Line
-	800  3500 900  3500
-Text Label 1500 3500 2    50   ~ 0
-MISO
-Wire Wire Line
-	1500 3500 1600 3500
-Text Label 2150 3500 2    50   ~ 0
-SCK
-Wire Wire Line
-	2150 3500 2250 3500
-Text Label 2800 3500 2    50   ~ 0
-RESET
-Wire Wire Line
-	2800 3500 2950 3500
-$Comp
-L Device:D_TVS D18
-U 1 1 5B5D80AE
-P 3700 3650
-F 0 "D18" V 3650 3450 50  0000 L CNN
-F 1 "D_TVS" V 3750 3400 50  0000 L CNN
-F 2 "Diode_SMD:D_0402_1005Metric" H 3700 3650 50  0001 C CNN
-F 3 "https://www.semtech.com/uploads/documents/uclamp3311pq.pdf" H 3700 3650 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/semtech-corporation/UCLAMP3311PQTCT/UCLAMP3311PQTCTCT-ND/4626706" V 3700 3650 50  0001 C CNN "purchase page"
-	1    3700 3650
-	0    1    1    0   
-$EndComp
-Text Label 3550 3500 2    50   ~ 0
-MOSI
-Wire Wire Line
-	3550 3500 3700 3500
-$Comp
-L power:GND #PWR055
-U 1 1 5B5F83F4
-P 3700 3850
-F 0 "#PWR055" H 3700 3600 50  0001 C CNN
-F 1 "GND" H 3850 3750 50  0000 C CNN
-F 2 "" H 3700 3850 50  0001 C CNN
-F 3 "" H 3700 3850 50  0001 C CNN
-	1    3700 3850
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	3700 3850 3700 3800
-$Comp
-L power:GND #PWR054
-U 1 1 5B616FE7
-P 2950 3850
-F 0 "#PWR054" H 2950 3600 50  0001 C CNN
-F 1 "GND" H 3100 3750 50  0000 C CNN
-F 2 "" H 2950 3850 50  0001 C CNN
-F 3 "" H 2950 3850 50  0001 C CNN
-	1    2950 3850
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	2950 3850 2950 3800
-$Comp
-L power:GND #PWR053
-U 1 1 5B635DFC
-P 2250 3850
-F 0 "#PWR053" H 2250 3600 50  0001 C CNN
-F 1 "GND" H 2400 3750 50  0000 C CNN
-F 2 "" H 2250 3850 50  0001 C CNN
-F 3 "" H 2250 3850 50  0001 C CNN
-	1    2250 3850
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	2250 3850 2250 3800
-$Comp
-L power:GND #PWR052
-U 1 1 5B654E48
-P 1600 3850
-F 0 "#PWR052" H 1600 3600 50  0001 C CNN
-F 1 "GND" H 1750 3750 50  0000 C CNN
-F 2 "" H 1600 3850 50  0001 C CNN
-F 3 "" H 1600 3850 50  0001 C CNN
-	1    1600 3850
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	1600 3850 1600 3800
-$Comp
-L power:GND #PWR051
-U 1 1 5B6740E3
-P 900 3850
-F 0 "#PWR051" H 900 3600 50  0001 C CNN
-F 1 "GND" H 1050 3750 50  0000 C CNN
-F 2 "" H 900 3850 50  0001 C CNN
-F 3 "" H 900 3850 50  0001 C CNN
-	1    900  3850
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	900  3850 900  3800
-Text Notes 4700 3500 2    50   ~ 0
-SPI TVS surge protection
-$Comp
 L Connector_Generic:Conn_02x12_Odd_Even J7
 U 1 1 5ABD0D0D
 P 10200 5700
@@ -2618,20 +2154,16 @@ F 3 "http://docs.rakwireless.com/en/RAK831%20LoRa%20Gateway/Hardware%20Design/RA
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:Jumper JP21
+L Device:Jumper JP20
 U 1 1 5B7F475F
-P 8250 4550
-F 0 "JP21" H 8250 4850 50  0000 C CNN
-F 1 "Jumper" H 8250 4800 50  0000 C CNN
-F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 8250 4550 50  0001 C CNN
-F 3 "~" H 8250 4550 50  0001 C CNN
-	1    8250 4550
-	0    -1   -1   0   
+P 7700 4150
+F 0 "JP20" H 7700 4450 50  0000 C CNN
+F 1 "Jumper" H 7700 4400 50  0000 C CNN
+F 2 "lib_fp:PinHeader_1x02_P2.54mm_staggered_Vertical" H 7700 4150 50  0001 C CNN
+F 3 "~" H 7700 4150 50  0001 C CNN
+	1    7700 4150
+	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	8250 4100 8250 4250
-Wire Wire Line
-	8250 4850 7600 4850
 Wire Wire Line
 	8700 3200 9350 3200
 Text Label 9250 3300 2    50   ~ 0
@@ -2667,10 +2199,10 @@ System LED(s) block
 Wire Wire Line
 	7100 5950 7100 5900
 $Comp
-L power:GND #PWR049
+L power:GND #PWR029
 U 1 1 5B0F20B8
 P 7100 5950
-F 0 "#PWR049" H 7100 5700 50  0001 C CNN
+F 0 "#PWR029" H 7100 5700 50  0001 C CNN
 F 1 "GND" H 7000 5950 50  0000 C CNN
 F 2 "" H 7100 5950 50  0001 C CNN
 F 3 "" H 7100 5950 50  0001 C CNN
@@ -2688,4 +2220,78 @@ F 3 "" H 7100 5800 50  0001 C CNN
 	1    7100 5800
 	1    0    0    -1  
 $EndComp
+Text Notes 475  5145 0    50   ~ 0
+Protection on the LAN8720A RMII interface is implemented in die with HBM\nESD performance of class 3A(4kv-8kv), no need for external protection
+Text Notes 480  3970 0    50   ~ 0
+Protection on the SX1301 SPI interface is implemented in die with a \nHBM ESD performance of class 2(2kv-4kv), no need for external protection
+Wire Notes Line
+	3420 4970 3420 7795
+Wire Notes Line
+	475  4970 8270 4970
+$Comp
+L Device:Jumper_NC_Dual JP11
+U 1 1 5AF468C3
+P 2250 4300
+F 0 "JP11" H 2450 4200 50  0000 C CNN
+F 1 "Jumper_NC_Dual" H 2200 4400 50  0000 C CNN
+F 2 "lib_fp:PinHeader_1x03_P2.54mm_staggered_Vertical" H 2250 4300 50  0001 C CNN
+F 3 "~" H 2250 4300 50  0001 C CNN
+	1    2250 4300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	950  4150 1000 4150
+Text Label 1000 4150 0    50   ~ 0
+Power_Input
+$Comp
+L power:GND #PWR04
+U 1 1 5AF7852D
+P 950 4550
+F 0 "#PWR04" H 950 4300 50  0001 C CNN
+F 1 "GND" H 1100 4450 50  0000 C CNN
+F 2 "" H 950 4550 50  0001 C CNN
+F 3 "" H 950 4550 50  0001 C CNN
+	1    950  4550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	950  4550 950  4350
+Connection ~ 950  4350
+Text Label 2150 4650 2    50   ~ 0
+Power_Input
+Wire Wire Line
+	2150 4650 2250 4650
+Wire Wire Line
+	2250 4650 2250 4400
+Wire Wire Line
+	2000 4300 1800 4300
+Text Label 1800 4300 2    50   ~ 0
+12v_rail
+Text Label 2550 4300 0    50   ~ 0
+5v_rail
+Wire Wire Line
+	2550 4300 2500 4300
+Text Label 3150 4150 2    50   ~ 0
+12v_rail
+Text Label 6000 4500 2    50   ~ 0
+5v_rail
+Wire Wire Line
+	7200 4150 7400 4150
+Wire Wire Line
+	8000 4500 8100 4500
+Wire Wire Line
+	8100 4500 8100 4150
+Wire Wire Line
+	8100 4150 8000 4150
+Wire Wire Line
+	5900 4150 5850 4150
+Wire Wire Line
+	6500 4150 6550 4150
+Wire Wire Line
+	6550 4500 6550 4150
+Wire Wire Line
+	6000 4500 6550 4500
+Connection ~ 6550 4150
+Wire Wire Line
+	6550 4150 6800 4150
 $EndSCHEMATC
