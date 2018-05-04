@@ -4,12 +4,12 @@ EELAYER 26 0
 EELAYER END
 $Descr A4 11693 8268
 encoding utf-8
-Sheet 2 2
-Title ""
-Date ""
-Rev ""
-Comp ""
-Comment1 ""
+Sheet 2 3
+Title "ESP32 LoRa gateway with surge suppression"
+Date "2018-04-30"
+Rev "1"
+Comp "Kaiote Limited"
+Comment1 "Design by: Alois Mbutura"
 Comment2 ""
 Comment3 ""
 Comment4 ""
@@ -23,7 +23,9 @@ P 1800 3500
 F 0 "R8" H 1700 3500 50  0000 C CNN
 F 1 "110R" V 1800 3500 50  0000 C CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 1730 3500 50  0001 C CNN
-F 3 "~" H 1800 3500 50  0001 C CNN
+F 3 "http://www.vishay.com/docs/20035/dcrcwe3.pdf" H 1800 3500 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/vishay-dale/CRCW0805110RFKEA/541-110CCT-ND/1180673" H 1800 3500 50  0001 C CNN "purchase_page"
+F 5 "CRCW0805110RFKEA" H 1800 3500 50  0001 C CNN "manf#"
 	1    1800 3500
 	-1   0    0    1   
 $EndComp
@@ -51,6 +53,7 @@ F 1 "DTC143Z" H 1888 3955 50  0000 L CNN
 F 2 "Package_TO_SOT_SMD:SC-59_Handsoldering" H 1700 4000 50  0001 L CNN
 F 3 "http://www.rohm.com/web/global/datasheet/DTC143ZEB/dtc143zebtl-e" H 1700 4000 50  0001 L CNN
 F 4 "https://www.digikey.com/product-detail/en/rohm-semiconductor/DTC143ZKAT146/DTC143ZKAT146CT-ND/650725" H 1700 4000 50  0001 C CNN "purchase page"
+F 5 "DTC143ZKAT146" H 1700 4000 50  0001 C CNN "manf#"
 	1    1700 4000
 	1    0    0    -1  
 $EndComp
@@ -63,7 +66,7 @@ PPS_VISUAL
 Text HLabel 1550 2900 0    50   Input ~ 0
 GLOBAL_3V3
 Text Notes 3400 2850 0    50   ~ 0
-Network status LED\n=================\nToggles once every 500ms(2Hz) for a network error. Check network interfaces.\nOnce a ETH interface is sensed, moves from 2Hz(3sec) to 5Hz(2sec) finally 10Hz(1sec), reversed order for cell.\nToggles once rapidly every uplink delay sec(usually 30) for a successful uplink report via cellular.\nToggles twice rapidly every uplink delay sec(usually 30) for a successful uplink report via ethernet.
+Network status LED\n=================\nToggles once every 500ms(2Hz) for a network error. Check network interfaces.\nOnce a ETH interface is sensed, moves from 2Hz(2sec) to 5Hz(1.5sec) finally 10Hz(1sec), reversed order for cell.\nToggles once rapidly every uplink delay sec(usually 30) for a successful uplink report via cellular.\nToggles twice rapidly every uplink delay sec(usually 30) for a successful uplink report via ethernet.
 Wire Notes Line
 	3400 2350 3400 4350
 Wire Notes Line
@@ -98,6 +101,7 @@ F 1 "LED" V 10650 3000 50  0000 R CNN
 F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 10650 3100 50  0001 C CNN
 F 3 "http://optoelectronics.liteon.com/upload/download/DS22-2000-109/LTST-C171KRKT.pdf" H 10650 3100 50  0001 C CNN
 F 4 "https://www.digikey.com/product-detail/en/lite-on-inc/LTST-C171KRKT/160-1427-1-ND/386800" H 10650 3100 50  0001 C CNN "purchase page"
+F 5 "LTST-C171KRKT" V 10650 3100 50  0001 C CNN "manf#"
 	1    10650 3100
 	0    -1   -1   0   
 $EndComp
@@ -110,7 +114,9 @@ P 10650 3750
 F 0 "R11" H 10750 3750 50  0000 C CNN
 F 1 "300R" V 10650 3750 50  0000 C CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 10580 3750 50  0001 C CNN
-F 3 "~" H 10650 3750 50  0001 C CNN
+F 3 "https://industrial.panasonic.com/cdbs/www-data/pdf/RDM0000/AOA0000C328.pdf" H 10650 3750 50  0001 C CNN
+F 4 "ERJ-PB6D3000V" H 10650 3750 50  0001 C CNN "manf#"
+F 5 "https://www.digikey.com/product-detail/en/panasonic-electronic-components/ERJ-PB6D3000V/P20957CT-ND/6215212" H 10650 3750 50  0001 C CNN "purchase_page"
 	1    10650 3750
 	-1   0    0    1   
 $EndComp
@@ -144,6 +150,7 @@ F 1 "LED" V 5650 3100 50  0000 R CNN
 F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 5600 3200 50  0001 C CNN
 F 3 "http://optoelectronics.liteon.com/upload/download/DS22-2000-118/LTST-C171KGKT.pdf" H 5600 3200 50  0001 C CNN
 F 4 "https://www.digikey.com/product-detail/en/lite-on-inc/LTST-C171KGKT/160-1426-1-ND/386798" H 5600 3200 50  0001 C CNN "purchase page"
+F 5 "LTST-C171KGKT " V 5600 3200 50  0001 C CNN "manf#"
 	1    5600 3200
 	0    -1   -1   0   
 $EndComp
@@ -156,7 +163,9 @@ P 5600 3850
 F 0 "R9" H 5700 3850 50  0000 C CNN
 F 1 "130R" V 5600 3850 50  0000 C CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 5530 3850 50  0001 C CNN
-F 3 "~" H 5600 3850 50  0001 C CNN
+F 3 "https://industrial.panasonic.com/cdbs/www-data/pdf/RDM0000/AOA0000C307.pdf" H 5600 3850 50  0001 C CNN
+F 4 "https://www.digikey.com/product-detail/en/panasonic-electronic-components/ERA-6AEB131V/P130DACT-ND/1465926" H 5600 3850 50  0001 C CNN "purchase_page"
+F 5 "ERA-6AEB131V" H 5600 3850 50  0001 C CNN "manf#"
 	1    5600 3850
 	-1   0    0    1   
 $EndComp
@@ -202,6 +211,7 @@ F 1 "LED" V 8850 3000 50  0000 R CNN
 F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 8850 3100 50  0001 C CNN
 F 3 "http://optoelectronics.liteon.com/upload/download/DS22-2000-109/LTST-C171KRKT.pdf" H 8850 3100 50  0001 C CNN
 F 4 "https://www.digikey.com/product-detail/en/lite-on-inc/LTST-C171KRKT/160-1427-1-ND/386800" H 8850 3100 50  0001 C CNN "purchase page"
+F 5 "LTST-C171KRKT" V 8850 3100 50  0001 C CNN "manf#"
 	1    8850 3100
 	0    -1   -1   0   
 $EndComp
@@ -214,6 +224,7 @@ F 1 "LED" V 1800 3000 50  0000 R CNN
 F 2 "LED_SMD:LED_0805_2012Metric_Pad0.97x1.50mm_HandSolder" H 1800 3100 50  0001 C CNN
 F 3 "http://optoelectronics.liteon.com/upload/download/DS22-2000-109/LTST-C171KRKT.pdf" H 1800 3100 50  0001 C CNN
 F 4 "https://www.digikey.com/product-detail/en/lite-on-inc/LTST-C171KRKT/160-1427-1-ND/386800" H 1800 3100 50  0001 C CNN "purchase page"
+F 5 "LTST-C171KRKT" V 1800 3100 50  0001 C CNN "manf#"
 	1    1800 3100
 	0    -1   -1   0   
 $EndComp
@@ -230,7 +241,9 @@ P 8850 3750
 F 0 "R10" H 8950 3750 50  0000 C CNN
 F 1 "130R" V 8850 3750 50  0000 C CNN
 F 2 "Resistor_SMD:R_0805_2012Metric" V 8780 3750 50  0001 C CNN
-F 3 "~" H 8850 3750 50  0001 C CNN
+F 3 "https://industrial.panasonic.com/cdbs/www-data/pdf/RDM0000/AOA0000C307.pdf" H 8850 3750 50  0001 C CNN
+F 4 "ERA-6AEB131V" H 8850 3750 50  0001 C CNN "manf#"
+F 5 "https://www.digikey.com/product-detail/en/panasonic-electronic-components/ERA-6AEB131V/P130DACT-ND/1465926" H 8850 3750 50  0001 C CNN "purchase_page"
 	1    8850 3750
 	-1   0    0    1   
 $EndComp
@@ -238,4 +251,12 @@ Text Notes 8800 2800 0    50   ~ 0
 R = (3.3-2.0)/0.01
 Text Notes 10400 2800 0    50   ~ 0
 R = (5.0-2.0)/0.01
+Text Notes 3165 2455 0    50   ~ 0
+DONE
+Text Notes 7785 2445 2    50   ~ 0
+DONE
+Text Notes 9640 2450 2    50   ~ 0
+DONE
+Text Notes 11215 2440 2    50   ~ 0
+DONE
 $EndSCHEMATC
