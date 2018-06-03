@@ -28,6 +28,12 @@ Modified for ESP32 by: Alois Mbutura.
 #include <stdint.h>        /* C99 types*/
 #include "driver/spi_master.h"
 
+#define PIN_NUM_MISO CONFIG_LORA_MISO_PIN
+#define PIN_NUM_MOSI CONFIG_LORA_MOSI_PIN
+#define PIN_NUM_CLK  CONFIG_LORA_CLK_PIN
+#define PIN_NUM_CS   CONFIG_LORA_CS_PIN
+#define RESET_PIN    CONFIG_LORA_RESET_PIN
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 

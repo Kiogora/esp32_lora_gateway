@@ -148,6 +148,17 @@ without any consequence for the program execution.
 #define EXAMPLE_WIFI_SSID "EED Sky"
 #define EXAMPLE_WIFI_PASS "20150815"
 
+#define JOIN_REQUEST 0x00
+#define UNCONFIRMED_UP 0x40
+#define CONFIRMED_UP 0x80
+#define PROPRIETARY 0xE0
+
+#define EUI_LEN 8
+#define DEVADDR_LEN 4
+#define FCNT_LEN 2
+#define FPORT_LEN 1
+
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
@@ -257,7 +268,7 @@ static esp_err_t event_handler(void *ctx, system_event_t *event)
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
-        /* This is a workaround as ESP32 WiFi libs don't currently
+        /* This is a workarpayloadound as ESP32 WiFi libs don't currently
            auto-reassociate. */
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
@@ -561,7 +572,7 @@ void open_log(void)
         exit(EXIT_FAILURE);
     }
 
-    i = fprintf(log_file, "\"gateway ID\",\"node MAC\",\"UTC timestamp\",\"us count\",\"frequency\",\"RF chain\",\"RX chain\",\"status\",\"size\",\"modulation\",\"bandwidth\",\"datarate\",\"coderate\",\"RSSI\",\"SNR\",\"payload\"\n");
+    i = fprintf(log_file, "\"gateway ID\",\"UTC timestamp\",\"us count\",\"frequency\",\"RF chain\",\"RX chain\",\"status\",\"size\",\"modulation\",\"bandwidth\",\"datarate\",\"coderate\",\"RSSI\",\"SNR\",\"PHY payload\",\"MAC message type\",\"APP-EUI\",\"DEV-EUI\",\"devaddr\",\"ADR bit\",\"Foptlen\",\"FCnt\",\"Fport\",\"MAC payload content\"\n");
     if (i < 0) {
         ESP_LOGE(TAG, "ERROR: impossible to write to log file %s\n", log_file_name);
         exit(EXIT_FAILURE);
@@ -580,7 +591,8 @@ int util_pkt_logger(int argc, char **argv)
     int log_rotate_interval = 3600; /* by default, rotation every hour */
     int time_check = 0; /* variable used to limit the number of calls to time() function */
     unsigned long pkt_in_log = 0; /* count the number of packet written in each log file */
-
+    int byte_count = 0; //byte count
+    
     /* configuration file related */
     const char global_conf_fname[] = "/spiffs/global_conf.json"; /* contain global (typ. network-wide) configuration */
     const char local_conf_fname[] = "/spiffs/local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
@@ -712,104 +724,220 @@ int util_pkt_logger(int argc, char **argv)
             for (i=0; i < nb_pkt; ++i) {
                 p = &rxpkt[i];
 
-                /* writing gateway ID */
-                //fprintf(log_file, "\"%08X%08X\",", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
-                fprintf(log_file, "\"%08X%08X\",", (uint32_t)(mac >> 32), (uint32_t)(mac & 0xFFFFFFFF));
-                /* writing node MAC address */
-                fputs("\"\",", log_file); // TODO: need to parse payload
+                if(p->status == STAT_CRC_OK)
+                {
+                    /* writing gateway ID */
+                    //fprintf(log_file, "\"%08X%08X\",", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
+                    fprintf(log_file, "\"%08X%08X\",", (uint32_t)(mac >> 32), (uint32_t)(mac & 0xFFFFFFFF));
 
-                /* writing UTC timestamp*/
-                fprintf(log_file, "\"%s\",", fetch_timestamp);
-                // TODO: replace with GPS time when available
+                    /* writing UTC timestamp*/
+                    fprintf(log_file, "\"%s\",", fetch_timestamp);
+                    // TODO: replace with GPS time when available
 
-                /* writing internal clock */
-                fprintf(log_file, "%10u,", p->count_us);
+                    /* writing internal clock */
+                    fprintf(log_file, "%10u,", p->count_us);
 
-                /* writing RX frequency */
-                fprintf(log_file, "%10u,", p->freq_hz);
+                    /* writing RX frequency */
+                    fprintf(log_file, "%10u,", p->freq_hz);
 
-                /* writing RF chain */
-                fprintf(log_file, "%u,", p->rf_chain);
+                    /* writing RF chain */
+                    fprintf(log_file, "%u,", p->rf_chain);
 
-                /* writing RX modem/IF chain */
-                fprintf(log_file, "%2d,", p->if_chain);
+                    /* writing RX modem/IF chain */
+                    fprintf(log_file, "%2d,", p->if_chain);
 
-                /* writing status */
-                switch(p->status) {
-                    case STAT_CRC_OK:       fputs("\"CRC_OK\" ,", log_file); break;
-                    case STAT_CRC_BAD:      fputs("\"CRC_BAD\",", log_file); break;
-                    case STAT_NO_CRC:       fputs("\"NO_CRC\" ,", log_file); break;
-                    case STAT_UNDEFINED:    fputs("\"UNDEF\"  ,", log_file); break;
-                    default:                fputs("\"ERR\"    ,", log_file);
-                }
-
-                /* writing payload size */
-                fprintf(log_file, "%3u,", p->size);
-
-                /* writing modulation */
-                switch(p->modulation) {
-                    case MOD_LORA:  fputs("\"LORA\",", log_file); break;
-                    case MOD_FSK:   fputs("\"FSK\" ,", log_file); break;
-                    default:        fputs("\"ERR\" ,", log_file);
-                }
-
-                /* writing bandwidth */
-                switch(p->bandwidth) {
-                    case BW_500KHZ:     fputs("500000,", log_file); break;
-                    case BW_250KHZ:     fputs("250000,", log_file); break;
-                    case BW_125KHZ:     fputs("125000,", log_file); break;
-                    case BW_62K5HZ:     fputs("62500 ,", log_file); break;
-                    case BW_31K2HZ:     fputs("31200 ,", log_file); break;
-                    case BW_15K6HZ:     fputs("15600 ,", log_file); break;
-                    case BW_7K8HZ:      fputs("7800  ,", log_file); break;
-                    case BW_UNDEFINED:  fputs("0     ,", log_file); break;
-                    default:            fputs("-1    ,", log_file);
-                }
-
-                /* writing datarate */
-                if (p->modulation == MOD_LORA) {
-                    switch (p->datarate) {
-                        case DR_LORA_SF7:   fputs("\"SF7\"   ,", log_file); break;
-                        case DR_LORA_SF8:   fputs("\"SF8\"   ,", log_file); break;
-                        case DR_LORA_SF9:   fputs("\"SF9\"   ,", log_file); break;
-                        case DR_LORA_SF10:  fputs("\"SF10\"  ,", log_file); break;
-                        case DR_LORA_SF11:  fputs("\"SF11\"  ,", log_file); break;
-                        case DR_LORA_SF12:  fputs("\"SF12\"  ,", log_file); break;
-                        default:            fputs("\"ERR\"   ,", log_file);
+                    /* writing status */
+                    switch(p->status) {
+                        case STAT_CRC_OK:       fputs("\"CRC_OK\" ,", log_file); break;
+                        case STAT_CRC_BAD:      fputs("\"CRC_BAD\",", log_file); break;
+                        case STAT_NO_CRC:       fputs("\"NO_CRC\" ,", log_file); break;
+                        case STAT_UNDEFINED:    fputs("\"UNDEF\"  ,", log_file); break;
+                        default:                fputs("\"ERR\"    ,", log_file);
                     }
-                } else if (p->modulation == MOD_FSK) {
-                    fprintf(log_file, "\"%6u\",", p->datarate);
-                } else {
-                    fputs("\"ERR\"   ,", log_file);
+
+                    /* writing payload size */
+                    fprintf(log_file, "%3u,", p->size);
+
+                    /* writing modulation */
+                    switch(p->modulation) {
+                        case MOD_LORA:  fputs("\"LORA\",", log_file); break;
+                        case MOD_FSK:   fputs("\"FSK\" ,", log_file); break;
+                        default:        fputs("\"ERR\" ,", log_file);
+                    }
+
+                    /* writing bandwidth */
+                    switch(p->bandwidth) {
+                        case BW_500KHZ:     fputs("500000,", log_file); break;
+                        case BW_250KHZ:     fputs("250000,", log_file); break;
+                        case BW_125KHZ:     fputs("125000,", log_file); break;
+                        case BW_62K5HZ:     fputs("62500 ,", log_file); break;
+                        case BW_31K2HZ:     fputs("31200 ,", log_file); break;
+                        case BW_15K6HZ:     fputs("15600 ,", log_file); break;
+                        case BW_7K8HZ:      fputs("7800  ,", log_file); break;
+                        case BW_UNDEFINED:  fputs("0     ,", log_file); break;
+                        default:            fputs("-1    ,", log_file);
+                    }
+
+                    /* writing datarate */
+                    if (p->modulation == MOD_LORA) {
+                        switch (p->datarate) {
+                            case DR_LORA_SF7:   fputs("\"SF7\"   ,", log_file); break;
+                            case DR_LORA_SF8:   fputs("\"SF8\"   ,", log_file); break;
+                            case DR_LORA_SF9:   fputs("\"SF9\"   ,", log_file); break;
+                            case DR_LORA_SF10:  fputs("\"SF10\"  ,", log_file); break;
+                            case DR_LORA_SF11:  fputs("\"SF11\"  ,", log_file); break;
+                            case DR_LORA_SF12:  fputs("\"SF12\"  ,", log_file); break;
+                            default:            fputs("\"ERR\"   ,", log_file);
+                        }
+                    } else if (p->modulation == MOD_FSK) {
+                        fprintf(log_file, "\"%6u\",", p->datarate);
+                    } else {
+                        fputs("\"ERR\"   ,", log_file);
+                    }
+
+                    /* writing coderate */
+                    switch (p->coderate) {
+                        case CR_LORA_4_5:   fputs("\"4/5\",", log_file); break;
+                        case CR_LORA_4_6:   fputs("\"2/3\",", log_file); break;
+                        case CR_LORA_4_7:   fputs("\"4/7\",", log_file); break;
+                        case CR_LORA_4_8:   fputs("\"1/2\",", log_file); break;
+                        case CR_UNDEFINED:  fputs("\"\"   ,", log_file); break;
+                        default:            fputs("\"ERR\",", log_file);
+                    }
+
+                    /* writing packet RSSI */
+                    fprintf(log_file, "%+.0f,", p->rssi);
+
+                    /* writing packet average SNR */
+                    fprintf(log_file, "%+5.1f,", p->snr);
+
+                    /* writing to log file in little endian as on the wire, hex-encoded payload (bundled in 32-bit words) */
+                    fputs("\"", log_file);
+                    for (j = 0; j < p->size; ++j) {
+                        if ((j > 0) && (j%4 == 0)) fputs("-", log_file);
+                        fprintf(log_file, "%02X", p->payload[j]);
+                    }
+                    fputs("\",", log_file);
+
+                    if(p->status==STAT_CRC_OK)
+                    {
+
+                        //MAC Message type
+                        switch (p->payload[0])
+                        {
+                            case JOIN_REQUEST:   fputs("\"Join request\",", log_file); break;
+                            case UNCONFIRMED_UP:   fputs("\"Unconfirmed uplink\",", log_file); break;
+                            case CONFIRMED_UP:   fputs("\"Confirmed uplink\",", log_file); break;
+                            case PROPRIETARY:   fputs("\"Proprietary\",", log_file); break;
+                        }
+
+                        if(p->payload[0]==JOIN_REQUEST)
+                        {
+                            //AppEUI
+                            fputs("\"", log_file);
+                            for(byte_count=0;byte_count<EUI_LEN;byte_count++)
+                            {
+                                fprintf(log_file, "%02X", p->payload[8-byte_count]);
+                            }
+                            fputs("\",", log_file);
+                            
+                            //DevEUI
+                            fputs("\"", log_file);    
+                            for(byte_count=0;byte_count<EUI_LEN;byte_count++)
+                            {
+                                fprintf(log_file, "%02X", p->payload[16-byte_count]);
+                            }
+                            fputs("\",", log_file);
+
+                            //Add necessary comma placeholders
+
+                            fputs("\"N/A\",", log_file);
+                            fputs("\"N/A\",", log_file);
+                            fputs("\"N/A\",", log_file);
+                            fputs("\"N/A\",", log_file);
+                            fputs("\"N/A\",", log_file);
+                            fputs("\"N/A\"\n", log_file); 
+
+                        }
+                        else if(p->payload[0]==UNCONFIRMED_UP || p->payload[0]==CONFIRMED_UP)
+                        {
+                            //Add AppEUI placeholder
+                            fputs("\"N/A\",", log_file); 
+                            //Add DEV EUI placeholder
+                            fputs("\"N/A\",", log_file); 
+                            //Device address
+                            fputs("\"", log_file);
+                            for(byte_count=0;byte_count<DEVADDR_LEN;byte_count++)
+                            {
+                                fprintf(log_file, "%02X", p->payload[4-byte_count]);
+                            }
+                            fputs("\",", log_file);
+
+                            //ADR bit
+                            if(p->payload[5]&(1<<7))
+                            {
+                                fputs("\"Enabled\",", log_file);   
+                            }
+                            else
+                            {
+                                fputs("\"Disabled\",", log_file);  
+                            }
+
+                            //FOptlen
+                            fputs("\"", log_file);
+                            fprintf(log_file, "%u", p->payload[5]&0x0F);
+                            fputs("\",", log_file);
+
+                            //Fcntr
+                            fputs("\"", log_file);    
+                            fprintf(log_file, "%u", ((uint16_t)p->payload[7]<<8)+((uint16_t)p->payload[6]));
+                            fputs("\",", log_file);
+
+                            //Fport
+                            fputs("\"", log_file);
+                            fprintf(log_file, "%u", p->payload[(8+(p->payload[5]&0x0F))]);
+                            fputs("\",", log_file);
+
+                            if((unsigned)p->payload[(8+(p->payload[5]&0x0F))] == 0U)
+                            {
+                                fputs("\"MAC command\"\n", log_file);  
+                            }
+                            else if((unsigned)p->payload[(8+(p->payload[5]&0x0F))] >= 0x01 || p->payload[(8+(p->payload[5]&0x0F))] <= 0xDFU)
+                            {
+                                fputs("\"Application specific\"\n", log_file);  
+                            }
+                            else if((unsigned)p->payload[(8+(p->payload[5]&0x0F))] == 0xE0U)
+                            {
+                                fputs("\"MAC Test protocol\"\n", log_file);  
+                            }
+                            else
+                            {
+                                fputs("\"Reserved\"\n", log_file);  
+                            }
+
+                        }
+                    }
+                    // else
+                    // {
+                    //     //Add all eight field null comma placeholders
+                    //     fputs("\"\",", log_file); 
+                    //     fputs("\"\",", log_file); 
+                    //     fputs("\"\",", log_fisle); 
+                    //     fputs("\"\",", log_file); 
+                    //     fputs("\"\",", log_file); 
+                    //     fputs("\"\",", log_file); 
+                    //     fputs("\"\",", log_file);
+                    //     fputs("\"\",", log_file);
+                    //     fputs("\"\"\n", log_file);
+                    // }
+
+
+                    //
+
+                    /* end of log file line */
+                    fflush(log_file);
+                    ++pkt_in_log;
                 }
-
-                /* writing coderate */
-                switch (p->coderate) {
-                    case CR_LORA_4_5:   fputs("\"4/5\",", log_file); break;
-                    case CR_LORA_4_6:   fputs("\"2/3\",", log_file); break;
-                    case CR_LORA_4_7:   fputs("\"4/7\",", log_file); break;
-                    case CR_LORA_4_8:   fputs("\"1/2\",", log_file); break;
-                    case CR_UNDEFINED:  fputs("\"\"   ,", log_file); break;
-                    default:            fputs("\"ERR\",", log_file);
-                }
-
-                /* writing packet RSSI */
-                fprintf(log_file, "%+.0f,", p->rssi);
-
-                /* writing packet average SNR */
-                fprintf(log_file, "%+5.1f,", p->snr);
-
-                /* writing hex-encoded payload (bundled in 32-bit words) */
-                fputs("\"", log_file);
-                for (j = 0; j < p->size; ++j) {
-                    if ((j > 0) && (j%4 == 0)) fputs("-", log_file);
-                    fprintf(log_file, "%02X", p->payload[j]);
-                }
-
-                /* end of log file line */
-                fputs("\"\n", log_file);
-                fflush(log_file);
-                ++pkt_in_log;
             }
 
             /* check time and rotate log file if necessary */

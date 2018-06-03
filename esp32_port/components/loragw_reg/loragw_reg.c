@@ -57,8 +57,6 @@ static const char* TAG = "[LORAGW_REG]";
 #define PAGE_ADDR        0x00
 #define PAGE_MASK        0x03
 
-#define RESET_PIN GPIO_NUM_5
-
 const uint8_t FPGA_VERSION[] = { 28, 31, 33 }; /* several versions could be supported */
 
 /*

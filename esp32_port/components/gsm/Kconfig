@@ -1,31 +1,35 @@
-menu "**GSM PPPoS configuration**"
-
-config GSM_DEBUG
-    bool "Enable GSM debugging"
-    default y
-    help
-        Show GSM debug messages
+menu "GSM PIN CONFIGURATION"
 
 config GSM_TX
     int "UART Output to GSM Module"
-    default 21
-    range 1 30
+    default 17
+    range 1 38
     help
 	UART Tx pin, connected to GSM Module Rx pin.
 
 config GSM_RX
     int "UART Input from GSM Module"
-    default 31
+    default 14
     range 1 38
     help
 	UART Rx pin, connected to GSM Module Tx pin.
 
 config GSM_PWR_KEY
     int "Power key pin output"
-    default 16
+    default 18
     range 1 38
     help
 	PWR KEY pin, connected to GSM Module pwr key.
+
+endmenu
+
+menu "GSM PPPoS CONFIGURATION"
+
+config GSM_DEBUG
+    bool "Enable GSM debugging"
+    default y
+    help
+        Show GSM debug messages
 
 config GSM_BDRATE
     int "UART Baud rate"

@@ -70,7 +70,8 @@
                 "${workspaceRoot}/components/quectel_gsm",
                 "${workspaceRoot}/components/gsm/include",
                 "${workspaceRoot}/components/iperf",
-                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip/posix"
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip/posix",
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/apps/ping"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",
@@ -84,7 +85,10 @@
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
-            }
+            },
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
         },
         {
             "name": "Win32",
@@ -107,5 +111,5 @@
             }
         }
     ],
-    "version": 3
+    "version": 4
 }

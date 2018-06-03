@@ -1,0 +1,2 @@
+"gateway ID","UTC timestamp","us count","frequency","RF chain","RX chain","status","size","modulation","bandwidth","datarate","coderate","RSSI","SNR","PHY payload","MAC message type","APP-EUI","DEV-EUI","devaddr","ADR bit","Foptlen","FCnt","Fport","MAC payload content"
+"30AEA414D4380000","2018-05-30 08:24:06.213Z", 100247275, 868100000,1, 0,"CRC_OK" , 29,"LORA",125000,"SF7"   ,"4/5",-53, +9.8,"40B52D01-26007502-02AA7AFE-70411D11-2C41F795-857617AD-E2FD6D99-31","Unconfirmed uplink","N/A","N/A","26012DB5","Disabled","0","629","2"Application specific","

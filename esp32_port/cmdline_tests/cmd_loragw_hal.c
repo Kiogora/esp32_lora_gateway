@@ -8,7 +8,7 @@
 #include "esp_system.h"
 #include "argtable3/argtable3.h"
 #include "cmd_decl.h"
-#include "freertos/FreeRTOS.h"
+        #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "loragw_hal.h"

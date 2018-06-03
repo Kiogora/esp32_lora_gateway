@@ -509,7 +509,7 @@ F 1 "Conn_01x04" H 3450 1050 50  0000 C CNN
 F 2 "lib_fp:PinHeader_1x04_P2.54mm_staggered_Vertical" H 3550 1400 50  0001 C CNN
 F 3 "http://www.sullinscorp.com/drawings/78_P(N)PxCxxxLFBN-RC,_10492-H.pdf" H 3550 1400 50  0001 C CNN
 F 4 "https://www.digikey.com/product-detail/en/sullins-connector-solutions/PPTC041LFBN-RC/S7002-ND/810144" H 3550 1400 50  0001 C CNN "purchase_page"
-F 5 "385 " H 3550 1400 50  0001 C CNN "manf#"
+F 5 "1528-1504-ND" H 3550 1400 50  0001 C CNN "manf#"
 	1    3550 1400
 	-1   0    0    1   
 $EndComp
@@ -538,8 +538,8 @@ F 0 "C5" H 4265 1746 50  0000 L CNN
 F 1 "0.1uF" H 4265 1655 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 4188 1550 50  0001 C CNN
 F 3 "http://psearch.en.murata.com/capacitor/product/GCM21BR72A104KA37%23.pdf" H 4150 1700 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/murata-electronics-north-america/GCM21BR72A104KA37K/490-8051-1-ND/4380336" H 4150 1700 50  0001 C CNN "purchase_page"
-F 5 "GCM21BR72A104KA37K " H 4150 1700 50  0001 C CNN "manf#"
+F 4 "https://www.digikey.com/product-detail/en/murata-electronics-north-america/GCM21BR72A104KA37L/490-4789-1-ND/1641708" H 4150 1700 50  0001 C CNN "purchase_page"
+F 5 "CGA4J2X7R2A104K125AA " H 4150 1700 50  0001 C CNN "manf#"
 	1    4150 1700
 	1    0    0    -1  
 $EndComp
@@ -762,7 +762,7 @@ F 0 "C4" V 3850 2900 50  0000 L CNN
 F 1 "0.1uF" V 3850 3100 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 3838 2900 50  0001 C CNN
 F 3 "~" H 3800 3050 50  0001 C CNN
-F 4 "GCM21BR72A104KA37K " V 3800 3050 50  0001 C CNN "manf#"
+F 4 "GCM21BR72A104KA37L " V 3800 3050 50  0001 C CNN "manf#"
 	1    3800 3050
 	0    1    1    0   
 $EndComp
@@ -782,7 +782,7 @@ F 0 "C7" H 4750 5300 50  0000 L CNN
 F 1 "0.1uF" H 4750 5200 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 5038 5150 50  0001 C CNN
 F 3 "~" H 5000 5300 50  0001 C CNN
-F 4 "GCM21BR72A104KA37K" H 5000 5300 50  0001 C CNN "manf#"
+F 4 "CGA4J2X7R2A104K125AA " H 5000 5300 50  0001 C CNN "manf#"
 	1    5000 5300
 	1    0    0    -1  
 $EndComp
@@ -866,7 +866,7 @@ F 0 "C16" H 11000 1700 50  0000 L CNN
 F 1 "0.1uF" H 11000 1500 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 11038 1450 50  0001 C CNN
 F 3 "~" H 11000 1600 50  0001 C CNN
-F 4 "GCM21BR72A104KA37K " H 11000 1600 50  0001 C CNN "manf#"
+F 4 "CGA4J2X7R2A104K125AA " H 11000 1600 50  0001 C CNN "manf#"
 	1    11000 1600
 	1    0    0    -1  
 $EndComp
@@ -908,7 +908,7 @@ F 0 "C8" H 5365 3696 50  0000 L CNN
 F 1 "0.1uF" H 5250 3550 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 5288 3500 50  0001 C CNN
 F 3 "~" H 5250 3650 50  0001 C CNN
-F 4 "GCM21BR72A104KA37K " H 5250 3650 50  0001 C CNN "manf#"
+F 4 "CGA4J2X7R2A104K125AA " H 5250 3650 50  0001 C CNN "manf#"
 	1    5250 3650
 	1    0    0    -1  
 $EndComp
@@ -974,8 +974,8 @@ F 0 "C1" H 2900 1750 50  0000 L CNN
 F 1 "0.1uF" H 2850 1650 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 3188 1550 50  0001 C CNN
 F 3 "https://psearch.en.murata.com/capacitor/product/GCM21BR72A104KA37%23.pdf" H 3150 1700 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/murata-electronics-north-america/GCM21BR72A104KA37K/490-8051-1-ND/4380336" H 3150 1700 50  0001 C CNN "purchase_page"
-F 5 "GCM21BR72A104KA37K " H 3150 1700 50  0001 C CNN "manf#"
+F 4 "https://www.digikey.com/product-detail/en/murata-electronics-north-america/GCM21BR72A104KA37L/490-4789-1-ND/1641708" H 3150 1700 50  0001 C CNN "purchase_page"
+F 5 "CGA4J2X7R2A104K125AA " H 3150 1700 50  0001 C CNN "manf#"
 	1    3150 1700
 	1    0    0    -1  
 $EndComp
@@ -1503,7 +1503,7 @@ F 0 "C14" H 10565 3496 50  0000 L CNN
 F 1 "0.1uF" H 10550 3400 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 10488 3300 50  0001 C CNN
 F 3 "~" H 10450 3450 50  0001 C CNN
-F 4 "GCM21BR72A104KA37K" H 10450 3450 50  0001 C CNN "manf#"
+F 4 "CGA4J2X7R2A104K125AA " H 10450 3450 50  0001 C CNN "manf#"
 	1    10450 3450
 	1    0    0    -1  
 $EndComp
@@ -1662,19 +1662,6 @@ Text Label 10500 3300 0    50   ~ 0
 GLOBAL_3V3
 Text Notes 2355 3390 2    50   ~ 0
 1PPS output to LED/ uFL connector
-$Comp
-L Connector_Specialized:Jack-DC J1
-U 1 1 5B03C5B5
-P 650 4250
-F 0 "J1" H 550 4100 50  0000 C CNN
-F 1 "Jack-DC" H 650 4000 50  0000 C CNN
-F 2 "Connector_BarrelJack:BarrelJack_Horizontal" H 700 4210 50  0001 C CNN
-F 3 "https://www.cui.com/product/resource/pj-002a.pdf" H 700 4210 50  0001 C CNN
-F 4 "https://www.digikey.com/product-detail/en/cui-inc/PJ-002A/CP-002A-ND/96962" H 650 4250 50  0001 C CNN "purchase page"
-F 5 "PJ-002A" H 650 4250 50  0001 C CNN "manf#"
-	1    650  4250
-	1    0    0    -1  
-$EndComp
 Text Label 5900 3450 0    50   ~ 0
 ESP32_5v
 Text Label 7100 6150 0    50   ~ 0
@@ -1724,7 +1711,7 @@ F 0 "C10" H 8750 5450 50  0000 L CNN
 F 1 "0.1uF" H 8700 5300 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.50mm_HandSolder" H 8988 5250 50  0001 C CNN
 F 3 "~" H 8950 5400 50  0001 C CNN
-F 4 "GCM21BR72A104KA37K" H 8950 5400 50  0001 C CNN "manf#"
+F 4 "CGA4J2X7R2A104K125AA " H 8950 5400 50  0001 C CNN "manf#"
 	1    8950 5400
 	1    0    0    -1  
 $EndComp
@@ -1985,8 +1972,6 @@ Wire Wire Line
 Wire Wire Line
 	3550 4550 3550 4750
 Connection ~ 3550 4750
-Wire Wire Line
-	950  4250 950  4350
 Wire Wire Line
 	5850 4750 6800 4750
 Wire Wire Line
@@ -2304,8 +2289,8 @@ F 4 "61300311121 " H 2250 4300 50  0001 C CNN "manf#"
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	950  4150 1000 4150
-Text Label 1000 4150 0    50   ~ 0
+	950  4150 1050 4150
+Text Label 1050 4150 0    50   ~ 0
 Power_Input
 $Comp
 L power:GND #PWR04
@@ -2318,9 +2303,6 @@ F 3 "" H 950 4550 50  0001 C CNN
 	1    950  4550
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	950  4550 950  4350
-Connection ~ 950  4350
 Text Label 2150 4650 2    50   ~ 0
 Power_Input
 Wire Wire Line
@@ -2398,4 +2380,21 @@ Text Notes 11210 5025 2    50   ~ 0
 DONE
 Text Notes 8250 6225 2    50   ~ 0
 DONE
+Wire Wire Line
+	950  4250 950  4350
+$Comp
+L Connector:Jack-DC J1
+U 1 1 5AF61C3C
+P 650 4250
+F 0 "J1" H 600 4100 50  0000 C CNN
+F 1 "Jack-DC" H 728 4484 50  0000 C CNN
+F 2 "" H 700 4210 50  0001 C CNN
+F 3 "~" H 700 4210 50  0001 C CNN
+F 4 "PJ-002A " H 650 4250 50  0001 C CNN "manf#"
+	1    650  4250
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	950  4350 950  4550
+Connection ~ 950  4350
 $EndSCHEMATC

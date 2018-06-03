@@ -1,0 +1,38 @@
+menu " LORA CONCENTRATOR PIN CONFIGURATION"
+
+config LORA_MISO_PIN
+    int "LoRa concentrator MISO pin"
+    default 33
+    range 1 38
+    help
+	LoRa concentrator MISO pin.
+
+config LORA_MOSI_PIN
+    int "LoRa concentrator MOSI pin"
+    default 32
+    range 1 38
+    help
+	LoRa concentrator MOSI pin.
+
+config LORA_CS_PIN
+    int "LoRa concentrator CSN pin"
+    default 4
+    range 1 38
+    help
+	LoRa concentrator CSN pin.
+
+config LORA_CLK_PIN
+    int "LoRa concentrator SCK pin"
+    default 2
+    range 1 38
+    help
+	LoRa concentrator SCK pin.
+
+config LORA_RESET_PIN
+    int "LoRa concentrator RESET pin"
+    default 5
+    range 1 38
+    help
+	LoRa concentrator SX1301 RESET pin.
+
+endmenu
