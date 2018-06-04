@@ -1,6 +1,6 @@
 {
 	"SX1301_conf_rak831": {
-		"lorawan_public": false,
+		"lorawan_public": true,
 		"clksrc": 1,
 		"clksrc_desc": "radio_1 provides clock to concentrator for most devices except MultiTech. For MultiTech set to 0.",
 		"antenna_gain": 0,
@@ -113,7 +113,7 @@
 		"tx_lut_3": {
 			"desc": "TX gain table, index 3",
 			"pa_gain": 0,
-			"mix_gain": 19,
+			"mix_gain": 15,
 			"rf_power": 3,
 			"dig_gain": 0
 		},
@@ -215,7 +215,7 @@
 		}
 	},
 	"SX1301_conf_rhfm0301": {
-		"lorawan_public": false,
+		"lorawan_public": true,
 		"clksrc": 1,
 		"clksrc_desc": "radio_1 provides clock to concentrator for most devices except MultiTech. For MultiTech set to 0.",
 		"antenna_gain": 0,
@@ -447,7 +447,7 @@
         /* GPS configuration */
         /*"gps_tty_path": "/dev/ttyAMA0",*/
         /* GPS reference coordinates */
-        "fake_gps": true,
+        "fake_gps": false,
         "ref_latitude": -1.262513,
         "ref_longitude": 36.766596,
         "ref_altitude": 1797

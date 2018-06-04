@@ -244,8 +244,8 @@ static uint32_t meas_nb_beacon_rejected = 0; /* count beacon rejected for queuin
 //static pthread_mutex_t mx_meas_gps = PTHREAD_MUTEX_INITIALIZER;
 static SemaphoreHandle_t mx_meas_gps = NULL; /* control access to the GPS statistics */
 static bool gps_coord_valid; /* could we get valid GPS coordinates ? */
-static struct coord_s meas_gps_coord; /* GPS position of the gateway */
-static struct coord_s meas_gps_err; /* GPS position of the gateway */
+static struct coord_s meas_gps_coord={0.0,0.0,0}; /* GPS position of the gateway */
+static struct coord_s meas_gps_err={0.0,0.0,0}; /* GPS position of the gateway */
 
 //static pthread_mutex_t mx_stat_rep = PTHREAD_MUTEX_INITIALIZER;
 static SemaphoreHandle_t mx_stat_rep = NULL; /* control access to the status report */
@@ -322,7 +322,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     int i;
     char param_name[32]; /* used to generate variable parameter names */
     const char *str; /* used to store string value from JSON object */
-    const char conf_obj_name[] = "SX1301_conf";
+    const char conf_obj_name[] = "SX1301_conf_rak831";
     JSON_Value *root_val = NULL;
     JSON_Object *conf_obj = NULL;
     JSON_Object *conf_lbt_obj = NULL;
@@ -1150,6 +1150,13 @@ void app_main()
     time_t now;
     struct tm timeinfo;
 
+    //TODO: Do this more cleanly
+    /*Enable 3v3 power enable pin */
+    gpio_pad_select_gpio(GPIO_NUM_13);
+    /* Set the GPIO as a push/pull output */
+    gpio_set_direction(GPIO_NUM_13, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_13, 1);
+
     time(&now);
     localtime_r(&now, &timeinfo);
     // Is time set? If not, tm_year will be (1970 - 1900).
@@ -1161,12 +1168,11 @@ void app_main()
     }
     char strftime_buf[64];
 
-    // Set timezone to Africa/Nairobi and print local time
-    setenv("TZ", "EAT-3", 1);
+    //setenv("TZ", "EAT-3", 1);
     tzset();
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    ESP_LOGI(TAG, "The current date/time in Nairobi is: %s", strftime_buf);
+    ESP_LOGI(TAG, "The current date/time in at UTC is: %s", strftime_buf);
 
     ESP_LOGI(TAG, "\r");
     ESP_LOGI(TAG, "====MOUNTING SPIFFS====\r");
@@ -1284,7 +1290,7 @@ void app_main()
         
         if(gps_fake_enable == false)
         {
-            i = lgw_gps_enable("ubx8", 0, &gps_tty_dev);
+            i = lgw_gps_enable("L80", 0, &gps_tty_dev);
             if (i != LGW_GPS_SUCCESS)
             {
                 ESP_LOGW(TAG, "WARNING: [main] impossible to open GPS for sync");
@@ -2938,7 +2944,7 @@ static void task_gps(void *pvParameters) {
         size_t frame_end_idx = 0;
 
         /* blocking non-canonical read on serial port-1s timeout*/
-        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 200 / portTICK_RATE_MS);
+        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 1000 / portTICK_RATE_MS);
         if (nb_char == 0)
         {
             ESP_LOGW(TAG, "WARNING: [gps] uart_read_bytes() returned value %d bytes", nb_char);

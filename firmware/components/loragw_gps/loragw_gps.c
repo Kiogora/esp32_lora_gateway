@@ -376,7 +376,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
         return LGW_GPS_ERROR;
     }
 
-    if(strncmp(gps_family, "ubx7", 4) == 0 || strncmp(gps_family, "ubx8", 4) ==0)
+    if(strncmp(gps_family, "UBX7", 4) == 0 || strncmp(gps_family, "UBX8", 4) ==0)
     {
         /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
         /* This is a binary message, serial port has to be properly configured to handle this */
