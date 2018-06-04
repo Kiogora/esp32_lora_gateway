@@ -1,18 +1,18 @@
-menu "GSM PIN CONFIGURATION"
+menu "GSM PIN AND UART PERIPHERAL SELECTION"
 
 config GSM_TX
     int "UART Output to GSM Module"
     default 17
     range 1 38
     help
-	UART Tx pin, connected to GSM Module Rx pin.
+	UART TX pin, connected to GSM Module RX pin.
 
 config GSM_RX
     int "UART Input from GSM Module"
     default 14
     range 1 38
     help
-	UART Rx pin, connected to GSM Module Tx pin.
+	UART RX pin, connected to GSM Module TX pin.
 
 config GSM_PWR_KEY
     int "Power key pin output"
@@ -20,6 +20,13 @@ config GSM_PWR_KEY
     range 1 38
     help
 	PWR KEY pin, connected to GSM Module pwr key.
+
+config GSM_UART_NUM
+    int "GSM UART peripheral number"
+    default 1
+    range 1 2
+    help
+	UART peripheral in use by the GPS. Should be 1 or 2. 0 is used for USB/UART download.
 
 endmenu
 

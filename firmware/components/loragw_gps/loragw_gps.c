@@ -86,9 +86,9 @@ static short gps_sat = 0; /* number of satellites used for fix */
 
 static const int RX_BUF_SIZE = 1024;
 
-#define TXD_PIN (GPIO_NUM_4)
-#define RXD_PIN (GPIO_NUM_5)
-#define gps_tty_dev (UART_NUM_1)  /* descriptor to the serial port of the GNSS module */
+#define TXD_PIN CONFIG_GPS_TX_PIN
+#define RXD_PIN CONFIG_GPS_RX_PIN
+#define gps_tty_dev CONFIG_GPS_UART_NUM  /* descriptor to the serial port of the GNSS module */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -318,7 +318,7 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
     {
         DEBUG_MSG("WARNING: this version of GPS module may not be supported\n");
     }
-    else if (strncmp(gps_family, "ubx7", 4) != 0 || strncmp(gps_family, "ubx8", 4) !=0)
+    else if (strncmp(gps_family, "UBX7", 4) != 0 || strncmp(gps_family, "UBX8", 4) !=0|| strncmp(gps_family, "L80", 3) !=0)
     {
         /* The current implementation relies on proprietary messages from U-Blox */
         /* GPS modules (UBX, NAV-TIMEGPS...) and has only be tested with a u-blox 7/8. */
@@ -326,6 +326,21 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
         /* for class-B handling and GPS synchronization */
         /* see lgw_parse_ubx() function for details */
         DEBUG_MSG("WARNING: this version of GPS module may not be supported\n");
+    }
+    
+    if (strncmp(gps_family, "UBX7", 4) == 0)
+    {
+        ESP_LOGI(TAG, "Found UBLOX7 GPS!");
+    }
+    
+    if (strncmp(gps_family, "UBX8", 4) == 0)
+    {
+        ESP_LOGI(TAG, "Found UBLOX8 GPS!");
+    }
+    
+    if (strncmp(gps_family, "L80", 3) == 0)
+    {
+        ESP_LOGI(TAG, "Found QUECTEL L80 GPS!");
     }
 
     if (target_brate == 0)
@@ -345,7 +360,15 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
     };
 
     uart_param_config(gps_tty_dev, &uart_config);
-    uart_set_pin(gps_tty_dev, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    if(strncmp(gps_family, "L80", 3) == 0)
+    {
+        /*Use only rx pin only, workaround based on swapped pins error on prototype board based on errata*/
+        uart_set_pin(gps_tty_dev, UART_PIN_NO_CHANGE, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    }
+    else
+    {
+        uart_set_pin(gps_tty_dev, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    }
 
     if (uart_driver_install(gps_tty_dev, RX_BUF_SIZE * 2, 0, 0, NULL, 0) != ESP_OK)
     {
@@ -353,20 +376,23 @@ int lgw_gps_enable(char *gps_family, int target_brate, int *fd_ptr)
         return LGW_GPS_ERROR;
     }
 
-    /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
-    /* This is a binary message, serial port has to be properly configured to handle this */
-    num_written = uart_write_bytes(gps_tty_dev, (char*)ubx_cmd_timegps, UBX_MSG_LEN);
-    if (num_written != UBX_MSG_LEN)
+    if(strncmp(gps_family, "ubx7", 4) == 0 || strncmp(gps_family, "ubx8", 4) ==0)
     {
-        DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
-    }
+        /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
+        /* This is a binary message, serial port has to be properly configured to handle this */
+        num_written = uart_write_bytes(gps_tty_dev, (char*)ubx_cmd_timegps, UBX_MSG_LEN);
+        if (num_written != UBX_MSG_LEN)
+        {
+            DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
+        }
 
-    /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
-    /* This is a binary message, serial port has to be properly configured to handle this */
-    num_written = uart_write_bytes(gps_tty_dev, (char*)nmea_cmd_rmc, UBX_MSG_LEN);
-    if (num_written != UBX_MSG_LEN)
-    {
-        DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
+        /* Send UBX CFG NAV-TIMEGPS message to tell GPS module to output native GPS time */
+        /* This is a binary message, serial port has to be properly configured to handle this */
+        num_written = uart_write_bytes(gps_tty_dev, (char*)nmea_cmd_rmc, UBX_MSG_LEN);
+        if (num_written != UBX_MSG_LEN)
+        {
+            DEBUG_MSG("ERROR: Failed to write on serial port (written=%d)\n", (int) num_written);
+        }
     }
     
     /* get timezone info */

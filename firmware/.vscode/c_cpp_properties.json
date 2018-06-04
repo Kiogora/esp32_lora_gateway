@@ -71,7 +71,8 @@
                 "${workspaceRoot}/components/gsm/include",
                 "${workspaceRoot}/components/iperf",
                 "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include/lwip/posix",
-                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/apps/ping"
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/apps/ping",
+                "/home/alois/Documents/esp-idf/esp-idf/components/lwip/include"
             ],
             "defines": [],
             "intelliSenseMode": "clang-x64",

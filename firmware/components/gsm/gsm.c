@@ -56,7 +56,7 @@ static uint8_t gsm_rfOff = 0;
 static QueueHandle_t pppos_mutex = NULL;
 const char *PPP_User = CONFIG_GSM_INTERNET_USER;
 const char *PPP_Pass = CONFIG_GSM_INTERNET_PASSWORD;
-static int uart_num = UART_NUM_2;
+static int uart_num = CONFIG_GSM_UART_NUM;
 
 static uint8_t tcpip_adapter_initialized = 0;
 

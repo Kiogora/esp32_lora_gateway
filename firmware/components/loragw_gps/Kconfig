@@ -1,0 +1,24 @@
+menu "GPS PIN AND PERIPHERAL SELECTION"
+
+config GPS_TX_PIN
+    int "UART Output pin to GPS Module"
+    default 36
+    range 1 38
+    help
+	UART TX pin, connected to GPS Module RX pin.
+
+config GPS_RX_PIN
+    int "UART Input pin from GPS Module"
+    default 15
+    range 1 38
+    help
+	UART RX pin, connected to GPS Module TX pin.
+
+config GPS_UART_NUM
+    int "GPS UART peripheral number"
+        default 2
+    range 1 2
+    help
+	UART peripheral in use by the GPS. Should be 1 or 2. 0 is used for USB/UART download.
+
+endmenu

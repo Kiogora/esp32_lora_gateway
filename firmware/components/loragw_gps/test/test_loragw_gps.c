@@ -164,7 +164,7 @@ static void obtain_time(void)
     int retry = 0;
     const int retry_count = 10;
     while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
-        printf("Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        printf("Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
@@ -241,6 +241,12 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
     }
     char strftime_buf[64];
 
+    /*Enable 3v3 power enable pin */
+    gpio_pad_select_gpio(GPIO_NUM_13);
+    /* Set the GPIO as a push/pull output */
+    gpio_set_direction(GPIO_NUM_13, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_13, 1);
+
     // Set UTC
     tzset();
     localtime_r(&now, &timeinfo);
@@ -266,7 +272,7 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
     printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 
     /* Open and configure GPS */
-    i = lgw_gps_enable("ubx8", 0, &gps_tty_dev);
+    i = lgw_gps_enable("L80", 0, &gps_tty_dev);
     if (i != LGW_GPS_SUCCESS) {
         printf("ERROR: IMPOSSIBLE TO ENABLE GPS\n");
         exit(EXIT_FAILURE);
@@ -301,7 +307,7 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
         size_t frame_end_idx = 0;
 
         /* blocking non-canonical read on serial port-1s timeout*/
-        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 200 / portTICK_RATE_MS);
+        size_t nb_char = uart_read_bytes(gps_tty_dev, (uint8_t*)serial_buff + wr_idx, LGW_GPS_MIN_MSG_SIZE, 1000 / portTICK_RATE_MS);
         if (nb_char == 0)
         {
             printf("WARNING: [gps] uart_read_bytes() returned value %d bytes\n", nb_char);
@@ -341,7 +347,8 @@ TEST_CASE("loragw_gps", "[loragw_gps]")
                         gps_process_sync();
                     }
                 }
-            } else if(serial_buff[rd_idx] == LGW_GPS_NMEA_SYNC_CHAR) {
+            }
+            else if(serial_buff[rd_idx] == LGW_GPS_NMEA_SYNC_CHAR) {
                 /************************
                  * Found NMEA sync char *
                  ************************/
