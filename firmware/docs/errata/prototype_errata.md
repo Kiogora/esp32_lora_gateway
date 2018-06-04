@@ -31,16 +31,8 @@ Currently there is no workaround for this. A probable solution may be to pull th
 
 ### 1. Time drift affecting downlink
 
-Due to the innacuracy of the RTC of the ESP32, the internal clock reference pulled from NTP may drift. It is thus required that the clock does not drift off by more that 1ms in order not to miss the RX1 window, thus having to rely on the RX2 window to complete the downlink transmission.
+SNTP fails to be fetched even after the 10 retries.
 
 #### Workaround
 
-Form a test that stores SNTP time in the RTC and periodically notes the drift of the RTC time from UNIX wall time as a function of monotonic, elapsed time. The drift should not be more than 1 millisecond for the sake of downlink. A second note is the drift of the concetrator micrrosecond counter from the RTC time. This should give a good view of the relation of the three variables(UNIX time, RTC time, SX1301 us conter). __Do note__: There is some latency with querying data over a shared network connection such as cellular or wifi. This will add onto the differenceof the variables.
-
-### 1. USE UNIX UTC time from SNTP to schedule downlinks
-
-Currently the code implementation expects GPS giving GPS time otherwise no downlinks are sent to the nodes.
-
-#### Workaround
-
-Currently pull SNTP time and use that in the downlink task. Also the effect of this should be noted and how it would affect timersync.
+Form a task that fetches SNTP time from the time servers after every so often instead of just at start incase it fails to obtain SNTP time at start. How often is a function of drift of RTC time from the ESP32 time. Ss per this: https://github.com/espressif/esp-idf/issues/769 , the unit to use forworst case crystals is 20ppm thus we update the clock per 500second interval for a maximum drift of 10ms in order not to to have a deviation of 1s +/- 10ms of the downlink RX1 window.
