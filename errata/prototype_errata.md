@@ -27,6 +27,14 @@ The LAN module is pulling GPIO 0 low on boot. This is regardless of no power(Bel
 
 Currently there is no workaround for this. A probable solution may be to pull the clock enable line low, but it is not known how this may affect the output impedance of the oscillator in the absence of power.
 
+### 4. Failure to start SPI boot during normal operation.
+
+The ESP32 fails to  start as above. It is noted that GPIO2 must be pulled down to start SPI boot butit is an output due to the SCK function. Also GPIO5 is connected to an output(RESET line). MTDO(GPIO15) must be pullup and is connected to the TX line from the GPS and MTDI(GPIO 12 must be pullup). his is left open as is as it is shared with the flash chip.
+
+#### Workaround
+
+Boot first and when it is noted the ESP32 is not booting, reset the system. There may also be pulldown reistors present on any of the lines such as that from the GPS.In next design iteration, set these pins as outputs.
+
 ## Software errata
 
 ### 1. Time drift affecting downlink
@@ -35,4 +43,4 @@ SNTP fails to be fetched even after the 10 retries.
 
 #### Workaround
 
-Form a task that fetches SNTP time from the time servers after every so often instead of just at start incase it fails to obtain SNTP time at start. How often is a function of drift of RTC time from the ESP32 time. Ss per this: https://github.com/espressif/esp-idf/issues/769 , the unit to use forworst case crystals is 20ppm thus we update the clock per 500second interval for a maximum drift of 10ms in order not to to have a deviation of 1s +/- 10ms of the downlink RX1 window.
+Form a task that fetches SNTP time from the time servers after every so often instead of just at start incase it fails to obtain SNTP time at start. How often is a function of drift of RTC time from the ESP32 time. As per this: https://github.com/espressif/esp-idf/issues/769 , the unit to use forworst case crystals is 20ppm thus we update the clock per 500second interval for a maximum drift of 10ms in order not to to have a deviation of 1s +/- 10ms of the downlink RX1 window.
