@@ -47,11 +47,11 @@ Firstly compile the command-line tests residing [here](./cmdline_tests) to a pro
 ```shell
 sh run_cmd_tests.sh
 make menuconfig
-make -j5 flash 
+make -j5 BUILD_TESTS=1 flash 
 make flashfs image=cmdline_tests monitor
 ```
 
-The process for flashing files onto the SPIFFS filesystem is stated [here](./components/loboris_spiffs_image/readme.md). The target flashfs writes the files in the [cmdline_tests folder](./components/loboris_spiffs_image/writeops/cmdline_tests) to the SPIFFS filesystem partition in the esp32 flash. The image argument selects the folder to flash in the [writeops directory](./components/loboris_spiffs_image/writeops). By default if no image argument is passed, the default files whose folder is flashed is the "normal" folder. The normal folder contains files needed during normal gateway operation.
+The process for flashing files onto the SPIFFS filesystem is stated [here](./components/loboris_spiffs_image/readme.md). The target flashfs writes the files in the [cmdline_tests folder](./components/loboris_spiffs_image/writeops/cmdline_tests) to the SPIFFS filesystem partition in the esp32 flash. The image argument selects the folder to flash in the [writeops directory](./components/loboris_spiffs_image/writeops). By default if no image argument is passed, the default files whose folder is flashed is the "main" folder in the writeops directory. The main folder contains files needed during normal gateway operation.
 
 After running any logging tests to a file on the filesystem, one needs to read back the file from the SPIFFS partition to the computer. The commands to do this are stated above with the flashing commands and involve reading back the files and unpacking them from the SPIFFS image format.
 
@@ -89,7 +89,7 @@ Compile and flash the program binary and files to the esp32 using the commands:
 ```shell
 sh run_cmd_tests.sh
 make menuconfig
-make -j5 BUILD_NORMAL=1 flash 
+make -j5 BUILD_MAIN=1 flash 
 make flashfs monitor
 ```
 

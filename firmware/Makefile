@@ -1,10 +1,13 @@
 PROJECT_NAME := esp32_loragw
 
 #Main folder compilational setter. Checks for variable BUILD-NORMAL. Otherwise, default build is cmdline at this development stage.
-ifndef BUILD_NORMAL
+ifdef BUILD_MAIN
+EXTRA_COMPONENT_DIRS := $(abspath main)
+endif
+
+ifdef BUILD_TESTS
 EXTRA_COMPONENT_DIRS := $(abspath cmdline_tests)
 else
-EXTRA_COMPONENT_DIRS := $(abspath main)
 endif
 
 #Override component_dirs in project.mk
