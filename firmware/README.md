@@ -51,9 +51,16 @@ make -j5 flash
 make flashfs image=cmdline_tests monitor
 ```
 
-The process for flashing files onto the SPIFFS filesystem is stated [here](./components/loboris_spiffs_image/readme.md). The target flashfs writes the files in the [cmdline_tests folder](./components/loboris_spiffs_image/writeops/cmdline_tests) to the filesSPIFFS filesystem partition in the esp32 flash. The image argument selects the folder to flash in the [writeops directory](./components/loboris_spiffs_image/writeops). By default the default image passed named "normal", reffering to the folder named normal for the main program as below if no argument is given.
+The process for flashing files onto the SPIFFS filesystem is stated [here](./components/loboris_spiffs_image/readme.md). The target flashfs writes the files in the [cmdline_tests folder](./components/loboris_spiffs_image/writeops/cmdline_tests) to the SPIFFS filesystem partition in the esp32 flash. The image argument selects the folder to flash in the [writeops directory](./components/loboris_spiffs_image/writeops). By default if no image argument is passed, the default files whose folder is flashed is the "normal" folder. The normal folder contains files needed during normal gateway operation.
 
-After running any logging tests to the filesystem, one needs to read back the files from the SPIFFS partition to the computer. The commands to do this are stated above with the flashing commands and involve reading back the files and unpacking them from their SPIFFS image format.
+After running any logging tests to a file on the filesystem, one needs to read back the file from the SPIFFS partition to the computer. The commands to do this are stated above with the flashing commands and involve reading back the files and unpacking them from the SPIFFS image format.
+
+To readback the SPIFFS image:
+
+```shell
+make readbackfs
+make unpackfs
+```
 
 ### Command-line tests description
 
