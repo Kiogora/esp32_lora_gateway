@@ -45,9 +45,8 @@ This use the linenoise and arg3table library provided within the esp-idf framewo
 Firstly compile the command-line tests residing [here](./cmdline_tests) to a program binary and flash to the esp32, and finally flash the files to the filesystem, which include the json config files using the below commands:
 
 ```shell
-sh run_cmd_tests.sh
 make menuconfig
-make -j5 BUILD_TESTS=1 flash 
+make -j5 BUILD_TESTS=1 flash
 make flashfs image=cmdline_tests monitor
 ```
 
@@ -87,9 +86,8 @@ The main program is the C program which resides [here](./main). The main program
 Compile and flash the program binary and files to the esp32 using the commands:
 
 ```shell
-sh run_cmd_tests.sh
 make menuconfig
-make -j5 BUILD_MAIN=1 flash 
+make -j5 BUILD_MAIN=1 flash
 make flashfs monitor
 ```
 
