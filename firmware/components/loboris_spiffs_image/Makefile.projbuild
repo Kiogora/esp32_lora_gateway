@@ -4,7 +4,7 @@ SPIFFS_IMAGE_COMPONENT_PATH := $(COMPONENT_PATH)
 
 ####################################################################
 #Conditional variable for image
-image ?= image
+image ?= normal
 
 #Conditional variable for readback image
 read_image ?= read_image

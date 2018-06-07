@@ -40,9 +40,26 @@ The reason why tests require a separate sdkconfig due to the flash partitions be
 
 This use the linenoise and arg3table library provided within the esp-idf framework.
 
+### Flashing the command-line tests and handling the filesystem
+
+Firstly compile the command-line tests residing [here](./cmdline_tests) to a program binary and flash to the esp32, and finally flash the files to the filesystem, which include the json config files using the below commands:
+
+```shell
+sh run_cmd_tests.sh
+make menuconfig
+make -j5 flash 
+make flashfs image=cmdline_tests monitor
+```
+
+The process for flashing files onto the SPIFFS filesystem is stated [here](./components/loboris_spiffs_image/readme.md). The target flashfs writes the files in the [cmdline_tests folder](./components/loboris_spiffs_image/writeops/cmdline_tests) to the filesSPIFFS filesystem partition in the esp32 flash. The image argument selects the folder to flash in the [writeops directory](./components/loboris_spiffs_image/writeops). By default the default image passed named "normal", reffering to the folder named normal for the main program as below if no argument is given.
+
+After running any logging tests to the filesystem, one needs to read back the files from the SPIFFS partition to the computer. The commands to do this are stated above with the flashing commands and involve reading back the files and unpacking them from their SPIFFS image format.
+
+### Command-line tests description
+
 These tests are used to test various including new functionality to be implemented on the gateway, that can be useful in-field during a pilot, before integrating it into the main program for deployment.
 
-The individual tests reside [here](./cmdline_tests) and include:
+The individual tests include:
 
 1. __util_spi_stress__-This software is used to check the reliability of the link between the host platform (on which the program is run) and the LoRa concentrator register file that is the interface through which all interaction with the LoRa concentrator happens. Tests the burst and normal read/write modes. Of particular importance is the burst read/write. This should be done in lab before deployment on the target PCB and left to run for a minimum of 24-48 hours. Failure of these tests indicates wiring/layout problems, EMI and crosstalk on the setup. As a prototype solution with the SPI link run over wires, coil a ground wire over the SPI wires to form a shield. On a PCB, the link should be relatively length matched and the various connections separated by grounded copper areas. 
 2. __loragw_cal__-Tests the calibration of the radio and loads the calibration firmware into the cores of the SX1301. This calibrates the radio for effects such as image rejection and so on. This should be the first test run prior to running other tests on the radio, except the packet forwarder test, which runs the test inherently.
@@ -54,23 +71,19 @@ The individual tests reside [here](./cmdline_tests) and include:
 7. __iperf__-Tests the latency and roundtrip time (RTT) of a given backhaul connection. The most useful setup for Iperf on the esp32 is as a client as it reports data back to a server. This is useful in testing if the RTT may overrun the RX1/RX2 windows on devices, which is 1 usually 1 second after transmission for class A devices. This would be a problem for long RTT backhaul connections such as satellite. This is in addition to the 20ppm clock drift of the esp32 RTC clock from the SNTP wall time.
 8. __ping__-Tests the throughput of a given  backhaul connection in Mbps.
 
-To compile and flash:
-
-```shell
-sh run_cmd_tests.sh
-make menuconfig
-make j5 flash monitor
-```
 ## Main program
 
 The main program is the C program which resides [here](./main). The main program is an amalgamation of the basic tests and functionality tests above. This program runs indefinitely and for field updatability, should include over the air(OTA) upgrades.
 
-To run the tests:
+### Flashing the command-line tests and handling the filesystem
+
+Compile and flash the program binary and files to the esp32 using the commands:
 
 ```shell
 sh run_cmd_tests.sh
-make BUILD_NORMAL=1 menuconfig
-make j5 flash monitor
+make menuconfig
+make -j5 BUILD_NORMAL=1 flash 
+make flashfs monitor
 ```
 
 __TODO__: Find similariies in the main program and the commandline tests and see if this will need a separate sdkconfig, especially with the over the air update functionality changing the flash partitions.
