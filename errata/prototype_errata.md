@@ -35,9 +35,6 @@ The time the downlink packet is received back is ~1.5 seconds after the uplink p
 
 Untested.Probably use the RX2 window that is open 2 seconds after uplink.
 
-#### Workaround
-
-Currently there is no workaround for this. A probable solution may be to pull the clock enable line low, but it is not known how this may affect the output impedance of the oscillator in the absence of power.
 
 ### 4. Failure to start SPI boot during normal operation.
 
