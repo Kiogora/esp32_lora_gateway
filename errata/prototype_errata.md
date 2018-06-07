@@ -27,6 +27,18 @@ The LAN module is pulling GPIO 0 low on boot. This is regardless of no power(Bel
 
 Currently there is no workaround for this. A probable solution may be to pull the clock enable line low, but it is not known how this may affect the output impedance of the oscillator in the absence of power.
 
+### 4. Unable to send downlink for class A devices using a cellular backhaul
+
+The time the downlink packet is received back is ~1.5 seconds after the uplink packet transmission. This exceeds the asynchronous RX1 window that is open 1 second after uplink.
+
+#### Workaround
+
+Untested.Probably use the RX2 window that is open 2 seconds after uplink.
+
+#### Workaround
+
+Currently there is no workaround for this. A probable solution may be to pull the clock enable line low, but it is not known how this may affect the output impedance of the oscillator in the absence of power.
+
 ### 4. Failure to start SPI boot during normal operation.
 
 The ESP32 fails to  start as above. It is noted that GPIO2 must be pulled down to start SPI boot butit is an output due to the SCK function. Also GPIO5 is connected to an output(RESET line). MTDO(GPIO15) must be pullup and is connected to the TX line from the GPS and MTDI(GPIO 12 must be pullup). his is left open as is as it is shared with the flash chip.
