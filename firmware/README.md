@@ -2,7 +2,7 @@
 ESP32 lora gateway project
 ==========================
 
-# Testing
+# 1. Testing
 
 Two types of tests are included:
 
@@ -65,22 +65,30 @@ make unpackfs
 
 These tests are used to test various including new functionality to be implemented on the gateway, that can be useful in-field during a pilot, before integrating it into the main program for deployment.
 
-Some tests need an internet connection before running properly. The various network connection methods are:
+__utilities:__ In order to restart the tests by reboot just enter the following in the prompt: 
+
+```
+loragw test console>restart
+```
+
+__connectivity prerequisites:__ Some tests need an internet connection before running properly. The various network connection methods are:
 
 __cellular connection:__
 Uses the information on the APN, password and auth protocol in menuconfig.
 
 __Usage:__
+
 ```
-cellular_connect
+loragw test console>cellular_connect
 ```
 
 __Wifi connection:__
 Uses the information on the APN, password and auth protocol in menuconfig.
 
 __Usage:__
+
 ```
-sta  "WIFI_SSID" "PASSKEY"
+loragw test console>loragw test console>sta  "WIFI_SSID" "PASSKEY"
   WiFi is station mode, join specified soft-AP
     "WIFI_SSID"  SSID of AP
     "PASSKEY"  password of AP
@@ -93,7 +101,7 @@ The individual tests include:
 __Usage:__
 
 ```
-Util_spi_stress  -t 4 -n 2500
+loragw test console>Util_spi_stress  -t 4 -n 2500
     -t 4  <int> specify which test you want to run (1-4)
     -n 2500  <int> specify read write cycles to perform, max 3000, beyond 3000 => infinite
 ```
@@ -103,7 +111,7 @@ Util_spi_stress  -t 4 -n 2500
 __Usage:__
 
 ```
-loragw_cal  -a 867.5 -b 868.5 -r 1257 -n 1 -k 1 -t 1
+loragw test console>loragw_cal  -a 867.5 -b 868.5 -r 1257 -n 1 -k 1 -t 1
     -a 867.5  <float> Radio A frequency in MHz
     -b 868.5  <float> Radio B frequency in MHz
     -r 1257  <int> Radio type (SX1255:1255, SX1257:1257)
@@ -117,7 +125,7 @@ loragw_cal  -a 867.5 -b 868.5 -r 1257 -n 1 -k 1 -t 1
 __Usage:__
 
 ```
-loragw_hal  -a 867.5 -b 868.5 -t 868.0 -r 1257 -k 1
+loragw test console>loragw_hal  -a 867.5 -b 868.5 -t 868.0 -r 1257 -k 1
     -a 867.5  Radio A RX frequency in MHz
     -b 868.5  Radio B RX frequency in MHz
     -t 868.0  Radio TX frequency in MHz
@@ -130,7 +138,7 @@ loragw_hal  -a 867.5 -b 868.5 -t 868.0 -r 1257 -k 1
 __Usage:__
 
 ```
-util_continuous_tx  -f <F> -r <R> --notch=<NOTCH> --dac=<DAC> --dig=<DIG> --mix=<MIX> --pa=<PA> --mod=<MOD> --sf=<SF> --bw=<BW> --br=<BR> --fdev=<FDEV> --bt=<BT>
+loragw test console>util_continuous_tx  -f <F> -r <R> --notch=<NOTCH> --dac=<DAC> --dig=<DIG> --mix=<MIX> --pa=<PA> --mod=<MOD> --sf=<SF> --bw=<BW> --br=<BR> --fdev=<FDEV> --bt=<BT>
     -f <F>  <float>  Tx RF frequency in MHz [800:1000]
     -r <R>  <int>    Radio type (SX1255:1255, SX1257:1257)
     --notch=<NOTCH>  <uint>   Tx notch filter frequency in KhZ [126..250]
@@ -151,7 +159,7 @@ util_continuous_tx  -f <F> -r <R> --notch=<NOTCH> --dac=<DAC> --dig=<DIG> --mix=
 __Usage:__
 
 ```
-util_pkt_logger  -r 60s
+loragw test console>util_pkt_logger  -r 60s
     -r 60s  (int) Log rotate interval in seconds
 ```
 
@@ -160,7 +168,7 @@ util_pkt_logger  -r 60s
 __Usage:__
 
 ```
-loragw_lbt  -f <F> -o <O> -r <R> -s <S>
+loragw test console>loragw_lbt  -f <F> -o <O> -r <R> -s <S>
     -f <F>  <float> frequency in MHz of the first LBT channel
     -o <O>  <int>   offset in dB to be applied to the SX127x RSSI [-128..127]
     -r <R>  <int>   target RSSI: signal strength target used to detect if the channel is clear or not [-128..0]
@@ -172,7 +180,7 @@ loragw_lbt  -f <F> -o <O> -r <R> -s <S>
 __Usage:__
 
 ```
-parson_test
+loragw test console>parson_test
 ```
 
 + __iperf__-Tests the latency and roundtrip time (RTT) of a given backhaul connection. The most useful setup for Iperf on the esp32 is as a client as it reports data back to a server. This is useful in testing if the RTT may overrun the RX1/RX2 windows on devices, which is 1 usually 1 second after transmission for class A devices. This would be a problem for long RTT backhaul connections such as satellite. This is in addition to the 20ppm clock drift of the esp32 RTC clock from the SNTP wall time.
@@ -180,7 +188,7 @@ parson_test
 __Usage:__
 
 ```
-iperf  [-sua] [-c <ip>] [-p <port>] [-i <interval>] [-t <time>]
+loragw test console>iperf  [-sua] [-c <ip>] [-p <port>] [-i <interval>] [-t <time>]
   iperf command
     -c, --client=<ip>  run in client mode, connecting to <host>
     -s, --server  run in server mode
@@ -196,7 +204,7 @@ iperf  [-sua] [-c <ip>] [-p <port>] [-i <interval>] [-t <time>]
 __Usage:__
 
 ```
-ping  -n 8.8.8.8 -c 10 -t 1 -d 1
+loragw test console>ping  -n 8.8.8.8 -c 10 -t 1 -d 1
   Run ICMP ping test
     -n 8.8.8.8  <int> specify ipV4 ip address in dot notation
     -c 10  <int> specify ping count per analysis
@@ -204,7 +212,7 @@ ping  -n 8.8.8.8 -c 10 -t 1 -d 1
     -d 1  <int> specify delay in seconds as an integer
 ```
 
-## Main program
+# 2. Main program
 
 The main program is the C program which resides [here](./main). The main program is an amalgamation of the basic tests and functionality tests above. This program runs indefinitely and for field updatability, should include over the air(OTA) upgrades.
 
