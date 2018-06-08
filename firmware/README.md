@@ -71,7 +71,7 @@ __cellular connection:__
 Uses the information on the APN, password and auth protocol in menuconfig.
 
 __Usage:__
-```shell
+```
 cellular_connect
 ```
 
@@ -79,7 +79,7 @@ __Wifi connection:__
 Uses the information on the APN, password and auth protocol in menuconfig.
 
 __Usage:__
-```shell
+```
 sta  "WIFI_SSID" "PASSKEY"
   WiFi is station mode, join specified soft-AP
     "WIFI_SSID"  SSID of AP
@@ -92,7 +92,7 @@ The individual tests include:
 
 __Usage:__
 
-```shell
+```
 Util_spi_stress  -t 4 -n 2500
     -t 4  <int> specify which test you want to run (1-4)
     -n 2500  <int> specify read write cycles to perform, max 3000, beyond 3000 => infinite
@@ -102,7 +102,7 @@ Util_spi_stress  -t 4 -n 2500
 
 __Usage:__
 
-```shell
+```
 loragw_cal  -a 867.5 -b 868.5 -r 1257 -n 1 -k 1 -t 1
     -a 867.5  <float> Radio A frequency in MHz
     -b 868.5  <float> Radio B frequency in MHz
@@ -116,7 +116,7 @@ loragw_cal  -a 867.5 -b 868.5 -r 1257 -n 1 -k 1 -t 1
 
 __Usage:__
 
-```shell
+```
 loragw_hal  -a 867.5 -b 868.5 -t 868.0 -r 1257 -k 1
     -a 867.5  Radio A RX frequency in MHz
     -b 868.5  Radio B RX frequency in MHz
@@ -129,7 +129,7 @@ loragw_hal  -a 867.5 -b 868.5 -t 868.0 -r 1257 -k 1
 
 __Usage:__
 
-```shell
+```
 util_continuous_tx  -f <F> -r <R> --notch=<NOTCH> --dac=<DAC> --dig=<DIG> --mix=<MIX> --pa=<PA> --mod=<MOD> --sf=<SF> --bw=<BW> --br=<BR> --fdev=<FDEV> --bt=<BT>
     -f <F>  <float>  Tx RF frequency in MHz [800:1000]
     -r <R>  <int>    Radio type (SX1255:1255, SX1257:1257)
@@ -150,7 +150,7 @@ util_continuous_tx  -f <F> -r <R> --notch=<NOTCH> --dac=<DAC> --dig=<DIG> --mix=
 
 __Usage:__
 
-```shell
+```
 util_pkt_logger  -r 60s
     -r 60s  (int) Log rotate interval in seconds
 ```
@@ -159,7 +159,7 @@ util_pkt_logger  -r 60s
 
 __Usage:__
 
-```shell
+```
 loragw_lbt  -f <F> -o <O> -r <R> -s <S>
     -f <F>  <float> frequency in MHz of the first LBT channel
     -o <O>  <int>   offset in dB to be applied to the SX127x RSSI [-128..127]
@@ -171,7 +171,7 @@ loragw_lbt  -f <F> -o <O> -r <R> -s <S>
 
 __Usage:__
 
-```shell
+```
 parson_test
 ```
 
@@ -179,7 +179,7 @@ parson_test
 
 __Usage:__
 
-```shell
+```
 iperf  [-sua] [-c <ip>] [-p <port>] [-i <interval>] [-t <time>]
   iperf command
     -c, --client=<ip>  run in client mode, connecting to <host>
@@ -195,7 +195,7 @@ iperf  [-sua] [-c <ip>] [-p <port>] [-i <interval>] [-t <time>]
 
 __Usage:__
 
-```shell
+```
 ping  -n 8.8.8.8 -c 10 -t 1 -d 1
   Run ICMP ping test
     -n 8.8.8.8  <int> specify ipV4 ip address in dot notation
