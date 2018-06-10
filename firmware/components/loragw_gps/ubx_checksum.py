@@ -1,5 +1,6 @@
-#Dont include UBX header or checksum
+#Dont include UBX header or UBX checksum
 #Calculate Fletcher-16 checksum https://en.wikipedia.org/wiki/Fletcher%27s_checksum
+#(Fletcher,1982)
 packet = [0x06, 0x01, 0x08, 0x00, 0xf0, 0x04, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00]
 
 CK_A,CK_B = 0, 0
