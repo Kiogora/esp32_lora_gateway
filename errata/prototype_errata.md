@@ -36,13 +36,34 @@ The time the downlink packet is received back is ~1.5 seconds after the uplink p
 Untested.Probably use the RX2 window that is open 2 seconds after uplink.
 
 
-### 4. Failure to start SPI boot during normal operation.
+### 5. Failure to start SPI boot during normal operation.
 
 The ESP32 fails to  start as above. It is noted that GPIO2 must be pulled down to start SPI boot butit is an output due to the SCK function. Also GPIO5 is connected to an output(RESET line). MTDO(GPIO15) must be pullup and is connected to the TX line from the GPS and MTDI(GPIO 12 must be pullup). his is left open as is as it is shared with the flash chip.
 
 #### Workaround
 
 Boot first and when it is noted the ESP32 is not booting, reset the system. There may also be pulldown reistors present on any of the lines such as that from the GPS.In next design iteration, set these pins as outputs.
+
+### 6. ESP32 DEVKIT-C pin width in footprint incorrect.
+
+The ESP32 footprint pin to pin width is set to 0.9 inches, this is 0.1 inch from the actual at 1.0 inch.
+
+#### Workaround
+Fix the footprint prior to the next revision and bend the mounting female pins if using them for the current.
+
+### 7. ESP32 pin pad hole dia, LAN module pin pad hole dia and for any staggered through hole footprint made by hand is too large to hold the component pin socket.
+
+It looks like sockets require a smaller hole diameter. Due to the effect of reducing the hole diameter affecting the placement of the component, if desired, without soldering. This should not be reduced.
+
+#### Workaround
+Solder pin sockets first on the board as they will not be held by the staggered pins. Placement of the sockets must be soldered. Components direcctly placed need not be soldered. The adjacent pin offset from the centerline can be left at 0.8mm as is in the current design.
+
+### 8. Wrong pin assignment in footprint for the RAK831
+
+Looks like the footprint was flipped from top vertical view to a bottom vertical view in the current design.
+
+#### Workaround
+TODO: Insert image of work around as implemented.
 
 ## Software errata
 
