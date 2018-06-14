@@ -40,9 +40,14 @@ Untested.Probably use the RX2 window that is open 2 seconds after uplink.
 
 The ESP32 fails to  start as above. It is noted that GPIO2 must be pulled down to start SPI boot butit is an output due to the SCK function. Also GPIO5 is connected to an output(RESET line). MTDO(GPIO15) must be pullup and is connected to the TX line from the GPS and MTDI(GPIO 12 must be pullup). his is left open as is as it is shared with the flash chip.
 
+It is noted that the boot-mode is 0x30 when it waits on download boot and 0x13 on fast spi boot. This is only in the V4 devkit-C and not on the earlier version 2 core board. The errata number 3 of the ethernet module affects all the two boards.
+
 #### Workaround
 
 Boot first and when it is noted the ESP32 is not booting, reset the system. There may also be pulldown reistors present on any of the lines such as that from the GPS.In next design iteration, set these pins as outputs.
+
+Using an earlier verion 2 board is not a feasible suggestion as a workaround.
+
 
 ### 6. ESP32 DEVKIT-C pin width in footprint incorrect.
 
