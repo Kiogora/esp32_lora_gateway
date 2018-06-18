@@ -42,9 +42,18 @@ The ESP32 fails to  start as above. It is noted that GPIO2 must be pulled down t
 
 It is noted that the boot-mode is 0x30 when it waits on download boot and 0x13 on fast spi boot. This is only in the V4 devkit-C and not on the earlier version 2 core board. The errata number 3 of the ethernet module affects all the two boards.
 
+DEVKIT-C version 2: Risetime 12us
+
+![](./DEVKITC_V2.png)
+
+DEVKIT-C version 4: Risetime 1ms
+
+![](./DEVKITC_V4.png)
+
+
 #### Workaround
 
-Boot first and when it is noted the ESP32 is not booting, reset the system. There may also be pulldown reistors present on any of the lines such as that from the GPS.In next design iteration, set these pins as outputs.
+Boot first and when it is noted the ESP32 is not booting, reset the system. There may also be pulldown reistors present on any of the lines such as that from the GPS. In next design iteration, set these pins as outputs even if they are not the cause directly.
 
 Using an earlier verion 2 board is not a feasible suggestion as a workaround.
 
