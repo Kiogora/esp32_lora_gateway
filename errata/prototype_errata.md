@@ -77,7 +77,11 @@ Solder pin sockets first on the board as they will not be held by the staggered 
 Looks like the footprint was flipped from top vertical view to a bottom vertical view in the current design.
 
 #### Workaround
-TODO: Insert image of work around as implemented.
+
+Copy the image as is with the jumper selection exactly matched and leaving where ope circuited as is.
+
+![](./RAK831.jpeg)
+
 
 ## Software errata
 
