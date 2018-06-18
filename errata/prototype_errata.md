@@ -78,9 +78,17 @@ Looks like the footprint was flipped from top vertical view to a bottom vertical
 
 #### Workaround
 
-Copy the image as is with the jumper selection exactly matched and leaving where ope circuited as is.
+Copy the image as is with the jumper selection exactly matched and leaving where open circuited as is. In next design iteration, unswap the parts.
 
 ![](./RAK831.jpeg)
+
+### 8. Failed to order 5v TVS diodes
+
+Set manf to the 12 volt TVS which is wrong.
+
+#### Workaround
+
+Fill the manf field with the correct 5 volt TVS part number in the next design iteration.
 
 
 ## Software errata
