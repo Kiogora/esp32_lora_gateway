@@ -2,6 +2,8 @@
 ESP32 lora gateway project
 ==========================
 
+![Kaaiote gateway image](./docs/images/kaiote_gateway.jpg)
+
 # 1. Testing
 
 Two types of tests are included:
